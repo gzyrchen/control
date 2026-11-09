@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>频率特性 · 稳态正弦响应与频域图示</title>
+<style>
+:root{
+  --ink:#2C2C2A; --ink2:#5F5E5A; --ink3:#8A8880;
+  --panel:#F1EFE8; --panel2:#FAF9F5; --line:rgba(0,0,0,.12); --line2:rgba(0,0,0,.07);
+  --blue:#185FA5; --blue-l:#E6F1FB; --orange:#D85A30; --orange-l:#FBEEE8;
+  --green:#3F8F5B; --green-l:#E8F3EC; --red:#A32D2D; --purple:#6B4FA8;
+  --mono:ui-monospace,Consolas,"Courier New",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:22px 24px 40px;background:#fff;color:var(--ink);font-family:var(--sans)}
+.wrap{max-width:1232px;margin:0 auto;font-size:13px}
+h1{font-size:16.5px;font-weight:600;margin:0 0 7px;letter-spacing:.1px}
+.lead{font-size:13px;line-height:1.7;color:var(--ink2);margin:0 0 15px;max-width:1000px}
+.lead b{color:var(--ink);font-weight:600}
+.lead code{font-family:var(--mono);font-size:12.5px;background:var(--panel);padding:1px 5px;border-radius:4px;color:var(--blue)}
+
+/* ---------- 工具条 ---------- */
+.bar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:var(--panel);border-radius:10px;padding:9px 12px;margin-bottom:12px}
+.seg{display:inline-flex;background:#fff;border:.5px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;font:inherit;font-size:12.5px;padding:6px 13px;cursor:pointer;color:var(--ink2);white-space:nowrap}
+.seg button+button{border-left:.5px solid var(--line)}
+.seg button.on{background:var(--blue);color:#fff}
+.bar .sp{flex:1}
+.btn{font:inherit;font-size:12.5px;padding:6px 13px;border:.5px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;color:var(--ink);white-space:nowrap}
+.btn:hover{background:var(--panel2)}
+.btn.on{background:var(--orange);border-color:var(--orange);color:#fff}
+.btn.gh{background:transparent}
+.tfslot{font-family:var(--mono);font-size:11.5px;color:var(--ink2);padding-left:4px}
+
+/* ---------- 布局 ---------- */
+.main{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:14px;align-items:start}
+@media (max-width:1160px){
+  .main{grid-template-columns:1fr}
+  /* 单栏时这两张方形图别被拉满屏，否则高度翻倍 */
+  #svgNyq,#svgBode{max-width:520px;margin:0 auto}
+}
+
+.card{background:var(--panel2);border:.5px solid var(--line);border-radius:12px;padding:9px 10px 6px;margin-bottom:12px}
+.chd{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 2px 5px}
+.chd h2{font-size:11.5px;font-weight:600;margin:0;color:var(--ink);letter-spacing:.15px}
+.chd .sub{font-size:10.5px;color:var(--ink3)}
+.chip{font-size:10.5px;padding:1.5px 8px;border-radius:999px;font-weight:500;white-space:nowrap}
+.chip.wait{background:#EDEBE4;color:var(--ink3)}
+.chip.ok{background:var(--green-l);color:var(--green)}
+svg{width:100%;height:auto;display:block;overflow:visible}
+svg text{font-family:var(--sans)}
+
+/* ---------- 读数 ---------- */
+.readout{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-top:2px}
+@media (max-width:920px){ .readout{grid-template-columns:repeat(3,1fr)} }
+.tile{background:var(--panel);border-radius:8px;padding:7px 9px;min-width:0}
+.tile .k{font-size:10px;color:var(--ink3);letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .v{font-family:var(--mono);font-size:13.5px;font-variant-numeric:tabular-nums;margin-top:2px;white-space:nowrap}
+.tile .s{font-family:var(--mono);font-size:10px;color:var(--ink3);margin-top:1px;white-space:nowrap}
+.tile.hi .v{color:var(--blue)}
+.tile.hi2 .v{color:var(--orange)}
+.tile.gd .v{color:var(--green)}
+
+/* ---------- 刻度盘 ---------- */
+.knobs{display:grid;grid-template-columns:1fr 1fr;gap:12px;background:var(--panel);border-radius:10px;padding:11px 14px;margin-bottom:12px}
+@media (max-width:760px){ .knobs{grid-template-columns:1fr} }
+.kn{display:flex;flex-direction:column;gap:5px}
+.kn .lab{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;color:var(--ink2)}
+.kn .lab b{font-family:var(--mono);font-size:12.5px;color:var(--ink);font-weight:600}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:3px;background:#D8D5CC;border-radius:2px;outline:0;margin:7px 0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--blue);border:2px solid #fff;box-shadow:0 0 0 .5px var(--line);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--blue);border:2px solid #fff;cursor:pointer}
+.featrow{display:flex;gap:7px;flex-wrap:wrap;align-items:center;font-size:11px;color:var(--ink3);margin-top:2px}
+.featrow .fb{font:inherit;font-size:11px;padding:3px 9px;border:.5px solid var(--line);background:#fff;border-radius:999px;cursor:pointer;color:var(--ink2);font-family:var(--mono)}
+.featrow .fb:hover{background:var(--blue-l);border-color:var(--blue);color:var(--blue)}
+
+/* ---------- 讲义 ---------- */
+.notes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+@media (max-width:1000px){ .notes{grid-template-columns:1fr 1fr} }
+@media (max-width:680px){ .notes{grid-template-columns:1fr} }
+.note{background:var(--panel2);border:.5px solid var(--line);border-radius:10px;padding:11px 13px}
+.note h3{font-size:12px;font-weight:600;margin:0 0 5px;color:var(--ink);display:flex;gap:6px;align-items:baseline}
+.note h3 i{font-style:normal;font-family:var(--mono);font-size:10.5px;color:#fff;background:var(--ink3);width:15px;height:15px;line-height:15px;text-align:center;border-radius:4px;flex:none}
+.note p{font-size:11.5px;line-height:1.72;color:var(--ink2);margin:0 0 5px}
+.note p:last-child{margin-bottom:0}
+.note b{color:var(--ink);font-weight:600}
+.note code{font-family:var(--mono);font-size:11px;background:var(--panel);padding:.5px 4px;border-radius:3px}
+.note .warn{display:block;margin-top:6px;padding:6px 8px;background:#FBF3E4;border-left:2px solid #C9973F;border-radius:0 5px 5px 0;font-size:11px;color:#7A5B22;line-height:1.65}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>频率特性：喂一个正弦进去，量出系统的「放大倍数」和「延迟」</h1>
+  <p class="lead">
+    给线性系统输入 <code>A·sin(ωt)</code>，等暂态衰减干净，输出会变成同频率的正弦——只是幅值乘上了 <code>|G(jω)|</code>，相位加上了 <code>∠G(jω)</code>。
+    本页不用公式反推，而是<b>真的跑一遍仿真</b>，在稳态窗口里量出峰值之比和峰值时刻之差，再把量到的结果和解析值对照。
+    拖 ω 或换对象，看时域波形、奈奎斯特图、伯德图三个视图怎么同步变化。
+  </p>
+
+  <div class="bar">
+    <div class="seg" id="segObj">
+      <button data-obj="rc" class="on">一阶惯性</button>
+      <button data-obj="osc">二阶振荡</button>
+      <button data-obj="lead">微分 + 惯性</button>
+    </div>
+    <span class="tfslot" id="tfSlot"></span>
+    <span class="sp"></span>
+    <button class="btn" id="btnPlay">重播时域</button>
+    <button class="btn" id="btnSweep">自动扫频</button>
+  </div>
+
+  <div class="main">
+
+    <!-- 左列：时域 -->
+    <div>
+      <div class="card">
+        <div class="chd">
+          <h2>时域：<span style="color:#185FA5">输入 u(t) = A·sin(ωt)</span> 与 <span style="color:#D85A30">输出 y(t)</span></h2>
+          <span class="chip wait" id="statusChip">暂态进行中</span>
+        </div>
+        <svg id="svgWave" viewBox="0 0 720 300" role="img" aria-label="时域正弦响应"></svg>
+      </div>
+
+      <div class="card">
+        <div class="chd">
+          <h2>放大镜：稳态窗口里的两个峰</h2>
+          <span class="sub" id="zoomSub">量幅值比与 Δt</span>
+        </div>
+        <svg id="svgZoom" viewBox="0 0 720 212" role="img" aria-label="稳态窗口放大"></svg>
+      </div>
+
+      <div class="readout" id="readout"></div>
+    </div>
+
+    <!-- 右列：频域 -->
+    <div>
+      <div class="card">
+        <div class="chd">
+          <h2>奈奎斯特图 · G(jω) 复平面</h2>
+          <span class="sub">ω: 0 → ∞</span>
+        </div>
+        <svg id="svgNyq" viewBox="0 0 352 302" role="img" aria-label="奈奎斯特图"></svg>
+      </div>
+
+      <div class="card">
+        <div class="chd">
+          <h2>伯德图 · 幅频 + 相频</h2>
+          <span class="sub">横轴对数</span>
+        </div>
+        <svg id="svgBode" viewBox="0 0 352 344" role="img" aria-label="伯德图"></svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="knobs">
+    <div class="kn">
+      <div class="lab"><span>输入频率 ω</span><b id="vW">2.00 rad/s</b></div>
+      <input type="range" id="sW" min="0" max="1000" value="500">
+      <div class="featrow" id="featRow"></div>
+    </div>
+    <div class="kn">
+      <div class="lab"><span>输入幅值 A</span><b id="vA">1.00</b></div>
+      <input type="range" id="sA" min="20" max="200" value="100">
+      <div class="featrow"><span>改 A 只缩放波形，<b style="color:var(--ink)">比值不动</b>——因为线性系统是齐次的。</span></div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <h3><i>1</i>频率特性到底测的是什么</h3>
+      <p>线性系统吃进 <code>A sin(ωt)</code>，吐出的<b>稳态</b>部分是 <code>A|G(jω)| sin(ωt + ∠G(jω))</code>。同频率、幅值乘一个数、相位加一个角。</p>
+      <p>这两个随 ω 变化的数，就是频率特性。它不是新东西，只是把同一个 <code>G(s)</code> 沿虚轴 <code>s=jω</code> 走一遍。</p>
+    </div>
+    <div class="note">
+      <h3><i>2</i>为什么必须等「稳态」</h3>
+      <p>通解 = 暂态 + 稳态。暂态按极点衰减，衰减完剩下的才是频率特性。上图的斜纹区就是暂态，绿色窗口才是能下尺的地方。</p>
+      <p>二阶 ζ=0.3 时包络按 <code>e^(−1.5t)</code> 衰减，要 3 秒多才能量；ζ 越小等得越久——这也是实测频率特性最费时间的地方。</p>
+    </div>
+    <div class="note">
+      <h3><i>3</i>三个对象的形状各不相同</h3>
+      <p><b>一阶惯性</b>：低频 0 dB / 0°，转折后 −20 dB/dec，相位收到 −90°。转折点正好 −3.01 dB、−45°。</p>
+      <p><b>二阶振荡</b>：ωn=5 处相位 −90°，幅值只由 ζ 决定。ζ=0.3 时冒出 <b>+4.85 dB</b> 的谐振峰（ωr=4.53），高频 −40 dB/dec 收到 −180°。</p>
+      <p><b>微分+惯性</b>：零点在极点左边，相位<b>为正</b>——输出跑到输入前面。最大超前 49.9°（ω=1.83），高频增益停在 7.5。</p>
+    </div>
+    <div class="note">
+      <h3><i>4</i>Nyquist 和 Bode 是同一组数</h3>
+      <p><code>G(jω)</code> 是复数。拆成 (Re, Im) 画在复平面，就是奈奎斯特图；拆成 (20lg|G|, ∠G) 对 lg ω 画，就是伯德图。</p>
+      <p>一个是极坐标，一个是半对数直角坐标。红点始终是同一个 ω 在两个坐标系里的两种写法。</p>
+    </div>
+    <div class="note">
+      <h3><i>5</i>线性，才谈得上「特性」</h3>
+      <p>正弦过线性系统还是正弦，因为叠加原理保住了单一频率。若进了饱和或死区，输出会长出 2ω、3ω 谐波，此时「幅值比」还取决于 A 的大小——那就不是系统的固有属性了。</p>
+      <span class="warn">所以实测要点：让系统工作在线性区，A 取小一点，逐点验证「A 变了比值不变」。</span>
+    </div>
+    <div class="note">
+      <h3><i>6</i>它不告诉你的事</h3>
+      <p>频率特性只描述<b>稳态</b>。超调多少、几秒调稳、有没有微分冲击，这些是暂态指标，频域里要靠带宽、谐振峰、相位裕度间接推，不能直接读出。</p>
+      <p>它也只对线性时不变成立。时变系统、强非线性系统，这条链子会断。</p>
+      <span class="warn">边界说清楚：本页是连续时间、零初始条件、理想正弦输入的理想实验，没有噪声、没有量化、没有执行器饱和。</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ================= 基础 ================= */
+const $ = id => document.getElementById(id);
+const SVGNS = 'http://www.w3.org/2000/svg';
+const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+const F = (v,n) => { n = (n===undefined?2:n); if(Math.abs(v)<5e-12) v=0; return v.toFixed(n); };
+const D2R = Math.PI/180, R2D = 180/Math.PI;
+
+/* ================= 三个被控对象 ================= */
+/* ss: 可控标准型 dx/dt = Ax + Bu,  y = Cx + Du  */
+const OBJS = {
+  rc:{
+    id:'rc', tag:'一阶惯性',
+    tf:'G(s) = 1 / (1 + 0.5s)',
+    ss:{ A:[[-2]], B:[2], C:[1], D:0 },
+    settle:2.5,
+    mag:w => 1/Math.sqrt(1+0.25*w*w),
+    ph :w => -Math.atan(0.5*w),
+    feat:[{w:2, l:'转折 1/T'}],
+    tip:'极点 s = −2。过了 2 rad/s 幅值每十倍频掉 20 dB，相位最多滞后 90°。'
+  },
+  osc:{
+    id:'osc', tag:'二阶振荡',
+    tf:'G(s) = 25 / (s² + 3s + 25)    ωn=5, ζ=0.3',
+    ss:{ A:[[0,1],[-25,-3]], B:[0,25], C:[1,0], D:0 },
+    settle:3.4,
+    mag:w => 25/Math.sqrt(Math.pow(25-w*w,2)+9*w*w),
+    ph :w => -Math.atan2(3*w, 25-w*w),
+    feat:[{w:5, l:'ωn=5'},{w:4.528, l:'ωr=4.53'}],
+    tip:'ζ=0.3 阻尼很轻，ωn 附近冲出 +4.85 dB 谐振峰，相位在 ωn 处正好 −90°。'
+  },
+  lead:{
+    id:'lead', tag:'微分+惯性',
+    tf:'G(s) = (1 + 1.5s) / (1 + 0.2s)',
+    ss:{ A:[[-5]], B:[5], C:[-6.5], D:7.5 },
+    settle:1.2,
+    mag:w => Math.sqrt(1+2.25*w*w)/Math.sqrt(1+0.04*w*w),
+    ph :w => Math.atan(1.5*w) - Math.atan(0.2*w),
+    feat:[{w:0.667, l:'零点 0.67'},{w:1.826, l:'φmax 1.83'},{w:5, l:'极点 5'}],
+    tip:'零点比极点更靠近原点，相位为正——输出跑到输入前面。高频增益停在 7.5。'
+  }
+};
+
+/* ================= 状态 ================= */
+const ST = { obj:'rc', w:2.0, A:1.0, prog:1, playing:false, sweeping:false, sweepT:0 };
+const PLAY_MS = 7800;
+const W_MIN = 0.3, W_MAX = 30;
+
+let SIM = null;      // 当前仿真
+let MEA = null;      // 当前测量
+let WAVE = null;     // 波形坐标缓存
+
+/* ================= RK4 真仿真 ================= */
+function simulate(o, A, w){
+  const per = 2*Math.PI/w;
+  const Tw  = Math.max(o.settle + 2.3*per, 1.5*o.settle);
+  const ts  = Math.max(o.settle, Tw - 2.2*per);
+  const N = 3200, dt = Tw/N;
+  const n = o.ss.A.length, Aq = o.ss.A, Bq = o.ss.B, Cq = o.ss.C, Dq = o.ss.D;
+
+  let x = new Array(n).fill(0);
+  const T = new Float64Array(N+1), U = new Float64Array(N+1), Y = new Float64Array(N+1);
+
+  function der(t, xx){
+    const u = A*Math.sin(w*t), d = new Array(n);
+    for(let i=0;i<n;i++){
+      let s = Bq[i]*u;
+      for(let j=0;j<n;j++) s += Aq[i][j]*xx[j];
+      d[i] = s;
+    }
+    return d;
+  }
+  const add=(xx,k,h)=>xx.map((v,i)=>v+h*k[i]);
+
+  T[0]=0; U[0]=0; Y[0]=0;
+  for(let k=0;k<N;k++){
+    const t = k*dt;
+    const k1 = der(t, x);
+    const k2 = der(t+0.5*dt, add(x,k1,0.5*dt));
+    const k3 = der(t+0.5*dt, add(x,k2,0.5*dt));
+    const k4 = der(t+dt,     add(x,k3,dt));
+    for(let i=0;i<n;i++) x[i] += dt/6*(k1[i]+2*k2[i]+2*k3[i]+k4[i]);
+    T[k+1] = t+dt;
+    U[k+1] = A*Math.sin(w*(t+dt));
+    let y = Dq*U[k+1];
+    for(let i=0;i<n;i++) y += Cq[i]*x[i];
+    Y[k+1] = y;
+  }
+  return { T,U,Y,dt,N,Tw,ts,per,A,w,settle:o.settle };
+}
+
+/* ================= 在稳态窗口里量 ================= */
+function measure(sim){
+  const {T,Y,Tw,ts,per,w} = sim;
+  const lo = ts + 0.12*per, hi = Tw - 0.12*per;
+  let iMax = -1, iMin = -1;
+  for(let i=1;i<T.length-1;i++){
+    if(T[i] < lo || T[i] > hi) continue;
+    if(Y[i] >= Y[i-1] && Y[i] > Y[i+1]) iMax = i;
+    if(Y[i] <= Y[i-1] && Y[i] < Y[i+1]) iMin = i;
+  }
+  if(iMax < 0 || iMin < 0) return null;
+
+  // 抛物线插值：把峰的位置和高度都精确到亚采样点
+  function parab(a,b,c){
+    const den = a - 2*b + c;
+    if(Math.abs(den) < 1e-15) return [0, b];
+    const d = 0.5*(a-c)/den;
+    return [d, b - 0.25*(a-c)*d];
+  }
+  const dt = T[1]-T[0];
+  const [dMax, vMax] = parab(Y[iMax-1], Y[iMax], Y[iMax+1]);
+  const [dMin, vMin] = parab(Y[iMin-1], Y[iMin], Y[iMin+1]);
+  const tMax = T[iMax] + dMax*dt;
+  const tMin = T[iMin] + dMin*dt;
+
+  const amp = (vMax - vMin)/2;
+
+  // 输入峰值时刻（解析）：sin 的峰在 π/2 + 2kπ
+  const k = Math.round((tMax*w - Math.PI/2)/(2*Math.PI));
+  const tIn = (Math.PI/2 + 2*k*Math.PI)/w;
+
+  // φ = ω·(t_in_peak − t_out_peak)，正号代表输出超前
+  let dph = w*(tIn - tMax);
+  dph = ((dph + Math.PI) % (2*Math.PI) + 2*Math.PI) % (2*Math.PI) - Math.PI;
+
+  return { amp, tMax, tMin, tIn, vMax, vMin, mag: amp/sim.A, ph: dph };
+}
+
+/* ================= 公共绘图小件 ================= */
+function txt(x,y,s,opt){
+  opt = opt || {};
+  const a = opt.a || 'start';
+  const fill = opt.fill || '#8A8880';
+  const size = opt.size || 10;
+  const w = opt.w || 400;
+  const anc = opt.anchor ? (' text-anchor="'+a+'"') : '';
+  const rot = opt.rot ? (' transform="rotate('+opt.rot+' '+x+' '+y+')"') : '';
+  const halo = opt.halo ? ' stroke="#fff" stroke-width="3.2" paint-order="stroke" stroke-linejoin="round"' : '';
+  return '<text x="'+F(x,1)+'" y="'+F(y,1)+'" font-size="'+size+'" fill="'+fill+'" font-weight="'+w+'"'+anc+rot+halo+'>'+s+'</text>';
+}
+// 竖排轴标题
+function axisY(x,y,s){
+  return '<text transform="translate('+x+','+F(y,1)+') rotate(-90)" text-anchor="middle" font-size="9.5" fill="#8A8880">'+s+'</text>';
+}
+
+/* ================= 时域全图 ================= */
+const WW = { L:52, R:16, T:28, B:40, W:720, H:300 };
+
+function drawWave(){
+  const sim = SIM, o = OBJS[ST.obj];
+  const {T,U,Y,Tw,ts,N} = sim;
+  const L=WW.L, R=WW.R, TPt=WW.T, Bt=WW.B, W=WW.W, H=WW.H;
+  const PW = W-L-R, PH = H-TPt-Bt;
+
+  let mx = sim.A;
+  for(let i=0;i<=N;i++){ const a=Math.abs(Y[i]); if(a>mx) mx=a; }
+  const YR = mx*1.22;
+  const X = t => L + (t/Tw)*PW;
+  const Yc = v => TPt + PH/2 - (v/YR)*(PH/2);
+  WAVE = {X, Yc, PW, PH, L, TPt, YR};
+
+  let s = '';
+  // 背景
+  s += '<rect x="'+L+'" y="'+TPt+'" width="'+PW+'" height="'+PH+'" fill="#fff" stroke="none" rx="3"/>';
+
+  // 暂态区斜纹
+  s += '<defs><pattern id="hatch" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">'
+     + '<line x1="0" y1="0" x2="0" y2="7" stroke="#C9C5BA" stroke-width="1.1"/></pattern></defs>';
+  const xTs = X(ts);
+  const transW = xTs - L;
+  s += '<rect x="'+L+'" y="'+TPt+'" width="'+F(transW,1)+'" height="'+PH+'" fill="url(#hatch)" opacity="0.55"/>';
+  // 稳态窗口
+  s += '<rect x="'+F(xTs,1)+'" y="'+TPt+'" width="'+F(L+PW-xTs,1)+'" height="'+PH+'" fill="#E8F3EC" opacity="0.75"/>';
+  s += '<line x1="'+F(xTs,1)+'" y1="'+TPt+'" x2="'+F(xTs,1)+'" y2="'+(TPt+PH)+'" stroke="#3F8F5B" stroke-width="1" stroke-dasharray="3 3" opacity="0.7"/>';
+
+  // 网格
+  for(let i=0;i<=4;i++){
+    const v = -YR + (2*YR)*i/4;
+    const y = Yc(v);
+    const z = Math.abs(v) < 1e-9;
+    s += '<line x1="'+L+'" y1="'+F(y,1)+'" x2="'+(L+PW)+'" y2="'+F(y,1)+'" stroke="'+(z?'#9A968C':'#E4E1D8')+'" stroke-width="'+(z?1:0.7)+'"/>';
+    s += txt(L-7, y+3.5, F(v, Math.abs(YR)>=3?1:2), {a:'end', fill:'#8A8880', size:9.5, anchor:true});
+  }
+  for(let i=0;i<=5;i++){
+    const t = Tw*i/5, x = X(t);
+    s += '<line x1="'+F(x,1)+'" y1="'+TPt+'" x2="'+F(x,1)+'" y2="'+(TPt+PH)+'" stroke="#EFEDE6" stroke-width="0.7"/>';
+    s += txt(x, TPt+PH+15, F(t, t<10?2:1), {a:'middle', fill:'#8A8880', size:9.5, anchor:true});
+  }
+  // 轴题
+  s += axisY(11, TPt+PH/2, '幅值');
+  s += txt(L+PW, TPt+PH+31, 't / s', {a:'end', fill:'#5F5E5A', size:10, anchor:true});
+  s += txt(L+PW/2, TPt+PH+31, '全程 0 → ' + F(Tw,2) + ' s', {a:'middle', fill:'#B0ADA4', size:9, anchor:true});
+
+  // 区标注（区域太窄就不写，免得越界）
+  if(transW > 104) s += txt(L + transW/2, TPt+13, '暂态（别在这儿量）', {a:'middle', fill:'#8A8880', size:9.5, anchor:true, halo:true});
+  s += txt((xTs+L+PW)/2, TPt+13, '稳态窗口（就在这儿量）', {a:'middle', fill:'#3F8F5B', size:9.5, anchor:true, w:600, halo:true});
+
+  // 曲线（占位 path，播放时改 d）
+  s += '<path id="pIn"  fill="none" stroke="#185FA5" stroke-width="1.5" stroke-linejoin="round" opacity="0.9" d=""/>';
+  s += '<path id="pOut" fill="none" stroke="#D85A30" stroke-width="1.9" stroke-linejoin="round" d=""/>';
+
+  // 播放游标
+  s += '<line id="cursor" x1="'+L+'" y1="'+TPt+'" x2="'+L+'" y2="'+(TPt+PH)+'" stroke="#A32D2D" stroke-width="1" stroke-dasharray="2 3" opacity="0"/>';
+  s += '<circle id="dotIn"  r="3" fill="#185FA5" opacity="0" cx="'+L+'" cy="'+Yc(0)+'"/>';
+  s += '<circle id="dotOut" r="3.4" fill="#D85A30" opacity="0" cx="'+L+'" cy="'+Yc(0)+'"/>';
+
+  $('svgWave').innerHTML = s;
+  paintWave(ST.prog, true);
+}
+
+function pathSeg(arr, i1, X, Yc, step){
+  let s = '';
+  for(let i=0;i<=i1;i+=step){
+    s += (s?'L':'M') + F(X(SIM.T[i]),1) + ' ' + F(Yc(arr[i]),1);
+  }
+  const e = Math.min(i1, SIM.N);
+  s += 'L' + F(X(SIM.T[e]),1) + ' ' + F(Yc(arr[e]),1);
+  return s;
+}
+
+function paintWave(p, force){
+  if(!SIM || !WAVE) return;
+  const i1 = Math.max(1, Math.round(clamp(p,0,1)*SIM.N));
+  const step = Math.max(1, Math.ceil(i1/760));
+  const dIn  = pathSeg(SIM.U, i1, WAVE.X, WAVE.Yc, step);
+  const dOut = pathSeg(SIM.Y, i1, WAVE.X, WAVE.Yc, step);
+  const pIn = $('pIn'), pOut = $('pOut');
+  if(pIn) pIn.setAttribute('d', dIn);
+  if(pOut) pOut.setAttribute('d', dOut);
+
+  const cur = $('cursor');
+  if(cur){
+    const live = (p > 0.002 && p < 0.997) ? '0.75' : '0';
+    const x = WAVE.X(SIM.T[i1]);
+    cur.setAttribute('x1', x); cur.setAttribute('x2', x);
+    cur.setAttribute('opacity', live);
+    const d1 = $('dotIn'), d2 = $('dotOut');
+    if(d1){ d1.setAttribute('cx', x); d1.setAttribute('cy', WAVE.Yc(SIM.U[i1])); d1.setAttribute('opacity', live); }
+    if(d2){ d2.setAttribute('cx', x); d2.setAttribute('cy', WAVE.Yc(SIM.Y[i1])); d2.setAttribute('opacity', live); }
+  }
+  const chip = $('statusChip');
+  if(chip){
+    const steady = p > 0.985;
+    chip.textContent = steady ? '稳态已建立 · 测量有效' : '暂态进行中…';
+    chip.className = 'chip ' + (steady?'ok':'wait');
+  }
+}
+
+/* ================= 稳态放大镜 ================= */
+function drawZoom(){
+  const sim = SIM, o = OBJS[ST.obj], m = MEA;
+  const L=52, R=18, TPt=28, Bt=36, W=720, H=212;
+  const PW = W-L-R, PH = H-TPt-Bt;
+  const t0 = sim.ts, t1 = sim.Tw;
+  const per = sim.per;
+
+  let mx = sim.A;
+  const {T,U,Y,N} = sim;
+  let i0=0,i1=N;
+  for(let i=0;i<=N;i++){ if(T[i]<t0) i0=i; if(T[i]<=t1) i1=i; }
+  for(let i=i0;i<=i1;i++){ const a=Math.abs(Y[i]); if(a>mx) mx=a; }
+  const YR = mx*1.22;
+
+  const X = t => L + (t-t0)/(t1-t0)*PW;
+  const Yc = v => TPt + PH/2 - (v/YR)*(PH/2);
+
+  let s = '';
+  s += '<rect x="'+L+'" y="'+TPt+'" width="'+PW+'" height="'+PH+'" fill="#F3F8F5" rx="3"/>';
+  for(let i=0;i<=4;i++){
+    const v = -YR + 2*YR*i/4, y = Yc(v), z = Math.abs(v)<1e-9;
+    s += '<line x1="'+L+'" y1="'+F(y,1)+'" x2="'+(L+PW)+'" y2="'+F(y,1)+'" stroke="'+(z?'#9A968C':'#DFE8E1')+'" stroke-width="'+(z?1:0.7)+'"/>';
+    s += txt(L-7, y+3.5, F(v, Math.abs(YR)>=3?1:2), {a:'end', fill:'#8A8880', size:9.5, anchor:true});
+  }
+  for(let k=0;k<=4;k++){
+    const t = t0 + (t1-t0)*k/4, x = X(t);
+    s += '<line x1="'+F(x,1)+'" y1="'+TPt+'" x2="'+F(x,1)+'" y2="'+(TPt+PH)+'" stroke="#E4EDE7" stroke-width="0.7"/>';
+    s += txt(x, TPt+PH+15, F(t,1), {a:'middle', fill:'#8A8880', size:9.5, anchor:true});
+  }
+  s += axisY(11, TPt+PH/2, '幅值');
+  s += txt(L+PW, TPt+PH+31, 't / s', {a:'end', fill:'#5F5E5A', size:10, anchor:true});
+  s += txt(L, TPt+PH+31, '窗口宽 ' + F((t1-t0)/per,2) + ' 个周期', {fill:'#3F8F5B', size:9.5});
+
+  // 曲线
+  const step = Math.max(1, Math.ceil((i1-i0)/760));
+  let dIn='', dOut='';
+  for(let i=i0;i<=i1;i+=step){
+    dIn  += (dIn?'L':'M') + F(X(T[i]),1) + ' ' + F(Yc(U[i]),1);
+    dOut += (dOut?'L':'M') + F(X(T[i]),1) + ' ' + F(Yc(Y[i]),1);
+  }
+  s += '<path fill="none" stroke="#185FA5" stroke-width="1.4" opacity="0.85" d="'+dIn+'"/>';
+  s += '<path fill="none" stroke="#D85A30" stroke-width="2.1" d="'+dOut+'"/>';
+
+  if(m){
+    const xIn = X(m.tIn), xOut = X(m.tMax), xVal = X(m.tMin);
+    // 峰谷参考线
+    s += '<line x1="'+L+'" y1="'+F(Yc(m.vMax),1)+'" x2="'+(L+PW)+'" y2="'+F(Yc(m.vMax),1)+'" stroke="#D85A30" stroke-width="0.6" stroke-dasharray="2 5" opacity="0.35"/>';
+    s += '<line x1="'+L+'" y1="'+F(Yc(m.vMin),1)+'" x2="'+(L+PW)+'" y2="'+F(Yc(m.vMin),1)+'" stroke="#D85A30" stroke-width="0.6" stroke-dasharray="2 5" opacity="0.35"/>';
+
+    // 输入峰
+    s += '<line x1="'+F(xIn,1)+'" y1="'+TPt+'" x2="'+F(xIn,1)+'" y2="'+(TPt+PH)+'" stroke="#185FA5" stroke-width="0.9" stroke-dasharray="3 3" opacity="0.6"/>';
+    s += '<circle cx="'+F(xIn,1)+'" cy="'+F(Yc(sim.A),1)+'" r="3" fill="#185FA5"/>';
+    // 输出峰 / 谷
+    s += '<line x1="'+F(xOut,1)+'" y1="'+TPt+'" x2="'+F(xOut,1)+'" y2="'+(TPt+PH)+'" stroke="#D85A30" stroke-width="0.9" stroke-dasharray="3 3" opacity="0.7"/>';
+    s += '<circle cx="'+F(xOut,1)+'" cy="'+F(Yc(m.vMax),1)+'" r="3.4" fill="#D85A30"/>';
+    s += '<circle cx="'+F(xVal,1)+'" cy="'+F(Yc(m.vMin),1)+'" r="3.2" fill="none" stroke="#D85A30" stroke-width="1.4"/>';
+
+    // Δt 双向箭头
+    const yy = TPt + PH + 3;
+    if(Math.abs(xOut-xIn) > 3){
+      s += '<line x1="'+F(xIn,1)+'" y1="'+yy+'" x2="'+F(xOut,1)+'" y2="'+yy+'" stroke="#6B4FA8" stroke-width="1.6"/>';
+      s += '<path d="M'+F(xIn,1)+' '+yy+' l6 -3.4 v6.8 z" fill="#6B4FA8"/>';
+      s += '<path d="M'+F(xOut,1)+' '+yy+' l-6 -3.4 v6.8 z" fill="#6B4FA8"/>';
+    }
+    const dt = (m.tIn - m.tMax);
+    s += txt((xIn+xOut)/2, TPt+PH+32, 'Δt = '+F(dt,3)+' s  →  φ = −ω·Δt = '+F(m.ph*R2D,1)+'°',
+             {a:'middle', fill:'#6B4FA8', size:10, anchor:true, w:600});
+
+    // 峰标签：靠太近就上下错开
+    const close = Math.abs(xOut-xIn) < 56;
+    s += txt(xIn,  close?TPt-17:TPt-7, 'u 峰', {a:'middle', fill:'#185FA5', size:9.5, anchor:true});
+    s += txt(xOut, TPt-7, 'y 峰', {a:'middle', fill:'#D85A30', size:9.5, anchor:true});
+  }
+  $('svgZoom').innerHTML = s;
+  $('zoomSub').textContent = m
+    ? '峰峰值 ' + F(2*m.amp,2) + ' ÷ 2A = ' + F(m.mag,3)
+    : '量幅值比与 Δt';
+}
+
+/* ================= 奈奎斯特图 ================= */
+function nyqPoints(o){
+  const pts = [];
+  for(let i=0;i<=420;i++){
+    const w = 0.015*Math.pow(40000, i/420);   // 0.015 → 600
+    const mg = o.mag(w), ph = o.ph(w);
+    pts.push({ w, re: mg*Math.cos(ph), im: mg*Math.sin(ph) });
+  }
+  return pts;
+}
+
+function drawNyq(){
+  const o = OBJS[ST.obj], w = ST.w;
+  const L=34, R=14, TPt=16, Bt=40, W=352, H=302;
+  const PW = W-L-R, PH = H-TPt-Bt;
+
+  const pts = nyqPoints(o);
+  let minRe=0,maxRe=0,minIm=0,maxIm=0;
+  pts.forEach(p=>{ minRe=Math.min(minRe,p.re); maxRe=Math.max(maxRe,p.re);
+                   minIm=Math.min(minIm,p.im); maxIm=Math.max(maxIm,p.im); });
+  const bw = Math.max(maxRe-minRe, 0.2), bh = Math.max(maxIm-minIm, 0.2);
+  const pw = bw*0.12+0.02, ph = bh*0.12+0.02;
+  minRe-=pw; maxRe+=pw; minIm-=ph; maxIm+=ph;
+  const cx0 = (minRe+maxRe)/2, cy0 = (minIm+maxIm)/2;
+  const sc = Math.min(PW/(maxRe-minRe), PH/(maxIm-minIm));
+  const X = re => L+PW/2 + (re-cx0)*sc;
+  const Y = im => TPt+PH/2 - (im-cy0)*sc;
+
+  let s = '';
+  s += '<defs><clipPath id="nyqClip"><rect x="'+L+'" y="'+TPt+'" width="'+PW+'" height="'+PH+'" rx="3"/></clipPath></defs>';
+  s += '<rect x="'+L+'" y="'+TPt+'" width="'+PW+'" height="'+PH+'" fill="#fff" rx="3"/>';
+
+  s += '<g clip-path="url(#nyqClip)">';
+  // 网格
+  const gstep = (maxRe-minRe) > 6 ? 1 : 0.5;
+  for(let v=Math.ceil(minRe/gstep)*gstep; v<=maxRe; v+=gstep){
+    s += '<line x1="'+F(X(v),1)+'" y1="'+TPt+'" x2="'+F(X(v),1)+'" y2="'+(TPt+PH)+'" stroke="#F0EEE7" stroke-width="0.7"/>';
+  }
+  for(let v=Math.ceil(minIm/gstep)*gstep; v<=maxIm; v+=gstep){
+    s += '<line x1="'+L+'" y1="'+F(Y(v),1)+'" x2="'+(L+PW)+'" y2="'+F(Y(v),1)+'" stroke="#F0EEE7" stroke-width="0.7"/>';
+  }
+  // 单位圆 |G|=1（整圆放得下才画，否则只剩残弧反而误导）
+  const showUnit = sc <= Math.min(PW,PH)/2 + 0.5;
+  if(showUnit){
+    s += '<circle cx="'+F(X(0),1)+'" cy="'+F(Y(0),1)+'" r="'+F(sc,1)+'" fill="none" stroke="#C9973F" stroke-width="0.9" stroke-dasharray="4 4" opacity="0.8"/>';
+  }
+  // 轴
+  s += '<line x1="'+L+'" y1="'+F(Y(0),1)+'" x2="'+(L+PW)+'" y2="'+F(Y(0),1)+'" stroke="#9A968C" stroke-width="1"/>';
+  s += '<line x1="'+F(X(0),1)+'" y1="'+TPt+'" x2="'+F(X(0),1)+'" y2="'+(TPt+PH)+'" stroke="#9A968C" stroke-width="1"/>';
+
+  // 曲线
+  let d = '';
+  pts.forEach((p,i)=>{ d += (i?'L':'M') + F(X(p.re),1) + ' ' + F(Y(p.im),1); });
+  s += '<path fill="none" stroke="#185FA5" stroke-width="1.7" stroke-linejoin="round" d="'+d+'"/>';
+
+  // 起点（实心）/ 终点（空心）
+  s += '<circle cx="'+F(X(pts[0].re),1)+'" cy="'+F(Y(pts[0].im),1)+'" r="2.8" fill="#185FA5"/>';
+  const last = pts[pts.length-1];
+  s += '<circle cx="'+F(X(last.re),1)+'" cy="'+F(Y(last.im),1)+'" r="2.8" fill="#fff" stroke="#185FA5" stroke-width="1.4"/>';
+  s += '</g>';
+
+  // 轴题（画在裁剪外，免得被切）
+  s += txt(L+PW, Y(0)+14, 'Re', {a:'end', fill:'#5F5E5A', size:9.5, anchor:true});
+  s += txt(X(0)+5, TPt+10, 'Im', {fill:'#5F5E5A', size:9.5});
+
+  // 当前点
+  const mg = o.mag(w), phi = o.ph(w);
+  const cre = mg*Math.cos(phi), cim = mg*Math.sin(phi);
+  s += '<line x1="'+F(X(0),1)+'" y1="'+F(Y(0),1)+'" x2="'+F(X(cre),1)+'" y2="'+F(Y(cim),1)+'" stroke="#A32D2D" stroke-width="1.1" opacity="0.5"/>';
+  s += '<circle cx="'+F(X(cre),1)+'" cy="'+F(Y(cim),1)+'" r="4.4" fill="#A32D2D" stroke="#fff" stroke-width="1.5"/>';
+  const lab = F(mg,2) + '∠' + F(phi*R2D,0) + '°';
+  const right = cre >= cx0;
+  let ax = X(cre) + (right ? 9 : -9);
+  ax = clamp(ax, L+30, L+PW-4);
+  s += txt(ax, Y(cim)-11, lab, {a: right?'start':'end', fill:'#A32D2D', size:9.5, anchor:true, w:600, halo:true});
+
+  // 图注
+  let cap = '<g transform="translate('+L+','+(TPt+PH+20)+')">'
+    + '<circle cx="4" cy="0" r="2.8" fill="#185FA5"/>' + txt(11, 3.5, 'ω→0', {fill:'#5F5E5A', size:8.5})
+    + '<circle cx="60" cy="0" r="2.8" fill="#fff" stroke="#185FA5" stroke-width="1.4"/>' + txt(67, 3.5, 'ω→∞', {fill:'#5F5E5A', size:8.5});
+  let off = 132;
+  if(showUnit){
+    cap += '<line x1="120" y1="0" x2="136" y2="0" stroke="#C9973F" stroke-width="0.9" stroke-dasharray="4 4"/>'
+        + txt(140, 3.5, '|G|=1', {fill:'#5F5E5A', size:8.5});
+    off = 200;
+  }
+  cap += '<circle cx="'+off+'" cy="0" r="4" fill="#A32D2D"/>' + txt(off+7, 3.5, '当前 ω', {fill:'#5F5E5A', size:8.5}) + '</g>';
+  s += cap;
+  $('svgNyq').innerHTML = s;
+}
+
+/* ================= 伯德图 ================= */
+const BODE = { L:46, R:14, W:352, H:344,
+               M:{t:20, b:152, lo:-40, hi:20},
+               P:{t:190, b:306, lo:-200, hi:80},
+               wl:0.2, wh:60 };
+
+function drawBode(){
+  const o = OBJS[ST.obj], w = ST.w;
+  const B = BODE, L=B.L, R=B.R, PW=B.W-L-R;
+  const lx = v => L + (Math.log10(v)-Math.log10(B.wl))/(Math.log10(B.wh)-Math.log10(B.wl))*PW;
+  const my = v => B.M.t + (B.M.hi - clamp(v,B.M.lo-5,B.M.hi+5))/(B.M.hi-B.M.lo)*(B.M.b-B.M.t);
+  const py = v => B.P.t + (B.P.hi - clamp(v,B.P.lo-10,B.P.hi+10))/(B.P.hi-B.P.lo)*(B.P.b-B.P.t);
+
+  let s = '';
+  s += '<rect x="'+L+'" y="'+B.M.t+'" width="'+PW+'" height="'+(B.M.b-B.M.t)+'" fill="#fff" rx="2"/>';
+  s += '<rect x="'+L+'" y="'+B.P.t+'" width="'+PW+'" height="'+(B.P.b-B.P.t)+'" fill="#fff" rx="2"/>';
+
+  // 频率网格
+  const ticks = [0.2,0.5,1,2,5,10,20,50];
+  ticks.forEach(t=>{
+    const x = lx(t);
+    s += '<line x1="'+F(x,1)+'" y1="'+B.M.t+'" x2="'+F(x,1)+'" y2="'+B.M.b+'" stroke="#F0EEE7" stroke-width="0.7"/>';
+    s += '<line x1="'+F(x,1)+'" y1="'+B.P.t+'" x2="'+F(x,1)+'" y2="'+B.P.b+'" stroke="#F0EEE7" stroke-width="0.7"/>';
+    s += txt(x, B.P.b+14, (t<1?t.toFixed(1):(t<10?t.toFixed(0):t.toFixed(0))), {a:'middle', fill:'#8A8880', size:9, anchor:true});
+  });
+  // 幅频网格
+  [-40,-20,0,20].forEach(v=>{
+    const y = my(v), z = v===0;
+    s += '<line x1="'+L+'" y1="'+F(y,1)+'" x2="'+(L+PW)+'" y2="'+F(y,1)+'" stroke="'+(z?'#9A968C':'#EFEDE6')+'" stroke-width="'+(z?1:0.7)+'"/>';
+    s += txt(L-5, y+3.5, (v>0?'+':'')+v, {a:'end', fill: z?'#5F5E5A':'#8A8880', size:9, anchor:true});
+  });
+  // 相频网格
+  [-180,-90,0].forEach(v=>{
+    const y = py(v), z = v===0;
+    s += '<line x1="'+L+'" y1="'+F(y,1)+'" x2="'+(L+PW)+'" y2="'+F(y,1)+'" stroke="'+(z?'#9A968C':'#EFEDE6')+'" stroke-width="'+(z?1:0.7)+'"/>';
+    s += txt(L-5, y+3.5, v+'°', {a:'end', fill: z?'#5F5E5A':'#8A8880', size:9, anchor:true});
+  });
+
+  // 轴题
+  s += txt(L+PW, B.M.t-7, 'L(ω) / dB', {a:'end', fill:'#5F5E5A', size:9.5, anchor:true});
+  s += txt(L+PW, B.P.t-7, 'φ(ω) / deg', {a:'end', fill:'#5F5E5A', size:9.5, anchor:true});
+  s += txt(L, B.P.b+27, 'ω / (rad·s⁻¹) · 对数轴', {fill:'#8A8880', size:8.5});
+
+  // 特征频率竖线（标签放幅频面板底部，曲线都在上半区，不会打架；挨太近就上移一行）
+  let lastFX = -1e9, fRow = 0;
+  o.feat.forEach(f=>{
+    if(f.w<B.wl||f.w>B.wh) return;
+    const x = lx(f.w);
+    if(x - lastFX < 54) fRow++; else fRow = 0;
+    lastFX = x;
+    s += '<line x1="'+F(x,1)+'" y1="'+B.M.t+'" x2="'+F(x,1)+'" y2="'+B.P.b+'" stroke="#B39A5E" stroke-width="0.8" stroke-dasharray="2 4" opacity="0.55"/>';
+    const estW = f.l.length*6.4;
+    const flip = (x + 3 + estW) > (L+PW);
+    s += txt(flip ? x-3 : x+3, B.M.b - 7 - fRow*12, f.l,
+             {a: flip?'end':'start', fill:'#B39A5E', size:8, anchor:true, halo:true});
+  });
+
+  // 曲线
+  let dm='', dp='';
+  const n = 420;
+  for(let i=0;i<=n;i++){
+    const ww = B.wl*Math.pow(B.wh/B.wl, i/n);
+    const mg2 = o.mag(ww), ph2 = o.ph(ww);
+    const db2 = 20*Math.log10(Math.max(mg2,1e-9));
+    const x = lx(ww);
+    dm += (i?'L':'M') + F(x,1) + ' ' + F(my(db2),1);
+    dp += (i?'L':'M') + F(x,1) + ' ' + F(py(ph2*R2D),1);
+  }
+  s += '<path fill="none" stroke="#185FA5" stroke-width="1.8" stroke-linejoin="round" d="'+dm+'"/>';
+  s += '<path fill="none" stroke="#6B4FA8" stroke-width="1.8" stroke-linejoin="round" d="'+dp+'"/>';
+
+  // 当前点
+  const mg = o.mag(w), phi = o.ph(w);
+  const db = 20*Math.log10(Math.max(mg,1e-9));
+  const xc = lx(clamp(w,B.wl,B.wh));
+  s += '<line x1="'+F(xc,1)+'" y1="'+B.M.t+'" x2="'+F(xc,1)+'" y2="'+B.P.b+'" stroke="#A32D2D" stroke-width="1.1" stroke-dasharray="3 3" opacity="0.75"/>';
+  s += '<circle cx="'+F(xc,1)+'" cy="'+F(my(db),1)+'" r="4.2" fill="#A32D2D" stroke="#fff" stroke-width="1.3"/>';
+
+  // dB 标签：靠顶就翻到点下方，靠右就左对齐
+  const dbTxt = F(db,1)+' dB';
+  const nearTop = my(db) < B.M.t + 30;
+  const dbLX = (xc + 7 + dbTxt.length*6) > (L+PW);
+  s += txt(dbLX ? xc-7 : xc+7, nearTop ? my(db)+15 : my(db)-8, dbTxt,
+           {a: dbLX?'end':'start', fill:'#A32D2D', size:9, anchor:true, w:600, halo:true});
+
+  const phDeg = phi*R2D, phIn = (phDeg>=B.P.lo && phDeg<=B.P.hi);
+  if(phIn){
+    s += '<circle cx="'+F(xc,1)+'" cy="'+F(py(phDeg),1)+'" r="4.2" fill="#A32D2D" stroke="#fff" stroke-width="1.3"/>';
+  }
+  const phTxt = F(phDeg,1)+'°';
+  const phTop = phIn && (py(phDeg) < B.P.t + 26);
+  const phLX = (xc + 7 + phTxt.length*6) > (L+PW);
+  s += txt(phLX ? xc-7 : xc+7, phIn ? (phTop ? py(phDeg)+15 : py(phDeg)-8) : B.P.b-6, phTxt,
+           {a: phLX?'end':'start', fill:'#A32D2D', size:9, anchor:true, w:600, halo:true});
+
+  $('svgBode').innerHTML = s;
+}
+
+/* ================= 读数 ================= */
+function drawReadout(){
+  const o = OBJS[ST.obj], w = ST.w, m = MEA;
+  const magT = o.mag(w), phT = o.ph(w)*R2D;
+  const dB = 20*Math.log10(Math.max(magT,1e-9));
+  const magM = m ? m.mag : 0, phM = m ? m.ph*R2D : 0;
+  const eMag = m ? Math.abs(magM-magT)/Math.max(magT,1e-9)*100 : 0;
+  const ePh  = m ? Math.abs(phM-phT) : 0;
+
+  const tiles = [
+    {k:'频率 ω', v:F(w,2), s:'rad/s', cls:''},
+    {k:'输出幅值（实测）', v:F(m?m.amp:0,3), s:'输入 A='+F(ST.A,2), cls:'hi2'},
+    {k:'幅值比 |G| 实测', v:F(magM,4), s:'理论 '+F(magT,4), cls:'hi'},
+    {k:'分贝 20lg|G|', v:(dB>=0?'+':'')+F(dB,2), s:'dB', cls:'hi'},
+    {k:'相位 ∠G 实测', v:F(phM,1)+'°', s:'理论 '+F(phT,1)+'°', cls:'hi2'},
+    {k:'与解析值偏差', v:eMag.toFixed(2)+'%', s:'相位 '+F(ePh,2)+'°', cls:'gd'}
+  ];
+  $('readout').innerHTML = tiles.map(t=>
+    '<div class="tile '+t.cls+'"><div class="k">'+t.k+'</div><div class="v">'+t.v+'</div><div class="s">'+t.s+'</div></div>'
+  ).join('');
+}
+
+/* ================= 主流程 ================= */
+function refresh(){
+  const o = OBJS[ST.obj];
+  // 参数一变，正在跑的动画就作废，直接展示完整波形
+  if(ST.playing){
+    ST.playing = false; ST.prog = 1;
+    $('btnPlay').classList.remove('on');
+    $('btnPlay').textContent = '重播时域';
+  }
+  $('tfSlot').textContent = o.tf;
+  SIM = simulate(o, ST.A, ST.w);
+  MEA = measure(SIM);
+  drawWave();
+  drawZoom();
+  drawNyq();
+  drawBode();
+  drawReadout();
+  $('vW').textContent = F(ST.w,2)+' rad/s';
+  $('vA').textContent = F(ST.A,2);
+}
+
+function setObj(id){
+  ST.obj = id;
+  document.querySelectorAll('#segObj button').forEach(b=>{
+    b.classList.toggle('on', b.dataset.obj===id);
+  });
+  buildFeatRow();
+  refresh();
+  play();
+}
+
+function buildFeatRow(){
+  const o = OBJS[ST.obj];
+  const el = $('featRow');
+  el.innerHTML = '<span>跳到：</span>' + o.feat.map(f=>
+    '<button class="fb" data-w="'+f.w+'">'+f.l+'</button>'
+  ).join('');
+  el.querySelectorAll('button').forEach(b=>{
+    b.onclick = ()=>{ setW(parseFloat(b.dataset.w)); };
+  });
+}
+
+function setW(w){
+  ST.w = clamp(w, W_MIN, W_MAX);
+  $('sW').value = Math.round(sliderFromW(ST.w)*1000);
+  refresh();
+}
+const sliderFromW = w => Math.log(w/W_MIN)/Math.log(W_MAX/W_MIN);
+const wFromSlider = v => W_MIN*Math.pow(W_MAX/W_MIN, v);
+
+/* 播放 */
+let raf = 0, playT0 = 0;
+function play(){
+  if(!SIM) return;
+  ST.playing = true; ST.prog = 0; playT0 = 0;
+  $('btnPlay').classList.add('on');
+  $('btnPlay').textContent = '播放中…';
+  paintWave(0, true);
+  if(!raf) loop(performance.now());
+}
+function loop(now){
+  raf = requestAnimationFrame(loop);
+  if(ST.playing){
+    if(!playT0) playT0 = now;
+    const p = clamp((now-playT0)/PLAY_MS, 0, 1);
+    ST.prog = p;
+    paintWave(p);
+    if(p >= 1){
+      ST.playing = false;
+      $('btnPlay').classList.remove('on');
+      $('btnPlay').textContent = '重播时域';
+    }
+  }
+  if(ST.sweeping){
+    ST.sweepT += 1;
+    if(ST.sweepT % 3 === 0){
+      let nw = ST.w * Math.pow(W_MAX/W_MIN, 1/140);
+      if(nw > W_MAX) nw = W_MIN;
+      ST.w = nw;
+      $('sW').value = Math.round(sliderFromW(ST.w)*1000);
+      refresh();
+    }
+  }
+}
+
+/* ================= 事件 ================= */
+$('segObj').addEventListener('click', e=>{
+  const b = e.target.closest('button');
+  if(b && b.dataset.obj) setObj(b.dataset.obj);
+});
+
+$('sW').addEventListener('input', e=>{
+  ST.w = wFromSlider(e.target.value/1000);
+  refresh();
+});
+$('sA').addEventListener('input', e=>{
+  ST.A = e.target.value/100;
+  refresh();
+});
+$('btnPlay').addEventListener('click', play);
+$('btnSweep').addEventListener('click', e=>{
+  ST.sweeping = !ST.sweeping;
+  ST.sweepT = 0;
+  e.target.classList.toggle('on', ST.sweeping);
+  e.target.textContent = ST.sweeping ? '停止扫频' : '自动扫频';
+  if(ST.sweeping){ ST.playing = false; ST.prog = 1; paintWave(1, true); }
+});
+
+/* ================= 诊断接口 ================= */
+window.__FR__ = {
+  setObj, setW,
+  setA: v => { ST.A = v; refresh(); },
+  state: () => ({
+    obj: ST.obj, w: ST.w, A: ST.A,
+    Twin: SIM.Tw, ts: SIM.ts,
+    magM: MEA ? MEA.mag : null,
+    phM: MEA ? MEA.ph*R2D : null,
+    ampM: MEA ? MEA.amp : null,
+    magT: OBJS[ST.obj].mag(ST.w),
+    phT: OBJS[ST.obj].ph(ST.w)*R2D
+  }),
+  /* 对一串频率做「仿真 → 测量 → 与解析对比」，返回误差表 */
+  scan: function(list){
+    const out = [];
+    list.forEach(w=>{
+      ST.w = w;
+      const sim = simulate(OBJS[ST.obj], ST.A, w);
+      const m = measure(sim);
+      const mgT = OBJS[ST.obj].mag(w), phT = OBJS[ST.obj].ph(w)*R2D;
+      out.push({
+        w: +w.toFixed(4),
+        magM: m ? +m.mag.toFixed(5) : null,
+        magT: +mgT.toFixed(5),
+        eMag: m ? +Math.abs(m.mag-mgT)/mgT*100 : null,
+        phM: m ? +(m.ph*R2D).toFixed(3) : null,
+        phT: +phT.toFixed(3),
+        ePh: m ? +Math.abs(m.ph*R2D-phT).toFixed(3) : null,
+        Twin: +sim.Tw.toFixed(3), ts: +sim.ts.toFixed(3)
+      });
+    });
+    ST.w = 2; refresh();
+    return out;
+  }
+};
+
+/* ================= 启动 ================= */
+buildFeatRow();
+$('sW').value = Math.round(sliderFromW(ST.w)*1000);
+$('sA').value = 100;
+refresh();
+play();
+
+})();
+</script>
+</body>
+</html>

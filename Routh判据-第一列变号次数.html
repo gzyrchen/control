@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Routh 稳定判据 · 第一列变几次号</title>
+<style>
+:root{
+  --ink:#2C2C2A; --ink2:#5F5E5A; --ink3:#8A8880;
+  --panel:#F1EFE8; --panel2:#FAF9F5; --line:rgba(0,0,0,.12);
+  --blue:#185FA5; --blue-l:#E6F1FB; --orange:#D85A30; --orange-l:#FBEEE8;
+  --green:#3F8F5B; --green-l:#E8F3EC; --red:#A32D2D; --purple:#6B4FA8;
+  --gold:#C9973F; --gold-l:#FBF3E4;
+  --mono:ui-monospace,Consolas,"Courier New",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:22px 24px 40px;background:#fff;color:var(--ink);font-family:var(--sans)}
+.wrap{max-width:1232px;margin:0 auto;font-size:13px}
+h1{font-size:16.5px;font-weight:600;margin:0 0 7px;letter-spacing:.1px}
+.lead{font-size:13px;line-height:1.7;color:var(--ink2);margin:0 0 15px;max-width:1010px}
+.lead b{color:var(--ink);font-weight:600}
+.lead code{font-family:var(--mono);font-size:12.5px;background:var(--panel);padding:1px 5px;border-radius:4px;color:var(--blue)}
+
+.bar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:var(--panel);border-radius:10px;padding:9px 12px;margin-bottom:10px}
+.seg{display:inline-flex;background:#fff;border:.5px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;font:inherit;font-size:12.5px;padding:6px 12px;cursor:pointer;color:var(--ink2);white-space:nowrap}
+.seg button+button{border-left:.5px solid var(--line)}
+.seg button.on{background:var(--blue);color:#fff}
+.bar .sp{flex:1}
+.btn{font:inherit;font-size:12.5px;padding:6px 12px;border:.5px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;color:var(--ink);white-space:nowrap}
+.btn:hover{background:var(--panel2)}
+.btn.on{background:var(--orange);border-color:var(--orange);color:#fff}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.tfslot{font-family:var(--mono);font-size:11.5px;color:var(--ink2);padding-left:2px}
+
+.kbar{display:flex;align-items:center;gap:14px;background:var(--panel);border-radius:10px;padding:10px 14px;margin-bottom:12px;flex-wrap:wrap}
+.kbar .kl{font-size:12px;color:var(--ink2);white-space:nowrap}
+.kbar input[type=range]{flex:1;min-width:200px}
+.kval{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--ink);min-width:76px;text-align:right}
+.ktag{font-size:11px;color:var(--ink3);font-family:var(--mono)}
+input[type=range]{-webkit-appearance:none;appearance:none;height:3px;background:#D8D5CC;border-radius:2px;outline:0;margin:7px 0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--blue);border:2px solid #fff;box-shadow:0 0 0 .5px var(--line);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--blue);border:2px solid #fff;cursor:pointer}
+
+.main{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:14px;align-items:start}
+.card{background:var(--panel2);border:.5px solid var(--line);border-radius:12px;padding:9px 10px 8px}
+.chd{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 2px 6px;flex-wrap:wrap}
+.chd h2{font-size:11.5px;font-weight:600;margin:0;color:var(--ink);letter-spacing:.15px}
+.chd .sub{font-size:10.5px;color:var(--ink3);font-family:var(--mono)}
+
+/* ---- Routh 表 ---- */
+.tblwrap{position:relative;padding:2px 0 4px}
+table.rt{border-collapse:separate;border-spacing:4px;margin:0 auto}
+table.rt th{font-family:var(--mono);font-size:10.5px;font-weight:400;color:var(--ink3);text-align:right;padding-right:3px;white-space:nowrap;width:34px}
+table.rt td{
+  font-family:var(--mono);font-size:13px;text-align:center;
+  min-width:68px;height:32px;padding:4px 6px;
+  background:#fff;border-radius:6px;border:.5px solid var(--line);
+  color:var(--ink);font-variant-numeric:tabular-nums;
+  cursor:default;transition:box-shadow .12s ease,background .12s ease;
+}
+table.rt td.dv{cursor:pointer}
+table.rt td.dv:hover{background:#F7F6F1}
+table.rt td.fc{background:var(--blue-l);color:#14406E;font-weight:600;border-color:#BFD8EE}
+table.rt td.fc.dv{cursor:pointer}
+table.rt td.sel{box-shadow:0 0 0 2px var(--blue);z-index:2;position:relative}
+table.rt td.srcA{box-shadow:0 0 0 2px var(--purple)}
+table.rt td.srcB{box-shadow:0 0 0 2px var(--orange)}
+table.rt td.zeroRow{background:var(--gold-l);border-color:#E3C892;font-style:italic;color:#7A5B22}
+table.rt td.epsCell{background:var(--gold-l);border-color:#E3C892;color:#8A6A2A;font-style:italic;font-weight:600}
+table.rt td.dim{color:#C6C2B6}
+.ov{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+
+.fml{margin-top:6px;background:#fff;border:.5px solid var(--line);border-radius:8px;padding:8px 11px;font-family:var(--mono);font-size:11.5px;line-height:1.75;color:var(--ink2);min-height:38px}
+.fml .hint{color:#B0ADA4}
+.fml b{color:var(--ink)}
+.fml .eq{color:var(--ink3)}
+.fml .g{color:var(--green)}
+.fml .r{color:var(--red)}
+.fml .p{color:var(--purple)}
+.fml .bl{color:var(--blue);font-weight:600}
+
+/* ---- 第一列符号链 ---- */
+.chain2{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;margin-top:8px;padding:0 2px}
+.sgc{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:52px;padding:4px 2px;border-radius:7px}
+.sgc .n{font-family:var(--mono);font-size:9.5px;color:var(--ink3);margin-bottom:1px}
+.sgc .v{font-family:var(--mono);font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums}
+.sgc.pos .v{color:var(--green)} .sgc.neg .v{color:var(--red)} .sgc.zro .v{color:var(--gold)}
+.sgc.cur{background:#fff;box-shadow:0 0 0 1.5px var(--blue)}
+.arw{display:flex;align-items:center;justify-content:center;width:20px;font-size:11px;color:#CFCCC2;font-family:var(--mono)}
+.arw.chg{color:var(--orange);font-weight:700}
+.ctail{display:flex;align-items:center;margin-left:8px;font-size:11.5px;color:var(--ink2);font-family:var(--mono)}
+.ctail b{font-size:15px;margin:0 3px}
+
+/* ---- 右侧 ---- */
+.side{display:grid;gap:12px}
+.vrow{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.vt{background:var(--panel);border-radius:9px;padding:8px 11px}
+.vt .k{font-size:10px;color:var(--ink3);letter-spacing:.2px;white-space:nowrap}
+.vt .v{font-family:var(--mono);font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:3px;white-space:nowrap}
+.vt .s{font-size:10px;color:var(--ink3);margin-top:2px;line-height:1.4}
+.vt.ok .v{color:var(--green)} .vt.bad .v{color:var(--red)} .vt.warn .v{color:var(--gold)}
+.chk{background:#fff;border:.5px solid var(--line);border-radius:9px;padding:7px 11px;font-family:var(--mono);font-size:11.5px;display:flex;align-items:center;gap:7px;justify-content:center}
+.ceq{color:var(--ink3)}
+.roots{display:flex;flex-wrap:wrap;gap:5px;padding:2px 2px 0}
+.rt1{font-family:var(--mono);font-size:11.5px;padding:3px 7px;border-radius:6px;background:#fff;border:.5px solid var(--line);font-variant-numeric:tabular-nums}
+.rt1.rhp{color:var(--red);border-color:#E8C4C0;background:#FDF4F3}
+.rt1.lhp{color:var(--blue);border-color:#C6DAEC;background:#F4F9FD}
+.rt1.imj{color:#8A6A2A;border-color:#E3C892;background:var(--gold-l)}
+.cpoly{font-family:var(--mono);font-size:11.5px;color:var(--ink2);line-height:1.7;word-break:break-word}
+.cpoly b{color:var(--ink)}
+.hintbox{border-radius:9px;padding:9px 11px;font-size:11.5px;line-height:1.65;display:none}
+.hintbox.show{display:block}
+.hintbox.gold{background:var(--gold-l);border-left:3px solid var(--gold);color:#7A5B22}
+.hintbox.blue{background:var(--blue-l);border-left:3px solid var(--blue);color:#14406E}
+.hintbox.red{background:#FDF4F3;border-left:3px solid var(--red);color:#7E2626}
+.hintbox b{font-weight:600}
+.hintbox .fm{font-family:var(--mono);font-size:11px;display:block;margin-top:4px}
+
+/* ---- 极点轨迹 ---- */
+.left{display:grid;gap:12px}
+#svgPole{display:block;width:100%;height:auto;margin:2px auto 0}
+.pinfo{font-size:11px;line-height:1.7;color:var(--ink2)}
+.pinfo p{margin:0}
+.pinfo b{color:var(--ink);font-weight:600}
+.prow{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:8px auto}
+.prow .cell{background:var(--panel);border-radius:8px;padding:5px 9px}
+.prow .cell .k{font-size:10px;color:var(--ink3);white-space:nowrap}
+.prow .cell .v{font-family:var(--mono);font-size:16px;font-weight:600;margin-top:1px;font-variant-numeric:tabular-nums}
+.prow .lhp .v{color:var(--blue)} .prow .ax .v{color:var(--gold)} .prow .rhp .v{color:var(--red)}
+.pnote{color:var(--ink3);font-size:10.5px;line-height:1.65;border-top:.5px solid var(--line);padding-top:7px;margin:0}
+
+/* ---- 阶跃响应 ---- */
+.wave{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:14px;margin-top:14px;align-items:start}
+#svgStep{display:block;width:100%;height:auto}
+.specs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:9px}
+.specs .sp{background:#fff;border:.5px solid var(--line);border-radius:7px;padding:5px 6px;text-align:center}
+.specs .sp .k{font-size:10px;color:var(--ink3);white-space:nowrap}
+.specs .sp .k sub{font-size:7.5px;vertical-align:-1px}
+.specs .sp .v{font-family:var(--mono);font-size:12.5px;font-weight:600;margin-top:2px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.specs .sp.na .v{color:#B6B2A6;font-weight:400}
+.specs .sp.hi .v{color:var(--red)}
+/* 图例 / 状态条：贴在曲线与指标之间，不压进画框 */
+.stepNote{display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px;margin-top:7px;min-height:15px;
+  font-size:10.5px;line-height:1.5;color:var(--ink3)}
+.stepNote:empty{display:none}
+.stepNote .lg{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.stepNote .lg svg{display:block;flex:none}
+.stepNote .sts{font-weight:600;color:var(--gold);white-space:nowrap}
+.stepNote .sts sup{font-size:7.5px}
+.stepNote .sts.bad{color:var(--red)}
+/* 例题 D：只有多项式、没有传函 —— 留白，但保持卡片高度不跳 */
+.stepEmpty{display:none;min-height:272px;border:.5px dashed var(--line);border-radius:10px;
+  background:#FCFBF8;align-items:center;justify-content:center;text-align:center;padding:18px 22px}
+.stepEmpty.show{display:flex}
+.stepEmpty .se{max-width:380px;font-size:11.5px;line-height:1.85;color:var(--ink2)}
+.stepEmpty .se b{display:block;font-size:13px;color:var(--ink);font-weight:600;margin-bottom:7px;letter-spacing:.02em}
+.stepEmpty .se code{font-family:var(--mono);font-size:11px;background:var(--panel);padding:1px 4px;border-radius:3px;white-space:nowrap}
+.stepEmpty .se .hint{display:block;margin-top:8px;color:var(--ink3);font-size:11px}
+.tfinfo{font-size:11.5px;line-height:1.75;color:var(--ink2)}
+.tfinfo p{margin:7px 0 0}
+.tfinfo b{color:var(--ink);font-weight:600}
+.tfinfo .f{font-family:var(--mono);font-size:11.5px;background:#fff;border:.5px solid var(--line);border-radius:8px;padding:8px 10px;line-height:1.9;color:var(--ink)}
+.tfinfo .f .c{color:var(--blue)}
+.tfinfo .f sup{font-size:9px}
+
+/* ---- 讲义 ---- */
+.notes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+.note{background:var(--panel2);border:.5px solid var(--line);border-radius:10px;padding:11px 13px}
+.note h3{font-size:12px;font-weight:600;margin:0 0 5px;color:var(--ink);display:flex;gap:6px;align-items:baseline}
+.note h3 i{font-style:normal;font-family:var(--mono);font-size:10.5px;color:#fff;background:var(--ink3);width:15px;height:15px;line-height:15px;text-align:center;border-radius:4px;flex:none}
+.note p{font-size:11.5px;line-height:1.72;color:var(--ink2);margin:0 0 5px}
+.note p:last-child{margin-bottom:0}
+.note b{color:var(--ink);font-weight:600}
+.note code{font-family:var(--mono);font-size:11px;background:var(--panel);padding:.5px 4px;border-radius:3px}
+.note .warn{display:block;margin-top:6px;padding:6px 8px;background:var(--gold-l);border-left:2px solid var(--gold);border-radius:0 5px 5px 0;font-size:11px;color:#7A5B22;line-height:1.65}
+
+@media (max-width:1000px){
+  .main{grid-template-columns:1fr}
+  .wave{grid-template-columns:1fr}
+  .notes{grid-template-columns:1fr 1fr}
+}
+@media (max-width:680px){
+  .notes{grid-template-columns:1fr}
+  table.rt td{min-width:54px;font-size:12px}
+  .vt .v{font-size:17px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Routh 判据：不解方程，只看第一列变了几次号</h1>
+  <p class="lead">
+    判据只有一句话：<b>Routh 表第一列的变号次数 = 闭环右半平面极点个数</b>。难点全在「表怎么算出来」——每一格都由上两行的<code>四个数交叉相乘</code>得到。
+    <b>点表中任意一格</b>，看它的来路；或者点<b>“自动演算”</b>，从头走一遍。
+    把 K 拖到临界，表的某一行会变成 0（或末行剩个 0）——那正是要换辅助方程、或极点正好压在虚轴上的地方。
+    <br>判据只管<b>稳不稳</b>。右上那张图把表和极点对上号，下面那段把 Φ(s) 算成一条阶跃曲线——<b>稳了以后多快、超多少、差多少</b>，看那两张。
+  </p>
+
+  <div class="bar">
+    <div class="seg" id="segObj">
+      <button data-obj="A" class="on">三阶惯性</button>
+      <button data-obj="B">含右半平面极点</button>
+      <button data-obj="C">四阶惯性</button>
+      <button data-obj="D">例题：首列遇零</button>
+    </div>
+    <span class="sp"></span>
+    <button class="btn" id="btnJump">跳到临界 Kc</button>
+    <button class="btn" id="btnAuto">自动演算</button>
+  </div>
+
+  <div class="kbar">
+    <span class="kl" id="pLabel">开环增益 K</span>
+    <input type="range" id="sP" min="0" max="1000" value="300">
+    <span class="kval" id="vP">32.0</span>
+    <span class="ktag" id="vPc">临界 Kc = 60</span>
+    <span class="sp" style="flex:1"></span>
+    <span class="tfslot" id="tfSlot"></span>
+  </div>
+
+  <div class="main">
+    <div class="left">
+      <div class="card">
+        <div class="chd">
+          <h2>Routh 表</h2>
+          <span class="sub" id="tblSub">第一列决定一切</span>
+        </div>
+        <div class="tblwrap" id="tblwrap">
+          <table class="rt" id="rt"></table>
+          <svg class="ov" id="ov"></svg>
+        </div>
+        <div class="fml" id="fml"><span class="hint">点任意一格，看它由哪四个数算出。</span></div>
+        <div class="chain2" id="chain2"></div>
+      </div>
+
+      <div class="hintbox" id="hint"></div>
+
+      <div class="card">
+        <div class="chd"><h2>特征多项式与实算根</h2><span class="sub" id="rootSub"></span></div>
+        <div class="cpoly" id="cpoly"></div>
+        <div class="roots" id="roots"></div>
+      </div>
+
+      <div class="card">
+        <div class="chd"><h2>这只是必要条件</h2><span class="sub">先过这一关</span></div>
+        <div class="cpoly" style="line-height:1.8">
+          系数<b>全正</b>是稳定的必要条件，但阶数 ≥ 3 时<b>不充分</b>。
+          A、C 在临界点系数全正，却仍有一对纯虚根——<br>
+          所以判据不能只看正负，必须<b>把表算完</b>。
+        </div>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="card">
+        <div class="chd">
+          <h2>第一列的变号 = 极点跨过虚轴的次数</h2>
+          <span class="sub" id="poleSub">细线是轨迹</span>
+        </div>
+        <svg id="svgPole" viewBox="0 0 560 300"></svg>
+        <div class="prow" id="prow"></div>
+        <div class="pinfo">
+          <p>细线是<b>轨迹</b>，上面的小点是一个个参数取值：参数从最小扫到最大，每个极点在复平面上走出来的路。轨迹一旦<b>穿过竖的那条线（虚轴）</b>，就有一个极点从左边跑到右边——第一列正好在这时<b>多一次变号</b>。</p>
+        </div>
+        <p class="pnote">表只回答「右边有几个」，不回答「在哪儿」。这一栏是把两者对上的解释，<b>不是判据的替代</b>——真要位置才需要解方程。</p>
+      </div>
+
+      <div class="vrow">
+        <div class="vt" id="vtZ">
+          <div class="k">Z · 第一列变号次数</div>
+          <div class="v">0</div>
+          <div class="s">判据给的右半平面极点数</div>
+        </div>
+        <div class="vt" id="vtReal">
+          <div class="k">实算 · RHP 极点个数</div>
+          <div class="v">0</div>
+          <div class="s">直接解方程核对</div>
+        </div>
+      </div>
+      <div class="chk" id="chk"></div>
+    </div>
+  </div>
+
+  <div class="wave">
+    <div class="card">
+      <div class="chd">
+        <h2>闭环单位阶跃响应</h2>
+        <span class="sub" id="tfSub"></span>
+      </div>
+      <svg id="svgStep" viewBox="0 0 660 320"></svg>
+      <div class="stepEmpty" id="stepEmpty"></div>
+      <div class="stepNote" id="stepNote"></div>
+      <div class="specs" id="specs"></div>
+    </div>
+    <div class="card">
+      <div class="chd"><h2>这条曲线从哪来</h2><span class="sub">先有传函，才有曲线</span></div>
+      <div class="tfinfo" id="tfinfo"></div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <h3><i>1</i>判据在算什么</h3>
+      <p>闭环特征方程 <code>c(s) = 0</code> 的根，决定闭环稳不稳。Routh 表把 <code>c(s)</code> 的系数反复做「交叉相乘再除」，等价于在高阶多项式之间做辗转相除。</p>
+      <p>过程中第一列符号变了几次，就说明有几个根跑到了<b>右半平面</b>。<b>不用解方程</b>，这是它比求根值钱的地方。</p>
+    </div>
+    <div class="note">
+      <h3><i>2</i>每一格是怎么来的</h3>
+      <p>第 <code>i</code> 行第 <code>j</code> 列 = <b>(左上×右下 − 左下×右上) ÷ 左上</b>，用的正是上面两行。上面那个「左上」是除数，也是下一轮的表头。</p>
+      <p>表算到最后一行的第一列，就是常数项。整张表只看<b>第一列</b>——其余列都是中间产物。</p>
+    </div>
+    <div class="note">
+      <h3><i>3</i>整行为零 = 出现对称根</h3>
+      <p>某一行全为 0，说明有<b>关于原点对称</b>的根（<code>±jω</code> 或 <code>±σ</code>）。这时用上一行构造<b>辅助方程</b> <code>A(s)=0</code>，对其求导后顶替这一行。</p>
+      <p>A、C 拖到临界都会走到这一步，辅助方程给出的正是那对纯虚根。</p>
+      <p>B 是另一种临界：末行（常数项）为 0，根落在<b>原点</b>，不是一整行为 0。</p>
+      <span class="warn">所以「整行为零」不是算错了，是判据在告诉你：系统正卡在边界上。</span>
+    </div>
+    <div class="note">
+      <h3><i>4</i>首列遇零怎么办</h3>
+      <p>整行不全为零、只有第一个是 0，表就卡住了。惯例是用一个<b>足够小的正数 ε</b> 顶替，继续往下算，最后令 ε→0⁺ 看符号。</p>
+      <p>第四个字页签就是这种情况：<code>a₄a₃ = a₅a₂</code> 时才发生，是系数上的一个巧合。</p>
+      <span class="warn">表里按 ε=10⁻³ 代入，所以那一带会出现 0.001、−999 这类数。判据只看符号，不看大小。</span>
+    </div>
+    <div class="note">
+      <h3><i>5</i>和频域判据是同一件事</h3>
+      <p>Nyquist 数是「曲线绕 −1 几圈」，Routh 数是「第一列变几次号」，两者给的永远是同一个 <code>Z</code>。</p>
+      <p>区别在入口：Routh 只要系数，Nyquist 要画出整条曲线。能用系数算的，就别去画图。</p>
+    </div>
+    <div class="note">
+      <h3><i>6</i>使用边界</h3>
+      <p>判据假设系数是<b>精确</b>的。系数只要差一点点，「整行为零」就变成「一行 1e−9」，变号次数可能完全不同——现实中要留裕度，别贴着临界做设计。</p>
+      <p>另外它只回答稳不稳，不回答<b>稳得怎么样</b>——超调、快慢、稳态误差。那要靠<b>极点位置</b>和<b>阶跃曲线</b>：上面那两张图，就是把判据给的「几个根在右半平面」翻译成「跑多快、超多少、差多少」。</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>v<a?a:(v>b?b:v);
+const R2D=180/Math.PI;
+
+/* ============ 四个对象 ============ */
+/* coef(p) 返回降幂特征多项式系数；p 是滑块那一个参数 */
+const OBJS={
+  A:{id:'A', name:'三阶惯性', tf:'c(s) = s³ + 6s² + 11s + (6 + K)',
+     pname:'开环增益 K', pmin:8, pmax:140, pdef:32, plog:true,
+     jump:60, jlab:'Kc = 60',
+     g:'K / [(s+1)(s+2)(s+3)]',
+     note:'0 型系统，位置误差系数 Kp = K/6，所以 e_ss = 1/(1+Kp) = 6/(6+K)。',
+     coef:p=>[1,6,11,6+p]},
+  B:{id:'B', name:'含右半平面极点', tf:'c(s) = s² + s + (K − 2)',
+     pname:'开环增益 K', pmin:0.3, pmax:9, pdef:4, plog:true,
+     jump:2, jlab:'Kc = 2',
+     g:'K / [(s−1)(s+2)]',
+     note:'开环本身有一个右半平面极点，Kp = −K/2 是负的。K>2 时 e_ss 为负——输出不是没到位，而是稳在两倍输入上。',
+     coef:p=>[1,1,-2+p]},
+  C:{id:'C', name:'四阶惯性', tf:'c(s) = s⁴ + 10s³ + 35s² + 50s + (24 + K)',
+     pname:'开环增益 K', pmin:15, pmax:320, pdef:70, plog:true,
+     jump:126, jlab:'Kc = 126',
+     g:'K / [(s+1)(s+2)(s+3)(s+4)]',
+     note:'0 型系统，Kp = K/24，所以 e_ss = 24/(24+K)。阶数越高、K 越大，稳态误差越小。',
+     coef:p=>[1,10,35,50,24+p]},
+  D:{id:'D', name:'例题：首列遇零', tf:'c(s) = s⁵ + 2s⁴ + a₃s³ + 4s² + 11s + 10',
+     pname:'s³ 项系数 a₃', pmin:0.5, pmax:5, pdef:2, plog:false, pstep:0.05,
+     jump:2, jlab:'a₃ = 2 时首列遇零',
+     g:null, note:null,
+     coef:p=>[1,2,p,4,11,10]},
+};
+
+const ST={obj:'A', p:32, sel:null, auto:false, timer:0, sweep:[], sweepI:0};
+
+/* ============ Routh 表 ============ */
+/* rows 定长 m；事件：{type:'zero', row, terms, der} / {type:'eps', row} */
+function routh(c){
+  const n=c.length-1;
+  const m=Math.ceil((n+1)/2);
+  let scale=0;
+  for(const v of c) scale=Math.max(scale,Math.abs(v));
+  const tol=1e-11*Math.max(1,scale);
+
+  const pad=r=>{ const a=r.slice(); while(a.length<m) a.push(0); return a; };
+  const r0=[],r1=[];
+  for(let i=0;i<=n;i+=2) r0.push(c[i]);
+  for(let i=1;i<=n;i+=2) r1.push(c[i]);
+  const rows=[pad(r0),pad(r1)];
+  const ev=[];
+
+  for(let i=2;i<=n;i++){
+    const prev=rows[i-1], prev2=rows[i-2];
+    if(prev.every(v=>Math.abs(v)<=tol)){                    // 整行为零 → 辅助方程
+      const deg0=n-(i-2);
+      const terms=[];
+      for(let j=0;j<m;j++) if(Math.abs(prev2[j])>tol) terms.push({deg:deg0-2*j, coef:prev2[j]});
+      const der=new Array(m).fill(0);
+      for(const t of terms) der[(deg0-t.deg)/2]=t.coef*t.deg;
+      rows[i-1]=der;
+      ev.push({type:'zero', row:i-1, terms:terms, der:der.slice()});
+    }
+    if(Math.abs(rows[i-1][0])<=tol){                        // 首元为 0，整行非零
+      ev.push({type:'eps', row:i-1});
+      rows[i-1][0]=1e-3;
+    }
+    const p0=rows[i-1][0], row=new Array(m).fill(0);
+    for(let j=0;j<m-1;j++) row[j]=(p0*prev2[j+1]-prev2[0]*rows[i-1][j+1])/p0;
+    rows.push(row);
+  }
+
+  const col=rows.map(r=>r[0]);
+  let ch=0;
+  for(let i=1;i<col.length;i++) if(col[i-1]*col[i]<0) ch++;
+  return {rows, col, ch, ev, n, m, tol,
+          cells:i=>Math.ceil((n+1-i)/2)};
+}
+
+/* ============ 求根（Durand–Kerner） ============ */
+function polyRoots(c){
+  const n=c.length-1;
+  if(n<1) return [];
+  const a=c.map(v=>v/c[0]);
+  let R=0;
+  for(let i=1;i<=n;i++){ const t=Math.pow(Math.abs(a[i]),1/i); if(t>R) R=t; }
+  R=clamp(R*1.15,0.35,1e3);
+  const zr=[],zi=[];
+  for(let k=0;k<n;k++){ const th=2*Math.PI*k/n+0.4; zr.push(R*Math.cos(th)); zi.push(R*Math.sin(th)); }
+  for(let it=0;it<200;it++){
+    let md=0;
+    for(let k=0;k<n;k++){
+      const x=zr[k],y=zi[k];
+      let pr=0,pi=0;
+      for(let i=0;i<=n;i++){ const t=pr*x-pi*y+a[i], u=pr*y+pi*x; pr=t; pi=u; }
+      let dr=1,di=0;
+      for(let j=0;j<n;j++){
+        if(j===k) continue;
+        const dx=x-zr[j], dy=y-zi[j];
+        const t=dr*dx-di*dy, u=dr*dy+di*dx; dr=t; di=u;
+      }
+      const dd=dr*dr+di*di;
+      if(dd<1e-300) continue;
+      const qr=(pr*dr+pi*di)/dd, qi=(pi*dr-pr*di)/dd;
+      zr[k]-=qr; zi[k]-=qi;
+      const mm=Math.hypot(qr,qi); if(mm>md) md=mm;
+    }
+    if(md<1e-12) break;
+  }
+  const out=[];
+  for(let k=0;k<n;k++){
+    let re=zr[k], im=zi[k];
+    if(Math.abs(re)<1e-9) re=0;
+    if(Math.abs(im)<1e-8) im=0;
+    out.push({re,im});
+  }
+  out.sort((p,q)=>q.re-p.re);
+  return out;
+}
+
+/* ============ 数字格式 ============ */
+function fmt(v){
+  if(!isFinite(v)) return '—';
+  if(Math.abs(v)<1e-12) return '0';
+  const a=Math.abs(v);
+  if(a>=1e4||a<1e-3){
+    const e=Math.floor(Math.log10(a));
+    const m=v/Math.pow(10,e);
+    return m.toFixed(1).replace(/^-/,'−')+'e'+e;
+  }
+  const dec = a>=1000?0 : a>=100?1 : a>=10?2 : 3;
+  return v.toFixed(dec).replace(/\.?0+$/,'').replace(/^-/,'−');
+}
+function sgn(v){ return (v>0?'+':'−')+fmt(Math.abs(v)); }
+
+/* ============ 状态 ============ */
+let RT=null, ROOTS=[], C=[], RHPn=0;
+
+function paramFromSlider(v){
+  const o=OBJS[ST.obj];
+  if(o.plog) return o.pmin*Math.pow(o.pmax/o.pmin, clamp(v,0,1));
+  let p=o.pmin+(o.pmax-o.pmin)*clamp(v,0,1);
+  if(o.pstep){ p=Math.round(p/o.pstep)*o.pstep; }
+  return p;
+}
+function sliderFromParam(p){
+  const o=OBJS[ST.obj];
+  if(o.plog) return Math.round(Math.log(p/o.pmin)/Math.log(o.pmax/o.pmin)*1000);
+  return Math.round((p-o.pmin)/(o.pmax-o.pmin)*1000);
+}
+
+/* ============ 渲染表格 ============ */
+function renderTable(){
+  const c=C, n=c.length-1, m=Math.ceil((n+1)/2);
+  const zeroRows=new Set(), epsRows=new Set();
+  RT.ev.forEach(e=>{ if(e.type==='zero') zeroRows.add(e.row); else epsRows.add(e.row); });
+
+  let h='<tbody>';
+  for(let i=0;i<=n;i++){
+    const k=i===0?'s<sup>'+(n)+'</sup>':(i===1?'s<sup>'+(n-1)+'</sup>':'s<sup>'+(n-i)+'</sup>');
+    h+='<tr><th>'+k+'</th>';
+    const cnt=RT.cells(i);
+    for(let j=0;j<cnt;j++){
+      const v=RT.rows[i][j];
+      const isZ=zeroRows.has(i), isE=epsRows.has(i)&&j===0;
+      let cls=' dv';
+      if(j===0) cls+=' fc';
+      if(isZ) cls+=' zeroRow';
+      if(isE) cls+=' epsCell';
+      let txt;
+      if(isE) txt='ε';
+      else if(Math.abs(v)<=RT.tol) txt='0';
+      else txt=fmt(v);
+      h+='<td class="'+cls.trim()+'" data-r="'+i+'" data-c="'+j+'">'+txt+'</td>';
+    }
+    h+='</tr>';
+  }
+  h+='</tbody>';
+  $('rt').innerHTML=h;
+  $('ov').innerHTML='';
+  $('tblSub').textContent = '共 '+(n+1)+' 行 · 只看第一列';
+}
+
+/* ============ 交叉相乘的动画 ============ */
+function cellEl(r,c){ return $('rt').querySelector('td[data-r="'+r+'"][data-c="'+c+'"]'); }
+function center(el){
+  /* td 的 offsetParent 是 table，不是 .tblwrap —— 必须用包围盒相对定位 */
+  const b=el.getBoundingClientRect(), host=$('tblwrap').getBoundingClientRect();
+  return {x:b.left-host.left+b.width/2, y:b.top-host.top+b.height/2,
+          l:b.left-host.left, t:b.top-host.top, w:b.width, h:b.height};
+}
+function clearMarks(){
+  $('rt').querySelectorAll('td').forEach(td=>td.classList.remove('sel','srcA','srcB'));
+  $('ov').innerHTML='';
+}
+
+function polyStr(terms){
+  let s='';
+  terms.forEach((t,i)=>{
+    const d=t.deg, ss=d===0?'':(d===1?'s':'s<sup>'+d+'</sup>');
+    s+=(i?' + ':'')+fmt(t.coef)+ss;
+  });
+  return s;
+}
+function derStr(terms){
+  let s='';
+  terms.forEach(t=>{ if(t.deg<=0) return;
+    const d=t.deg-1, ss=d===0?'':(d===1?'s':'s<sup>'+d+'</sup>');
+    s+=(s?' + ':'')+fmt(t.coef*t.deg)+ss;
+  });
+  return s;
+}
+
+function showCell(r,c){
+  clearMarks();
+  const tgt=cellEl(r,c);
+  if(!tgt) return;
+  tgt.classList.add('sel');
+  const fml=$('fml');
+  const ct=center(tgt);
+
+  /* ① 前两行：系数是直接抄的 */
+  if(r<2){
+    fml.innerHTML='<span class="hint">第 '+r+' 行不是算出来的：特征多项式的系数<b>隔一个取一个</b>，'
+      +'奇偶两行就把系数分完了。</span>';
+    return;
+  }
+
+  /* ② 整行为零后顶替进来的那一行：来自 A′(s) */
+  const zEv=RT.ev.find(e=>e.type==='zero'&&e.row===r);
+  if(zEv){
+    const up=cellEl(r-1,0);
+    if(up){
+      up.classList.add('srcA');
+      const cu=center(up);
+      $('ov').innerHTML='<path d="M'+cu.x+' '+(cu.y+cu.h/2+2)+'L'+cu.x+' '+(ct.t-4)
+        +'" stroke="#C9973F" stroke-width="1.4" stroke-dasharray="3 2" opacity="0.9"/>';
+    }
+    fml.innerHTML='<span class="bl">这一行不是交叉相乘来的</span>：它原本<b>整行为 0</b>，'
+      +'按规则用上一行构造辅助方程 <b>A(s) = '+polyStr(zEv.terms)+'</b>，'
+      +'求导得 <b>A′(s) = '+derStr(zEv.terms)+'</b>，把它的系数填进这一行。<br>'
+      +'<span class="hint">整行为 0 说明存在关于原点对称的根——这正是系统卡在临界的样子。</span>';
+    return;
+  }
+
+  /* ③ 首元为 ε 的那一格：约定出来的 */
+  const eEv=RT.ev.find(e=>e.type==='eps'&&e.row===r);
+  if(eEv && c===0){
+    fml.innerHTML='<span class="bl">这一格是约定出来的，不是算出来的</span>：按交叉相乘本来得 0，'
+      +'但整行不全为 0，表会卡住。惯例是用一个足够小的正数 <b>ε</b> 顶替（表里取 10⁻³）继续往下算，'
+      +'最后令 <b>ε→0⁺</b> 看符号。<br>'
+      +'<span class="hint">下面几行会出现 0.001、−999 这类怪数字，别管大小，只看符号。</span>';
+    return;
+  }
+
+  /* ④ 正常：两行各自的第 1 列 + 第 c+1 列 交叉相乘 */
+  const k=c+1;
+  const A=cellEl(r-1,0), B=cellEl(r-1,k), Cc=cellEl(r-2,0), Dd=cellEl(r-2,k);
+  if(!A||!Cc) return;
+  A.classList.add('srcA'); Cc.classList.add('srcB');
+  if(B)  B.classList.add('srcB');
+  if(Dd) Dd.classList.add('srcA');
+
+  const ca=center(A), cc2=center(Cc);
+  const cb=B?center(B):null, cd=Dd?center(Dd):null;
+  let s='';
+  if(cd&&cb){
+    /* 结果怎么落到目标格：沿列间缝下行 → 沿行间缝左移 → 小箭头进入目标格 */
+    const mx=(ca.x+cd.x)/2, my=(ca.y+cd.y)/2;
+    const gx=((ca.x+ca.w/2)+(cb.x-cb.w/2))/2;
+    const gy=tgt.t-3;
+    s+='<path d="M'+gx+' '+my+'L'+gx+' '+gy+'L'+ct.x+' '+gy
+      +'" fill="none" stroke="#185FA5" stroke-width="1.2" stroke-dasharray="4 3" opacity="0.55"/>';
+    s+='<path d="M'+(ct.x-3.2)+' '+(tgt.t-3)+'L'+(ct.x+3.2)+' '+(tgt.t-3)+'L'+ct.x+' '+(tgt.t+1.5)
+      +'Z" fill="#185FA5" opacity="0.7"/>';
+  }
+  if(cd) s+='<line x1="'+ca.x+'" y1="'+ca.y+'" x2="'+cd.x+'" y2="'+cd.y
+        +'" stroke="#6B4FA8" stroke-width="2" opacity="0.85"/>';
+  if(cb) s+='<line x1="'+cb.x+'" y1="'+cb.y+'" x2="'+cc2.x+'" y2="'+cc2.y
+        +'" stroke="#D85A30" stroke-width="2" opacity="0.85"/>';
+  $('ov').innerHTML=s;
+
+  const p0=RT.rows[r-1][0]||0, p2=RT.rows[r-2][0]||0;
+  const p1=B?(RT.rows[r-1][k]||0):0, p3=Dd?(RT.rows[r-2][k]||0):0;
+  const val=(p0*p3-p1*p2)/p0;
+  const NM=n=>'<b>'+n+'</b>';
+  const c1='第1列', c2='第'+(k+1)+'列';
+  const aIsEps=RT.ev.some(e=>e.type==='eps'&&e.row===r-1);
+  const aTxt=aIsEps?'<span class="p">ε</span><span class="eq"> 按 10⁻³ 代入</span>':NM(fmt(p0));
+  let f='<span class="p">a</span> = '+aTxt+'<span class="eq">　上一行·'+c1+'</span>　　'
+   +'<span class="p">b</span> = '+NM(fmt(p1))+'<span class="eq"> 上一行·'+c2+'</span><br>'
+   +'<span class="p">c</span> = '+NM(fmt(p2))+'<span class="eq"> 上两行·'+c1+'</span>　　'
+   +'<span class="p">d</span> = '+NM(fmt(p3))+'<span class="eq"> 上两行·'+c2+'</span><br>'
+   +'<span class="bl">格('+r+','+c+')</span> = ('
+   +(p0*p3<0?'('+fmt(p0)+')×('+fmt(p3)+')':fmt(p0)+'×'+fmt(p3))
+   +' − '+(p1*p2<0?'('+fmt(p1)+')×('+fmt(p2)+')':fmt(p1)+'×'+fmt(p2))
+   +') ÷ '+(p0<0?'('+fmt(p0)+')':fmt(p0))+' = <span class="bl">'+fmt(val)+'</span>';
+  if(!B||!Dd){
+    f+='<br><span class="hint">第 '+(k+1)+' 列已越过行尾，按 0 计。</span>';
+  }
+  fml.innerHTML=f;
+}
+
+/* ============ 符号链 ============ */
+function renderChain(){
+  const o=OBJS[ST.obj], n=C.length-1;
+  const rows=RT.rows, ev=RT.ev;
+  const epsSet=new Set(ev.filter(e=>e.type==='eps').map(e=>e.row));
+  let h='';
+  for(let i=0;i<=n;i++){
+    const v=rows[i][0];
+    const isE=epsSet.has(i);
+    const s=isE?1:(v>0?1:(v<0?-1:0));
+    const cls=s>0?'pos':(s<0?'neg':'zro');
+    const txt=isE?'+ε':(v===0?'0':sgn(v));
+    h+='<div class="sgc '+cls+'"><span class="n">s<sup>'+(n-i)+'</sup></span><span class="v">'+txt+'</span></div>';
+    if(i<n){
+      const nx=epsSet.has(i+1)?1:rows[i+1][0];
+      const chg=(s!==0&&nx!==0&&(Math.sign(s)!==Math.sign(nx)));
+      h+='<div class="arw'+(chg?' chg':'')+'">'+(chg?'↯':'→')+'</div>';
+    }
+  }
+  let cnt=0;
+  for(let i=1;i<=n;i++){
+    const a=epsSet.has(i-1)?1:rows[i-1][0], b=epsSet.has(i)?1:rows[i][0];
+    if(a*b<0) cnt++;
+  }
+  h+='<div class="ctail">变号 <b style="color:'+(cnt>0?'var(--red)':'var(--green)')+'">'+cnt+'</b> 次</div>';
+  $('chain2').innerHTML=h;
+}
+
+/* ============ 判定与根 ============ */
+function renderVerdict(){
+  const Z=RT.ch;
+  const set=(id,cls,val,sub)=>{
+    const el=$(id);
+    el.className='vt'+(cls?' '+cls:'');
+    el.querySelector('.v').textContent=val;
+    if(sub) el.querySelector('.s').textContent=sub;
+  };
+  /* 临界：极点正落在虚轴上时，Z=0 只说「右半平面没极点」 */
+  const onAx=ROOTS.some(p=>Math.abs(p.re)<1e-3);
+  const cri=(Z===0&&onAx);
+  if(cri){
+    set('vtZ','warn','0','有极点压在虚轴上 → 临界');
+  }else{
+    set('vtZ', Z>0?'bad':'ok', String(Z), Z>0?'有极点跑到右半平面':'全部极点在左半平面');
+  }
+  set('vtReal', RHPn>0?'bad':(cri?'warn':'ok'), String(RHPn),
+      RHPn>0?'解方程直接得到':(cri?'RHP 为 0，但虚轴上有根':'解方程直接得到'));
+
+  const agree=(Z===RHPn);
+  $('chk').innerHTML='<span class="ceq">变号</span><b>'+Z+'</b>'
+    +'<span class="ceq">＝</span><span class="ceq">右半平面根</span><b>'+RHPn+'</b>'
+    +'<span class="ceq">｜</span><span style="color:'+(agree?'#3F8F5B':'#A32D2D')+';font-weight:600">'
+    +(agree?'✓ 一致':'✗ 不一致')+'</span>';
+
+  /* 特征多项式 */
+  $('rootSub').textContent=(C.length-1)+' 阶';
+  const terms=[];
+  C.forEach((v,i)=>{
+    const deg=C.length-1-i;
+    if(Math.abs(v)<1e-12) return;
+    const s=deg===0?'':(deg===1?'s':'s<sup>'+deg+'</sup>');
+    let coef;
+    if(Math.abs(v-1)<1e-12&&deg>0) coef='';
+    else if(Math.abs(v+1)<1e-12&&deg>0) coef='−';
+    else coef=fmt(v);
+    terms.push({t:coef+s, neg:v<0});
+  });
+  let h='';
+  terms.forEach((x,i)=>{
+    if(i===0) h+=x.t;
+    else h+=(x.neg?' − ':' + ')+x.t.replace(/^−/,'');
+  });
+  $('cpoly').innerHTML='<b>'+h+' = 0</b>';
+
+  /* 实算根 */
+  let r='';
+  ROOTS.forEach(p=>{
+    const isR=p.re>1e-9, isL=p.re<-1e-9;
+    const cls=isR?'rhp':(isL?'lhp':'imj');
+    let t;
+    if(Math.abs(p.im)<1e-9) t=fmt(p.re);
+    else if(Math.abs(p.re)<1e-9) t=(p.im>0?'':'−')+'j'+fmt(Math.abs(p.im));
+    else t=fmt(p.re)+(p.im>0?' + ':' − ')+'j'+fmt(Math.abs(p.im));
+    r+='<span class="rt1 '+cls+'">'+t+'</span>';
+  });
+  $('roots').innerHTML=r;
+
+  drawPoles();
+  drawStep();
+}
+
+/* ============ 极点轨迹 ============ */
+/* 每个对象扫一遍参数，求每一步的极点，并定死视野（拖参数时极点是「移动」而不是「重新缩放」） */
+const PVC={};
+function poleSweep(o){
+  if(PVC[o.id]) return PVC[o.id];
+  const N=120, samples=[];
+  let sr=0, si=0;
+  for(let i=0;i<N;i++){
+    const t=i/(N-1);
+    const p=o.plog ? o.pmin*Math.pow(o.pmax/o.pmin,t) : o.pmin+(o.pmax-o.pmin)*t;
+    const rs=polyRoots(o.coef(p));
+    samples.push(rs);
+    rs.forEach(q=>{ sr=Math.max(sr,Math.abs(q.re)); si=Math.max(si,Math.abs(q.im)); });
+  }
+  sr=Math.max(sr,1e-3); si=Math.max(si,sr*0.22);
+  const out={samples, sr:sr*1.1, si:si*1.22};
+  PVC[o.id]=out;
+  return out;
+}
+
+function niceStep(v){
+  const e=Math.pow(10,Math.floor(Math.log10(v))), m=v/e;
+  return (m<=1?1:m<=2?2:m<=5?5:10)*e;
+}
+
+function drawPoles(){
+  const o=OBJS[ST.obj], S=poleSweep(o);
+  /* 两轴同比例（圆才是圆）。画框形状跟着数据走，但封顶，避免 B 那种「竖长的条」 */
+  const AVCAP=520, HMAX=326;
+  const ratio=S.sr/S.si;
+  let W, H;
+  if(AVCAP/ratio<=HMAX){ W=AVCAP; H=AVCAP/ratio; }
+  else { H=HMAX; W=HMAX*ratio; }
+  W=Math.round(W); H=Math.round(H);
+  const L=46, R=W-16, T=30, BP=30;
+  const pw=R-L, ph=H-T-BP;
+  const cx=(L+R)/2, cy=T+ph/2;
+  const unit=Math.min(pw/(2*S.sr), ph/(2*S.si));
+  const X=v=>cx+v*unit, Y=v=>cy-v*unit;
+  const st=niceStep(Math.max(2*S.sr,(2*S.si))/6);
+  const nx=Math.floor((pw/2)/unit/st);
+  const ny=Math.floor((ph/2)/unit/st);
+  const B=T+ph;
+  const roomy=W>=380;          // 窄画框不放两侧文字，靠底色区分
+  let s='';
+
+  /* 半平面底色 */
+  s+='<rect x="'+cx+'" y="'+T+'" width="'+(R-cx)+'" height="'+ph+'" fill="#A32D2D" opacity="0.045"/>';
+  s+='<rect x="'+L+'" y="'+T+'" width="'+(cx-L)+'" height="'+ph+'" fill="#185FA5" opacity="0.035"/>';
+
+  /* 网格 */
+  for(let k=-nx;k<=nx;k++){
+    if(k===0) continue;
+    s+='<line x1="'+X(k*st).toFixed(1)+'" y1="'+T+'" x2="'+X(k*st).toFixed(1)+'" y2="'+B
+      +'" stroke="#B9B4A8" stroke-width="0.6" opacity="0.28"/>';
+  }
+  for(let k=-ny;k<=ny;k++){
+    if(k===0) continue;
+    s+='<line x1="'+L+'" y1="'+Y(k*st).toFixed(1)+'" x2="'+R+'" y2="'+Y(k*st).toFixed(1)
+      +'" stroke="#B9B4A8" stroke-width="0.6" opacity="0.28"/>';
+  }
+
+  /* 轨迹 */
+  let tr='', dots='';
+  for(let i=1;i<S.samples.length;i++){
+    if(i%10===0){
+      S.samples[i].forEach(q=>{
+        dots+='<circle cx="'+X(q.re).toFixed(1)+'" cy="'+Y(q.im).toFixed(1)
+          +'" r="2" fill="#6E6A5F" opacity="0.9"/>';
+      });
+    }
+    const prev=S.samples[i-1], cur=S.samples[i];
+    const used=new Array(prev.length).fill(false);
+    const lim=Math.max(S.sr,S.si)*0.3;
+    cur.forEach(q=>{
+      let bi=-1, bd=1e18;
+      prev.forEach((w,j)=>{
+        if(used[j]) return;
+        const d=Math.hypot(w.re-q.re, w.im-q.im);
+        if(d<bd){ bd=d; bi=j; }
+      });
+      if(bi<0) return;
+      used[bi]=true;
+      if(bd>lim) return;
+      tr+='<line x1="'+X(prev[bi].re).toFixed(1)+'" y1="'+Y(prev[bi].im).toFixed(1)
+        +'" x2="'+X(q.re).toFixed(1)+'" y2="'+Y(q.im).toFixed(1)
+        +'" stroke="#A9A496" stroke-width="1.5" opacity="0.9"/>';
+    });
+  }
+  if(tr) s+='<g stroke-linecap="round">'+tr+'</g>'+dots;
+
+  /* 坐标轴（竖的那条就是虚轴） */
+  s+='<line x1="'+L+'" y1="'+cy+'" x2="'+R+'" y2="'+cy+'" stroke="#8A8880" stroke-width="1"/>';
+  s+='<line x1="'+cx+'" y1="'+T+'" x2="'+cx+'" y2="'+B+'" stroke="#6B6A64" stroke-width="1.3"/>';
+
+  /* 刻度 */
+  for(let k=-nx;k<=nx;k++){
+    if(k===0) continue;
+    const x=X(k*st);
+    s+='<line x1="'+x.toFixed(1)+'" y1="'+(cy-3)+'" x2="'+x.toFixed(1)+'" y2="'+(cy+3)+'" stroke="#8A8880"/>';
+    s+='<text x="'+x.toFixed(1)+'" y="'+(cy+14)+'" font-size="10.5" fill="#8A8880" text-anchor="middle" font-family="ui-monospace,Consolas,monospace">'+fmt(k*st)+'</text>';
+  }
+  for(let k=-ny;k<=ny;k++){
+    if(k===0) continue;
+    const y=Y(k*st);
+    s+='<line x1="'+(cx-3)+'" y1="'+y.toFixed(1)+'" x2="'+(cx+3)+'" y2="'+y.toFixed(1)+'" stroke="#8A8880"/>';
+    s+='<text x="'+(cx-6)+'" y="'+(y+3.4).toFixed(1)+'" font-size="10.5" fill="#8A8880" text-anchor="end" font-family="ui-monospace,Consolas,monospace">'+fmt(k*st)+'</text>';
+  }
+
+  /* 轴名 */
+  s+='<text x="'+(R-2)+'" y="'+(cy-6)+'" font-size="11" fill="#5F5E5A" text-anchor="end">实轴 Re</text>';
+  s+='<text x="'+(cx+6)+'" y="'+(T-9)+'" font-size="11" fill="#5F5E5A">虚轴 jω</text>';
+  if(roomy){
+    s+='<text x="'+(R-2)+'" y="'+(T-9)+'" font-size="11" fill="#A32D2D" text-anchor="end" opacity="0.9">右半平面 →</text>';
+    s+='<text x="'+L+'" y="'+(T-9)+'" font-size="11" fill="#185FA5" opacity="0.9">← 左半平面</text>';
+  }
+
+  /* 当前极点 */
+  ROOTS.forEach(p=>{
+    const x=X(p.re), y=Y(p.im), onAx=Math.abs(p.re)<1e-3;
+    const col=p.re>1e-3?'#A32D2D':(p.re<-1e-3?'#185FA5':'#C9973F');
+    if(onAx){
+      s+='<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="8" fill="none" stroke="#C9973F" stroke-width="1" opacity="0.5"/>';
+    }
+    s+='<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="4.6" fill="'+col+'" stroke="#fff" stroke-width="1.4"/>';
+  });
+
+  const svg=$('svgPole');
+  svg.setAttribute('viewBox','0 0 '+W+' '+H);
+  svg.style.maxWidth=W+'px';
+  svg.setAttribute('aria-label','闭环极点复平面分布');
+  svg.innerHTML=s;
+  $('poleSub').textContent=RT.n+' 阶 · 扫「'+o.pname+'」全程';
+
+  /* 读数与画框同宽，窄框时看着不散 */
+  $('prow').style.maxWidth=W+'px';
+
+  const lhp=ROOTS.filter(p=>p.re<-1e-3).length;
+  const rhp=ROOTS.filter(p=>p.re>1e-3).length;
+  const ax=ROOTS.length-lhp-rhp;
+  $('prow').innerHTML=
+     '<div class="cell lhp"><div class="k">左半平面</div><div class="v">'+lhp+'</div></div>'
+    +'<div class="cell ax"><div class="k">压在虚轴上</div><div class="v">'+ax+'</div></div>'
+    +'<div class="cell rhp"><div class="k">右半平面</div><div class="v">'+rhp+'</div></div>';
+}
+
+/* ============ 闭环传函与阶跃响应 ============ */
+/* 三个对象的开环都是 K/…，单位负反馈 ⇒ Φ(s) = K / c(s)，分母正是判据用的那个多项式 */
+function tfOf(o,p){
+  if(!o.g) return null;
+  return {b0:p, den:o.coef(p)};
+}
+
+function denStr(c){
+  const parts=[];
+  c.forEach((v,i)=>{
+    const deg=c.length-1-i;
+    if(Math.abs(v)<1e-12&&deg>0) return;
+    parts.push({v,deg});
+  });
+  let s='';
+  parts.forEach((t,k)=>{
+    const ss=t.deg===0?'':(t.deg===1?'s':'s<sup>'+t.deg+'</sup>');
+    const av=Math.abs(t.v);
+    const co=(av===1&&t.deg>0)?'':fmt(av);
+    if(k===0) s+=(t.v<0?'−':'')+co+ss;
+    else s+=(t.v<0?' − ':' + ')+co+ss;
+  });
+  return s||'0';
+}
+
+/* RK4：x=[y, y′, …, y^(n−1)]，x′_{n−1} = b0 − Σ den[n−j]·x[j] */
+function rkStep(tf,tEnd,N){
+  const den=tf.den, n=den.length-1, b0=tf.b0, dt=tEnd/N;
+  let x=new Array(n).fill(0);
+  const T=[0], Y=[0];
+  const f=(x,u)=>{
+    const d=new Array(n).fill(0);
+    for(let i=0;i<n-1;i++) d[i]=x[i+1];
+    let s=b0*u;
+    for(let j=0;j<n;j++) s-=den[n-j]*x[j];
+    d[n-1]=s;
+    return d;
+  };
+  for(let k=1;k<=N;k++){
+    const k1=f(x,1);
+    const x2=x.map((v,i)=>v+dt/2*k1[i]);
+    const k2=f(x2,1);
+    const x3=x.map((v,i)=>v+dt/2*k2[i]);
+    const k3=f(x3,1);
+    const x4=x.map((v,i)=>v+dt*k3[i]);
+    const k4=f(x4,1);
+    x=x.map((v,i)=>v+dt/6*(k1[i]+2*k2[i]+2*k3[i]+k4[i]));
+    T.push(k*dt); Y.push(x[0]);
+  }
+  return {T,Y};
+}
+
+function dashSw(c){
+  return '<svg width="16" height="5"><line x1="0" y1="2.5" x2="16" y2="2.5" stroke="'+c+'" stroke-width="1" stroke-dasharray="4 3"/></svg>';
+}
+
+function drawStep(){
+  const o=OBJS[ST.obj], N=1400;
+  const tf=tfOf(o,ST.p);
+  const svg=$('svgStep'), empty=$('stepEmpty'), specs=$('specs'), note=$('stepNote');
+
+  /* 例题 D：没有开环传函，不硬编一个 */
+  if(!tf){
+    svg.style.display='none';
+    svg.innerHTML='';
+    empty.className='stepEmpty show';
+    empty.innerHTML='<div class="se"><b>这里留白</b>'
+      +'这个页签只给了一个多项式 <code>c(s) = s⁵ + 2s⁴ + 0s³ + 4s² + 11s + 10</code>，'
+      +'没有开环传函，也就没有分子。凭空补一个分子是编造，所以不画。'
+      +'<span class="hint">理由写在右边 →</span></div>';
+    note.innerHTML='';
+    specs.innerHTML='';
+    $('tfSub').textContent='';
+    $('tfinfo').innerHTML='<div class="f">Φ(s) = ?</div>'
+      +'<p>闭环传函要先有开环传函：<b>Φ = G/(1+G)</b>。这个页签只给了一个多项式，给不出 G，'
+      +'所以既写不出 Φ(s)，也谈不上 σ%、t<sub>s</sub>、e<sub>ss</sub>。</p>'
+      +'<p>它不是偷懒：判据本身<b>只需要系数</b>——正因如此它才能用在「只有多项式、没有传函来历」的场合，'
+      +'比如开环实验直接辨识出来的一条拟合曲线。</p>';
+    return;
+  }
+
+  svg.style.display='';
+  empty.className='stepEmpty';
+
+  /* 时间窗：临界 ⇒ 按振荡周期给 4 个周期；根在原点 ⇒ 先给短窗，再按冲出重设 */
+  const onAx=ROOTS.filter(p=>Math.abs(p.re)<1e-3);
+  const maxRe=Math.max(...ROOTS.map(p=>p.re));
+  let tEnd;
+  if(onAx.length){
+    const w=Math.max(...onAx.map(p=>Math.abs(p.im)));
+    tEnd=w>1e-6?clamp(25/w,1,40):6;
+  }else{
+    tEnd=clamp(7/Math.max(1e-9,Math.abs(maxRe)),1,40);
+  }
+
+  const yinf=Math.abs(tf.den[tf.den.length-1])>1e-12
+    ? tf.b0/tf.den[tf.den.length-1] : Infinity;
+  const ref=isFinite(yinf)&&Math.abs(yinf)>1e-9?Math.abs(yinf):1;
+  let cap=3*Math.max(1,ref);
+
+  let run=rkStep(tf,tEnd,N);
+  const stable=maxRe<-1e-6;
+  /* 根在原点（斜坡无界）时，按「首次冲出 3 倍参考带」重设窗口，否则曲线挤在左边 */
+  if(onAx.length&&!onAx.some(p=>Math.abs(p.im)>1e-6)){
+    let hit=-1;
+    for(let i=0;i<=N;i++){ if(!isFinite(run.Y[i])||Math.abs(run.Y[i])>cap){ hit=i; break; } }
+    if(hit>2){
+      const t2=clamp(run.T[hit]*0.95,1,40);
+      if(t2<tEnd*0.9){ tEnd=t2; run=rkStep(tf,tEnd,N); }
+    }
+  }
+  /* 不稳定：窗口收到「振幅涨一个量级」处，画框跟着数据走——
+     看到的是真正的发散振荡，而不是被画框剪成锯齿 */
+  if(!stable&&!onAx.length){
+    const sg=Math.max(1e-6,Math.max(...ROOTS.map(q=>q.re)));
+    const imM=Math.max(0,...ROOTS.map(q=>Math.abs(q.im)));
+    let tU=Math.log(12)/sg;
+    if(imM>1e-6) tU=Math.min(tU,3.2*2*Math.PI/imM);
+    tEnd=clamp(tU,0.8,40);
+    run=rkStep(tf,tEnd,N);
+    cap=Infinity;
+  }
+
+  /* 指标 */
+  let ymax=-Infinity, tp=0, cut=false;
+  run.Y.forEach((v,i)=>{
+    if(!isFinite(v)){ cut=true; return; }
+    if(v>ymax){ ymax=v; tp=run.T[i]; }
+  });
+  let ts=0;
+  const settleT=()=>{
+    if(!(stable&&isFinite(yinf)&&Math.abs(yinf)>1e-9)) return 0;
+    const band=0.02*Math.abs(yinf);
+    for(let i=run.Y.length-1;i>=0;i--){ if(Math.abs(run.Y[i]-yinf)>band) return run.T[i]; }
+    return 0;
+  };
+  ts=settleT();
+  /* 曲线还没在窗口内稳定下来 ⇒ 加宽重算，否则 ts 会被窗口截断 */
+  if(stable&&ts>0.9*tEnd&&tEnd<40){
+    tEnd=Math.min(40,tEnd*1.6);
+    run=rkStep(tf,tEnd,N);
+    ts=settleT();
+    ymax=-Infinity; tp=0;
+    run.Y.forEach((v,i)=>{ if(isFinite(v)&&v>ymax){ ymax=v; tp=run.T[i]; } });
+  }
+  const sig=(stable&&isFinite(yinf)&&yinf>1e-9)?Math.max(0,(ymax-yinf)/yinf*100):null;
+  const ess=isFinite(yinf)?1-yinf:null;
+  /* 稳定却超调很大时，别把画框当作「发散」判据：按实测峰值放宽 */
+  if(stable&&isFinite(ymax)) cap=Math.max(cap,Math.abs(ymax)*1.15);
+
+  /* 终值定理只在稳定时成立：不稳定/临界一律不给稳态量 */
+  const okInf=stable&&isFinite(yinf);
+  const cells=[
+    ['y(∞) 稳态值', okInf?fmt(yinf):'—', !okInf],
+    ['σ% 超调量', (sig!==null&&sig>1e-6)?sig.toFixed(1)+'%':'—', !(sig!==null&&sig>1e-6)],
+    ['t<sub>p</sub> 峰值时间', stable?fmt(tp)+' s':'—', !stable],
+    ['t<sub>s</sub> 调节时间', (stable&&ts>0)?fmt(ts)+' s':'—', !(stable&&ts>0)],
+    ['e<sub>ss</sub> 稳态误差', okInf?fmt(1-yinf):'—', !okInf],
+  ];
+  specs.innerHTML=cells.map(c=>'<div class="sp'+(c[2]?' na':'')+'"><div class="k">'+c[0]
+    +'</div><div class="v">'+c[1]+'</div></div>').join('');
+
+  /* 画图 */
+  const W=660,H=320,L=54,R=W-18,T=26,B=H-44;
+  const pw=R-L, ph=B-T;
+  let ylo=0, yhi=Math.max(1,isFinite(yinf)?yinf:1);
+  run.Y.forEach(v=>{ if(!isFinite(v)) return; if(v<ylo) ylo=v; if(v>yhi) yhi=v; });
+  yhi=Math.min(yhi,cap); ylo=Math.max(ylo,-cap);
+  const pad=(yhi-ylo)*0.1; yhi+=pad; if(ylo<0) ylo-=pad*0.6;
+  const X=t=>L+t/tEnd*pw, Y=v=>B-(v-ylo)/(yhi-ylo)*ph;
+
+  const gs=niceStep((yhi-ylo)/4.2);
+  let s='';
+  for(let v=Math.ceil(ylo/gs)*gs; v<=yhi+1e-9; v+=gs){
+    const y=Y(v);
+    s+='<line x1="'+L+'" y1="'+y.toFixed(1)+'" x2="'+R+'" y2="'+y.toFixed(1)+'" stroke="#B9B4A8" stroke-width="0.6" opacity="'+(Math.abs(v)<1e-9?0.75:0.25)+'"/>';
+    s+='<text x="'+(L-7)+'" y="'+(y+3.4).toFixed(1)+'" font-size="10" fill="#8A8880" text-anchor="end" font-family="ui-monospace,Consolas,monospace">'+fmt(v)+'</text>';
+  }
+  const tst=niceStep(tEnd/4.5);
+  for(let t=0;t<=tEnd+1e-9;t+=tst){
+    const x=X(t);
+    s+='<line x1="'+x.toFixed(1)+'" y1="'+T+'" x2="'+x.toFixed(1)+'" y2="'+B+'" stroke="#B9B4A8" stroke-width="0.6" opacity="0.18"/>';
+    s+='<text x="'+x.toFixed(1)+'" y="'+(B+15)+'" font-size="10" fill="#8A8880" text-anchor="middle" font-family="ui-monospace,Consolas,monospace">'+fmt(t)+'</text>';
+  }
+  s+='<line x1="'+L+'" y1="'+B+'" x2="'+R+'" y2="'+B+'" stroke="#8A8880" stroke-width="1"/>';
+  s+='<text x="'+R+'" y="'+(B+30)+'" font-size="10.5" fill="#5F5E5A" text-anchor="end">t / s</text>';
+  s+='<text x="'+L+'" y="'+(T-9)+'" font-size="10.5" fill="#5F5E5A">y(t)</text>';
+
+  /* 输入 r=1 与稳态值 */
+  s+='<line x1="'+L+'" y1="'+Y(1).toFixed(1)+'" x2="'+R+'" y2="'+Y(1).toFixed(1)+'" stroke="#8A8880" stroke-width="1" stroke-dasharray="4 3" opacity="0.55"/>';
+  if(stable&&isFinite(yinf)){
+    /* y(∞) 常正好落在网格线上，先垫一层底色再画，否则被网格吃掉 */
+    const yy=Y(yinf).toFixed(1);
+    s+='<line x1="'+L+'" y1="'+yy+'" x2="'+R+'" y2="'+yy+'" stroke="#FAF9F5" stroke-width="3.2" stroke-dasharray="4 3"/>';
+    s+='<line x1="'+L+'" y1="'+yy+'" x2="'+R+'" y2="'+yy+'" stroke="#3F8F5B" stroke-width="1.2" stroke-dasharray="4 3" opacity="0.95"/>';
+  }
+
+  /* 曲线：一旦冲出画框就停笔——不能让「跳过超限点」把曲线接成假锯齿 */
+  let d='';
+  for(let i=0;i<run.Y.length;i++){
+    const v=run.Y[i];
+    if(!isFinite(v)||v>cap||v<-cap){ cut=true; break; }
+    d+=(d?'L':'M')+X(run.T[i]).toFixed(1)+' '+Y(v).toFixed(1);
+  }
+  s+='<path d="'+d+'" fill="none" stroke="#185FA5" stroke-width="1.9" stroke-linejoin="round"/>';
+
+  if(sig!==null&&sig>1e-6){
+    const px=X(tp), py=Y(ymax);
+    const right=px>R-42;                    /* 峰靠近右缘 ⇒ 标注翻到左边，别出框 */
+    s+='<circle cx="'+px.toFixed(1)+'" cy="'+py.toFixed(1)+'" r="3.4" fill="#D85A30"/>';
+    s+='<text x="'+(right?px-6:px+6).toFixed(1)+'" y="'+(py-6).toFixed(1)+'" font-size="10" fill="#D85A30" text-anchor="'+(right?'end':'start')+'">峰值</text>';
+  }
+
+  /* 图例与状态：放到画框外边，不压坐标、不压曲线 */
+  let nt='';
+  if(onAx.length){
+    nt+='<span class="sts">'+(onAx.some(p=>Math.abs(p.im)>1e-6)
+      ?'临界：等幅振荡，没有稳态值':'临界：极点落在原点，输出无界')+'</span>';
+  }else if(!stable){
+    nt+='<span class="sts bad">↗ 输出发散：幅度按 e<sup>σt</sup> 越滚越大</span>';
+  }
+  nt+='<span class="lg">'+dashSw('#8A8880')+'输入 r = 1</span>';
+  if(stable&&isFinite(yinf)) nt+='<span class="lg">'+dashSw('#3F8F5B')+'y(∞) = '+fmt(yinf)+'</span>';
+  note.innerHTML=nt;
+
+  svg.innerHTML=s;
+  $('tfSub').innerHTML='Φ(s) = '+fmt(ST.p)+' / ('+denStr(tf.den)+')';
+
+  /* 右栏：把这个 Φ(s) 的来历说清楚 */
+  const Gs=o.g.replace(/K/g, fmt(ST.p));
+  $('tfinfo').innerHTML='<div class="f">G(s) = '+o.g+'<br>Φ(s) = G/(1+G) = '
+    +fmt(ST.p)+' / ('+denStr(tf.den)+')</div>'
+    +'<p>当前 '+o.pname+' = <b>'+fmt(ST.p)+'</b>，代入即 G(s) = '+Gs+'。'
+    +'分母正好是判据用的那个 <b>c(s)</b>——判据算的就是它的根。</p>'
+    +'<p>'+(o.note||'')+'</p>'
+    +'<p style="color:var(--ink3);font-size:10.5px">判据只回答「稳不稳」；σ%、t<sub>s</sub>、e<sub>ss</sub> 回答「稳了以后什么样」。'
+    +'后者必须先把 Φ(s) 写出来、把曲线算一遍，判据给不了。</p>';
+}
+
+/* ============ 特殊情况提示 ============ */
+function pairList(rs){
+  const out=[];
+  rs.filter(p=>p.im>=0).forEach(p=>{
+    if(Math.abs(p.im)<1e-9) out.push(fmt(p.re));
+    else if(Math.abs(p.re)<1e-9) out.push('±j'+fmt(Math.abs(p.im)));
+    else out.push(fmt(p.re)+' ± j'+fmt(Math.abs(p.im)));
+  });
+  return out;
+}
+
+function renderHints(){
+  const box=$('hint'), o=OBJS[ST.obj];
+  const zev=RT.ev.find(e=>e.type==='zero');
+  const eev=RT.ev.find(e=>e.type==='eps');
+  const lastRow=RT.rows[RT.rows.length-1];
+  const lastZero=Math.abs(lastRow[0])<=RT.tol;
+
+  if(zev){
+    const terms=zev.terms, d0=terms[0].deg;
+    const arr=new Array(d0+1).fill(0);
+    terms.forEach(t=>arr[d0-t.deg]=t.coef);
+    const ar=polyRoots(arr);
+    const poly=polyStr(terms), der=derStr(terms);
+    box.className='hintbox gold show';
+    box.innerHTML='<b>第 '+zev.row+' 行原本整行为 0 → 出现对称根</b><br>'
+      +'用上一行构造辅助方程，解出关于原点对称的根：'
+      +'<span class="fm">A(s) = '+poly+' = 0　⟹　s = '+pairList(ar).join('，')+'</span>'
+      +'正是临界那对纯虚根。'
+      +'把 <b>A′(s) = '+der+'</b> 的系数顶替这一行——'
+      +'所以表中第 '+zev.row+' 行现在是 A′ 的数，<b>不是 0，也不是交叉相乘来的</b>。';
+    return;
+  }
+  if(eev){
+    box.className='hintbox gold show';
+    let extra='';
+    if(o.id==='D'){
+      const a=o.coef(ST.p);
+      const eq=Math.abs(a[1]*a[2]-a[0]*a[3])<1e-9;
+      extra='<span class="fm">本例题：a₄·a₃ = '+fmt(a[1])+'×'+fmt(a[2])+' = '+fmt(a[1]*a[2])
+           +'，a₅·a₂ = '+fmt(a[0])+'×'+fmt(a[3])+' = '+fmt(a[0]*a[3])
+           +(eq?'（恰好相等，所以首元被消成 0）':'（不相等）')+'</span>';
+    }
+    box.innerHTML='<b>第 '+eev.row+' 行首元为 0，但整行不全为 0 → 用 ε 顶替</b><br>'
+      +'按惯例取 ε→0⁺ 继续算。表里按 <b>ε = 10⁻³</b> 代入，所以下面几行会出现 0.001、−999 这类数——'
+      +'判据只看<b>符号</b>，不看大小。'+extra;
+    return;
+  }
+  if(lastZero){
+    box.className='hintbox blue show';
+    box.innerHTML='<b>末行（s⁰）为 0 → 常数项为零</b><br>'
+      +'说明有一个根正好落在原点（积分环节）。此时第一列最后一项是 0，不能当作变号也不当稳定，'
+      +'要看实算根里那个 <b>0</b>。';
+    return;
+  }
+  box.className='hintbox';
+  box.innerHTML='';
+}
+
+/* ============ 刷新 ============ */
+function fmtP(p){
+  const o=OBJS[ST.obj];
+  return o.plog ? (p<10?p.toFixed(2):p.toFixed(1)) : p.toFixed(2);
+}
+
+function refresh(){
+  const o=OBJS[ST.obj];
+  C=o.coef(ST.p);
+  RT=routh(C);
+  ROOTS=polyRoots(C);
+  RHPn=ROOTS.filter(p=>p.re>1e-9).length;
+
+  renderTable();
+  renderChain();
+  renderVerdict();
+  renderHints();
+
+  $('pLabel').textContent=o.pname;
+  $('vP').textContent=fmtP(ST.p);
+  $('vPc').textContent=(o.plog?'临界 ':'')+o.jlab;
+  $('tfSlot').textContent=o.tf;
+  $('btnJump').textContent='跳到 '+o.jlab;
+  $('fml').innerHTML='<span class="hint">点任意一格，看它由哪四个数算出。</span>';
+  ST.sel=null;
+  stopAuto(true);
+}
+
+/* ============ 自动演算 ============ */
+function buildSweep(){
+  const list=[];
+  for(let r=2;r<=C.length-1;r++){
+    const cnt=RT.cells(r);
+    for(let c=0;c<cnt;c++) list.push({r,c});
+  }
+  return list;
+}
+function stopAuto(silent){
+  if(ST.timer){ clearTimeout(ST.timer); ST.timer=0; }
+  ST.auto=false;
+  const b=$('btnAuto');
+  b.classList.remove('on');
+  b.textContent='自动演算';
+  if(!silent){ ST.sweepI=0; }
+}
+function stepAuto(){
+  if(!ST.auto) return;
+  if(ST.sweepI>=ST.sweep.length){ stopAuto(); return; }
+  const it=ST.sweep[ST.sweepI];
+  showCell(it.r,it.c);
+  ST.sweepI++;
+  ST.timer=setTimeout(stepAuto,1050);
+}
+
+/* ============ 交互 ============ */
+$('segObj').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  ST.obj=b.dataset.obj;
+  document.querySelectorAll('#segObj button').forEach(x=>x.classList.toggle('on',x.dataset.obj===ST.obj));
+  const o=OBJS[ST.obj];
+  ST.p=o.pdef;
+  $('sP').value=sliderFromParam(ST.p);
+  refresh();
+});
+
+$('sP').addEventListener('input',e=>{
+  ST.p=paramFromSlider(e.target.value/1000);
+  refresh();
+});
+
+$('btnJump').addEventListener('click',()=>{
+  const o=OBJS[ST.obj];
+  ST.p=o.jump;
+  $('sP').value=sliderFromParam(ST.p);
+  refresh();
+});
+
+$('btnAuto').addEventListener('click',()=>{
+  if(ST.auto){ stopAuto(); return; }
+  ST.sweep=buildSweep();
+  if(!ST.sweep.length) return;
+  ST.auto=true; ST.sweepI=0;
+  const b=$('btnAuto');
+  b.classList.add('on'); b.textContent='停止演算';
+  stepAuto();
+});
+
+$('rt').addEventListener('mouseover',e=>{
+  const td=e.target.closest('td.dv'); if(!td||ST.auto) return;
+  showCell(+td.dataset.r,+td.dataset.c);
+});
+$('rt').addEventListener('click',e=>{
+  const td=e.target.closest('td.dv'); if(!td) return;
+  showCell(+td.dataset.r,+td.dataset.c);
+});
+
+/* ============ 诊断接口 ============ */
+window.__RT__={
+  setObj:id=>{ $('segObj').querySelector('button[data-obj="'+id+'"]').click(); },
+  setP:v=>{ const o=OBJS[ST.obj]; ST.p=v; $('sP').value=sliderFromParam(v); refresh(); },
+  state:()=>({
+    obj:ST.obj, p:ST.p, n:C.length-1,
+    ch:RT.ch, rhs:RHPn,
+    ev:RT.ev.map(e=>e.type+'@'+e.row),
+    col:RT.col, rows:RT.rows,
+    roots:ROOTS.map(p=>({re:+p.re.toFixed(8), im:+p.im.toFixed(8)}))
+  }),
+  solve:(id,p)=>{
+    const o=OBJS[id], c=o.coef(p), r=routh(c), rs=polyRoots(c);
+    return {c, ch:r.ch, rhs:rs.filter(x=>x.re>1e-9).length,
+            ev:r.ev.map(e=>e.type+'@'+e.row), col:r.col};
+  }
+};
+
+/* ============ 启动 ============ */
+ST.p=OBJS[ST.obj].pdef;
+$('sP').value=sliderFromParam(ST.p);
+refresh();
+
+})();
+</script>
+</body>
+</html>
+
