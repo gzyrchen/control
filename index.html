@@ -1,12 +1,176 @@
-<p>
-    <br/>
-</p>
-<p style="text-align: center;">
-    <a target="_blank"></a><a target="_blank"></a><a target="_blank"></a><a target="_blank"></a><a target="_blank"></a><a target="_blank"></a><a target="_blank"></a><a target="_blank"><strong><span style="font-size: 16px; line-height: 125%;">HELLO</span></strong></a>
-</p>
-<p>
-    <a target="_blank"><span style="font-size: 16px; line-height: 125%;"><br/></span></a>
-</p>
-<p style="text-align: center; line-height: 115%;">
-    <span style="line-height: 115%; color: #FF0000;">Welcome!</span>
-</p>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>系统控制中心</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#3B82F6',
+            success: '#10B981',
+            danger: '#EF4444',
+            dark: '#1E293B',
+            light: '#F8FAFC'
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .button-shadow {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), inset 0 -2px 4px 0 rgba(0, 0, 0, 0.05), inset 0 2px 4px 0 rgba(255, 255, 255, 0.1);
+      }
+      .button-shadow-active {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), inset 0 2px 4px 0 rgba(0, 0, 0, 0.1), inset 0 -2px 4px 0 rgba(255, 255, 255, 0.05);
+      }
+      .light-glow {
+        filter: drop-shadow(0 0 8px currentColor);
+      }
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen font-sans">
+  <div class="container mx-auto px-4 py-8 max-w-md">
+    <!-- 标题部分 -->
+    <div class="text-center mb-8">
+      <h1 class="text-[clamp(1.8rem,4vw,2.5rem)] font-bold text-dark mb-2">系统控制中心</h1>
+      <p class="text-gray-500 text-sm">实时监控与控制您的系统状态</p>
+    </div>
+    
+    <!-- 系统状态显示 -->
+    <div class="bg-white rounded-2xl shadow-lg p-6 mb-10 transform transition-all duration-500 hover:shadow-xl">
+      <div class="mb-3 flex justify-between items-center">
+        <span class="text-sm font-medium text-gray-500">系统状态</span>
+        <span id="status-time" class="text-xs text-gray-400">刚刚更新</span>
+      </div>
+      <div id="status-display" class="h-32 bg-gray-50 rounded-xl flex items-center justify-center text-gray-500 font-medium text-lg border border-gray-200 transition-all duration-500">
+        <i class="fa-solid fa-power-off mr-2"></i> 系统已关闭
+      </div>
+      <div class="mt-3 text-xs text-gray-400 text-center">
+        点击下方按钮切换系统状态
+      </div>
+    </div>
+    
+    <!-- 控制按钮区域 -->
+    <div class="grid grid-cols-2 gap-6">
+      <!-- 开启按钮 -->
+      <div class="flex flex-col items-center">
+        <button id="on-button" class="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center cursor-pointer transition-all duration-300 ease-in-out button-shadow transform hover:scale-105 active:scale-95">
+          <div class="w-16 h-16 rounded-full bg-success/30 flex items-center justify-center transition-all duration-300" id="green-light">
+            <div class="w-10 h-10 rounded-full bg-success/50 transition-all duration-300"></div>
+          </div>
+        </button>
+        <div class="mt-4 text-success font-semibold text-lg transition-all duration-300" id="on-label">
+          <i class="fa-solid fa-toggle-on mr-1"></i> ON
+        </div>
+      </div>
+      
+      <!-- 关闭按钮 -->
+      <div class="flex flex-col items-center">
+        <button id="off-button" class="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center cursor-pointer transition-all duration-300 ease-in-out button-shadow transform hover:scale-105 active:scale-95">
+          <div class="w-16 h-16 rounded-full bg-danger flex items-center justify-center transition-all duration-300 light-glow" id="red-light">
+            <div class="w-10 h-10 rounded-full bg-white/20 transition-all duration-300"></div>
+          </div>
+        </button>
+        <div class="mt-4 text-danger font-semibold text-lg transition-all duration-300" id="off-label">
+          <i class="fa-solid fa-toggle-off mr-1"></i> OFF
+        </div>
+      </div>
+    </div>
+    
+    <!-- 底部信息 -->
+    <div class="mt-12 text-center text-xs text-gray-400">
+      <p>© 2025 系统控制中心 | 微信公众号专用</p>
+    </div>
+  </div>
+
+  <script>
+    // 获取DOM元素
+    const onButton = document.getElementById('on-button');
+    const offButton = document.getElementById('off-button');
+    const greenLight = document.getElementById('green-light');
+    const redLight = document.getElementById('red-light');
+    const statusDisplay = document.getElementById('status-display');
+    const statusTime = document.getElementById('status-time');
+    
+    // 初始化时间显示
+    function updateStatusTime() {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      statusTime.textContent = `最后更新: ${hours}:${minutes}:${seconds}`;
+    }
+    
+    // 系统开启状态
+    function turnSystemOn() {
+      // 绿色按钮状态
+      greenLight.className = 'w-16 h-16 rounded-full bg-success flex items-center justify-center transition-all duration-300 light-glow';
+      greenLight.querySelector('div').className = 'w-10 h-10 rounded-full bg-white/20 transition-all duration-300';
+      
+      // 红色按钮状态
+      redLight.className = 'w-16 h-16 rounded-full bg-danger/30 flex items-center justify-center transition-all duration-300';
+      redLight.querySelector('div').className = 'w-10 h-10 rounded-full bg-danger/50 transition-all duration-300';
+      
+      // 状态显示
+      statusDisplay.className = 'h-32 bg-green-50 rounded-xl flex items-center justify-center text-success font-medium text-lg border border-green-200 transition-all duration-500';
+      statusDisplay.innerHTML = '<i class="fa-solid fa-check-circle mr-2"></i> 系统已开启';
+      
+      // 更新时间
+      updateStatusTime();
+      
+      // 添加按钮点击效果
+      onButton.classList.add('button-shadow-active');
+      setTimeout(() => {
+        onButton.classList.remove('button-shadow-active');
+      }, 200);
+    }
+    
+    // 系统关闭状态
+    function turnSystemOff() {
+      // 绿色按钮状态
+      greenLight.className = 'w-16 h-16 rounded-full bg-success/30 flex items-center justify-center transition-all duration-300';
+      greenLight.querySelector('div').className = 'w-10 h-10 rounded-full bg-success/50 transition-all duration-300';
+      
+      // 红色按钮状态
+      redLight.className = 'w-16 h-16 rounded-full bg-danger flex items-center justify-center transition-all duration-300 light-glow';
+      redLight.querySelector('div').className = 'w-10 h-10 rounded-full bg-white/20 transition-all duration-300';
+      
+      // 状态显示
+      statusDisplay.className = 'h-32 bg-gray-50 rounded-xl flex items-center justify-center text-gray-500 font-medium text-lg border border-gray-200 transition-all duration-500';
+      statusDisplay.innerHTML = '<i class="fa-solid fa-power-off mr-2"></i> 系统已关闭';
+      
+      // 更新时间
+      updateStatusTime();
+      
+      // 添加按钮点击效果
+      offButton.classList.add('button-shadow-active');
+      setTimeout(() => {
+        offButton.classList.remove('button-shadow-active');
+      }, 200);
+    }
+    
+    // 添加按钮点击事件
+    onButton.addEventListener('click', turnSystemOn);
+    offButton.addEventListener('click', turnSystemOff);
+    
+    // 初始化时间
+    updateStatusTime();
+  </script>
+</body>
+</html>
+    
