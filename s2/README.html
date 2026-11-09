@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>一阶 / 二阶系统的时域响应 · 四种输入</title>
+<style>
+:root{
+  --ink:#2C2C2A; --ink2:#5F5E5A; --ink3:#8A8880;
+  --panel:#F1EFE8; --panel2:#FAF9F5; --line:rgba(0,0,0,.12);
+  --blue:#185FA5; --blue-l:#E6F1FB; --orange:#D85A30; --orange-l:#FBEEE8;
+  --green:#3F8F5B; --green-l:#E8F3EC; --red:#A32D2D; --purple:#6B4FA8;
+  --gold:#C9973F; --gold-l:#FBF3E4;
+  --mono:ui-monospace,Consolas,"Courier New",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:22px 24px 40px;background:#fff;color:var(--ink);font-family:var(--sans)}
+.wrap{max-width:1232px;margin:0 auto;font-size:13px}
+h1{font-size:16.5px;font-weight:600;margin:0 0 7px;letter-spacing:.1px}
+.lead{font-size:13px;line-height:1.72;color:var(--ink2);margin:0 0 15px;max-width:1060px}
+.lead b{color:var(--ink);font-weight:600}
+.lead code{font-family:var(--mono);font-size:12.5px;background:var(--panel);padding:1px 5px;border-radius:4px;color:var(--blue)}
+
+/* ---- 控制条 ---- */
+.bar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:var(--panel);border-radius:10px;padding:9px 12px;margin-bottom:8px}
+.seg{display:inline-flex;background:#fff;border:.5px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;font:inherit;font-size:12.5px;padding:6px 12px;cursor:pointer;color:var(--ink2);white-space:nowrap}
+.seg button+button{border-left:.5px solid var(--line)}
+.seg button.on{background:var(--blue);color:#fff}
+.bar .sp{flex:1}
+.btn{font:inherit;font-size:12.5px;padding:6px 12px;border:.5px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;color:var(--ink);white-space:nowrap}
+.btn:hover{background:var(--panel2)}
+.btn.on{background:var(--orange);border-color:var(--orange);color:#fff}
+.tfslot{font-family:var(--mono);font-size:11.5px;color:var(--ink2);padding-left:2px}
+.tfslot b{color:var(--blue);font-weight:600}
+
+.kbar{display:flex;align-items:center;gap:16px;background:var(--panel);border-radius:10px;padding:8px 14px;margin-bottom:12px;flex-wrap:wrap}
+.pg{display:flex;align-items:center;gap:9px;min-width:250px;flex:1}
+.pg.off{display:none}
+.pg .kl{font-size:12px;color:var(--ink2);white-space:nowrap}
+.pg input[type=range]{flex:1;min-width:110px}
+.kval{font-family:var(--mono);font-size:13.5px;font-weight:600;color:var(--ink);min-width:52px;text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{-webkit-appearance:none;appearance:none;height:3px;background:#D8D5CC;border-radius:2px;outline:0;margin:7px 0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--blue);border:2px solid #fff;box-shadow:0 0 0 .5px var(--line);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--blue);border:2px solid #fff;cursor:pointer}
+
+/* ---- 布局 ---- */
+.main{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);gap:14px;align-items:start}
+.left{display:grid;gap:12px}
+
+/* ---- 实物对照：电路（整幅横带：图 / 读数 / 说明） ---- */
+.cir{display:grid;grid-template-columns:minmax(0,430px) 190px minmax(0,1fr);gap:10px 22px;align-items:center}
+.cir svg{display:block;width:100%;max-width:430px;height:auto}
+.cirRead{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-family:var(--mono);font-size:10px;color:var(--ink3)}
+.cirRead span{display:block;line-height:1.35}
+.cirRead b{display:block;font-size:12.5px;color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.2px}
+.cirNote{font-size:10.5px;line-height:1.75;color:var(--ink3);border-left:.5px dashed var(--line);padding-left:18px}
+.cirNote b{color:var(--ink2);font-weight:600}
+.cirNote b.go{color:var(--blue)}
+.cirNote code{font-family:var(--mono);font-size:10.5px;color:var(--blue)}
+@media(max-width:1000px){
+  /* 三列放不下了：说明挪到下一行整宽；读数贴着原理图，多余宽度留给卡片右边，
+     别让读数被顶到卡片最右、和电路之间空出一大块 */
+  .cir{grid-template-columns:minmax(0,430px) minmax(0,1fr)}
+  .cirRead{max-width:210px}
+  .cirNote{grid-column:1/-1;border-left:0;padding-left:0;border-top:.5px dashed var(--line);padding-top:8px}
+}
+@media(max-width:700px){
+  .cir{grid-template-columns:1fr}
+  .cir svg{max-width:340px;margin:0 auto}
+  .cirRead{grid-template-columns:repeat(3,1fr)}
+}
+.side{display:grid;gap:12px;grid-template-rows:auto 1fr}
+.card{background:var(--panel2);border:.5px solid var(--line);border-radius:12px;padding:9px 10px 8px}
+.chd{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 2px 6px;flex-wrap:wrap}
+.chd h2{font-size:11.5px;font-weight:600;margin:0;color:var(--ink);letter-spacing:.15px}
+.chd .sub{font-size:10.5px;color:var(--ink3);font-family:var(--mono)}
+#svgMain{display:block;width:100%;height:auto;touch-action:none;cursor:crosshair}
+
+/* ---- 指标 ---- */
+.specs{display:grid;grid-template-columns:repeat(auto-fit,minmax(102px,1fr));gap:6px;margin-top:8px}
+.specs .sp{background:#fff;border:.5px solid var(--line);border-radius:7px;padding:5px 7px}
+.specs .sp .k{font-size:10px;color:var(--ink3);white-space:nowrap}
+.specs .sp .k sub{font-size:7.5px;vertical-align:-1px}
+.specs .sp .v{font-family:var(--mono);font-size:13px;font-weight:600;margin-top:2px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.specs .sp .s{font-size:9.5px;color:#B0ADA4;font-family:var(--mono);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.specs .sp.na .v{color:#B6B2A6;font-weight:400}
+.specs .sp.hi .v{color:var(--orange)}
+.specs .sp.warn .v{color:var(--red)}
+
+.legend{display:flex;flex-wrap:wrap;align-items:center;gap:3px 15px;margin-top:6px;font-size:10.5px;color:var(--ink3)}
+.legend:empty{display:none}
+.legend span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.legend svg{display:block;flex:none}
+.legend b{color:var(--ink2);font-weight:600}
+.plotNote{font-size:10.5px;line-height:1.6;color:var(--ink3);margin-top:7px;padding-top:7px;border-top:.5px dashed var(--line)}
+.plotNote b{color:var(--ink2);font-weight:600}
+.plotNote code{font-family:var(--mono);font-size:10.5px;color:var(--blue)}
+.plotNote .ok{color:var(--green);font-family:var(--mono);font-size:10px}
+
+/* ---- 右栏 ---- */
+.tfinfo{font-size:11.5px;line-height:1.72;color:var(--ink2)}
+.tfinfo p{margin:6px 0 0}
+.tfinfo p:first-child{margin-top:0}
+.tfinfo b{color:var(--ink);font-weight:600}
+.tfinfo code{font-family:var(--mono);font-size:11px;color:var(--blue)}
+.tfinfo .f{font-family:var(--mono);font-size:11.5px;background:#fff;border:.5px solid var(--line);border-radius:8px;padding:8px 10px;line-height:1.95;color:var(--ink);overflow-x:auto}
+.tfinfo .f .c{color:var(--blue)}
+.tfinfo .f .g{color:var(--green)}
+.tfinfo .f .o{color:var(--orange)}
+.tfinfo .f sup{font-size:9px}
+.tfinfo .f sub{font-size:9px}
+.tfinfo .tagline{display:inline-block;font-size:10px;font-family:var(--mono);color:var(--ink3);background:var(--panel);border-radius:4px;padding:1px 5px;margin-bottom:3px}
+/* 极点图的框高固定：一阶只有一条 σ 轴、画得矮，不固定的话右栏高度会随工况跳 100px，
+   两栏底边就对不齐。定高后矮图在框内垂直居中，读起来像一张带留白的插图。 */
+#svgPole{display:block;width:100%;max-width:300px;min-height:250px;height:auto;margin:2px auto 0}
+.pnote{color:var(--ink3);font-size:10.5px;line-height:1.6;margin:6px 2px 0}
+
+/* ---- 矩阵 ---- */
+.mx,.wide{margin-top:14px}
+.mgrid{display:grid;grid-template-columns:52px repeat(4,minmax(0,1fr));gap:7px;align-items:stretch}
+.mhd{font-size:10.5px;color:var(--ink3);text-align:center;padding-bottom:1px;font-family:var(--mono)}
+.mlab{display:flex;align-items:center;justify-content:flex-end;font-size:10.5px;color:var(--ink3);padding-right:3px;white-space:nowrap}
+.mcell{background:#fff;border:.5px solid var(--line);border-radius:8px;padding:4px 4px 2px;cursor:pointer;transition:box-shadow .12s,background .12s;position:relative;overflow:hidden}
+.mcell:hover{background:#F7F6F1}
+.mcell.on{box-shadow:0 0 0 2px var(--blue)}
+.mcell .mv{position:absolute;right:5px;top:3px;font-family:var(--mono);font-size:9.5px;color:var(--ink3)}
+.mcell.on .mv{color:var(--blue);font-weight:600}
+.mcell svg{display:block;width:100%;height:auto}
+
+/* ---- 讲义 ---- */
+.notes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+.note{background:var(--panel2);border:.5px solid var(--line);border-radius:10px;padding:11px 13px}
+.note h3{font-size:12px;font-weight:600;margin:0 0 5px;color:var(--ink);display:flex;gap:6px;align-items:baseline}
+.note h3 i{font-style:normal;font-family:var(--mono);font-size:10.5px;color:#fff;background:var(--ink3);width:15px;height:15px;line-height:15px;text-align:center;border-radius:4px;flex:none}
+.note p{font-size:11.5px;line-height:1.72;color:var(--ink2);margin:0 0 5px}
+.note p:last-child{margin-bottom:0}
+.note b{color:var(--ink);font-weight:600}
+.note code{font-family:var(--mono);font-size:11px;background:var(--panel);padding:.5px 4px;border-radius:3px}
+.note .warn{display:block;margin-top:6px;padding:6px 8px;background:var(--gold-l);border-left:2px solid var(--gold);border-radius:0 5px 5px 0;font-size:11px;color:#7A5B22;line-height:1.65}
+.note .ok{display:block;margin-top:6px;padding:6px 8px;background:var(--green-l);border-left:2px solid var(--green);border-radius:0 5px 5px 0;font-size:11px;color:#2C5C3C;line-height:1.65}
+
+@media (max-width:1000px){
+  .main{grid-template-columns:1fr}
+  .notes{grid-template-columns:1fr 1fr}
+  .pg{min-width:200px}
+}@media (max-width:680px){
+  body{padding:16px 12px 30px}
+  .notes{grid-template-columns:1fr}
+  .mgrid{grid-template-columns:38px repeat(4,minmax(0,1fr));gap:5px}
+  .mlab{font-size:9.5px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>一阶 / 二阶系统的时域响应：四种输入，一条曲线的四张脸</h1>
+  <p class="lead">
+    脉冲、阶跃、斜坡、加速度，四个公式背起来像四件事。但对线性系统，<b>它们互为微分与积分</b>：
+    脉冲响应就是阶跃响应的斜率，斜坡响应是阶跃响应的积分，加速度响应再积一次。
+    所以只要知道 <code>g(t)</code>，四条曲线就全定了——切换输入时盯住这一点，比分别记公式省力得多。
+    <br>下面把一阶 <code>1/(Ts+1)</code> 与标准二阶 <code>ωₙ²/(s²+2ζωₙs+ωₙ²)</code> 放在同一套坐标里：拖参数看<b>形态怎么变</b>，
+    切输入看<b>同一条 g(t) 怎么被求导、被积分</b>。两者都是 Ⅰ 型系统，所以误差结论一致：<b>阶跃无差、斜坡差一个常数、加速度差到无穷</b>。
+  </p>
+
+  <div class="bar">
+    <div class="seg" id="segSys">
+      <button type="button" data-sys="1">一阶系统</button>
+      <button type="button" data-sys="2">二阶系统</button>
+    </div>
+    <div class="seg" id="segIn">
+      <button type="button" data-in="imp">单位脉冲 δ(t)</button>
+      <button type="button" data-in="step">单位阶跃 1(t)</button>
+      <button type="button" data-in="ramp">单位斜坡 t</button>
+      <button type="button" data-in="acc">单位加速度 t²/2</button>
+    </div>
+    <span class="sp"></span>
+    <span class="tfslot" id="tfSlot"></span>
+  </div>
+
+  <div class="kbar">
+    <div class="pg" id="pgT">
+      <span class="kl">时间常数 T</span>
+      <input type="range" id="rT" min="0.2" max="4" step="0.05" value="1">
+      <span class="kval" id="vT">1.00</span>
+    </div>
+    <div class="pg" id="pgZ">
+      <span class="kl">阻尼比 ζ</span>
+      <input type="range" id="rZ" min="0.1" max="3" step="0.02" value="0.5">
+      <span class="kval" id="vZ">0.50</span>
+    </div>
+    <div class="pg" id="pgW">
+      <span class="kl">固有频率 ωₙ</span>
+      <input type="range" id="rW" min="0.5" max="6" step="0.1" value="1">
+      <span class="kval" id="vW">1.00</span>
+    </div>
+    <span class="sp"></span>
+    <button class="btn" id="btnPlay" type="button">▶ 走一遍</button>
+  </div>
+
+  <div class="main">
+    <div class="left">
+      <div class="card">
+        <div class="chd"><h2>时域响应</h2><span class="sub" id="plotSub"></span></div>
+        <svg id="svgMain" viewBox="0 0 680 344"></svg>
+        <div class="legend" id="legend"></div>
+        <div class="plotNote" id="plotNote"></div>
+        <div class="specs" id="specs"></div>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="card">
+        <div class="chd"><h2>这一条从哪来</h2><span class="sub" id="anaTag"></span></div>
+        <div class="tfinfo" id="anaInfo"></div>
+      </div>
+      <div class="card">
+        <div class="chd"><h2>极点决定了形态</h2><span class="sub">实极点 → 单调，共轭 → 振荡</span></div>
+        <svg id="svgPole" viewBox="0 0 320 168"></svg>
+        <div class="pnote" id="poleNote"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card wide">
+    <div class="chd"><h2>实物对照：同一条曲线在电路里长什么样</h2><span class="sub" id="cirSub"></span></div>
+    <div class="cir">
+      <svg id="svgCir" viewBox="0 0 360 170"></svg>
+      <div class="cirRead" id="cirRead"></div>
+      <div class="cirNote" id="cirNote"></div>
+    </div>
+  </div>
+
+  <div class="card mx">
+    <div class="chd"><h2>八张图放一起看</h2><span class="sub">点任一张切过去 · 参数跟着滑块一起变</span></div>
+    <div class="mgrid" id="mGrid"></div>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <h3><i>1</i>四种输入是一家人</h3>
+      <p>线性系统对输入是线性的，对<b>运算</b>也是：输入求导，输出就求导；输入积分，输出就积分。因为 δ(t)=1′(t)、t=∫1、t²/2=∫∫1，所以四条响应是同一条 g(t) 的微分/积分链。</p>
+      <p>一阶验证：<code>g=1−e^(−t/T)</code> → <code>g′=(1/T)e^(−t/T)</code>（正是 h）→ <code>∫g=t−T+Te^(−t/T)</code>（正是斜坡响应）。三行是同一个东西。</p>
+      <p class="ok">记一条就够：知道 g(t)，另三条求导/积分即得。</p>
+    </div>
+    <div class="note">
+      <h3><i>2</i>一阶只有一个数：T</h3>
+      <p>T 是<b>时间常数</b>，整条曲线只由它一个数决定：阶跃到 63.2% 用 T，到 95% 用 3T，到 98.2% 用 4T；初始斜率恰好 1/T。</p>
+      <p>脉冲响应更直接：<code>h(t)=(1/T)e^(−t/T)</code>，<b>h(0⁺)=1/T</b>。T 越小冲得越高、衰减越快——这就是"反应快"的数学含义。</p>
+      <p>一阶永远<b>不振荡、不超调</b>，因为只有一个实极点，没有共轭复根可以引起摆动。</p>
+    </div>
+    <div class="note">
+      <h3><i>3</i>二阶有两个数，分工不同</h3>
+      <p><b>ζ 管形态与超调</b>：σ% = e^(−πζ/√(1−ζ²))，只跟 ζ 有关，与 ωₙ 完全无关。<b>ωₙ 管快慢</b>：它只压缩或拉伸时间轴，t_p=π/ω_d，t_s≈4/(ζωₙ)。</p>
+      <p>所以拖 ωₙ 时曲线形状不变、只是横向伸缩；拖 ζ 时形状才真的变（ζ&lt;1 振荡，ζ=1 临界，ζ&gt;1 两个实极点、单调爬升）。</p>
+      <p class="warn">σ% 公式只对<b>无零点的标准二阶</b>成立。真实系统带零点时超调会明显偏大，不能直接套。</p>
+    </div>
+    <div class="note">
+      <h3><i>4</i>型别：为什么斜坡差一个常数</h3>
+      <p>两者的等效开环都含一个 <code>1/s</code>（一阶 <code>1/(Ts)</code>、二阶 <code>ωₙ²/[s(s+2ζωₙ)]</code>），都是 <b>Ⅰ 型</b>系统。</p>
+      <p>Ⅰ 型对阶跃：稳态误差 0；对斜坡：误差是一个常数（一阶 = T，二阶 = 2ζ/ωₙ），表现为<b>输出永远落后输入这么一段</b>；对加速度：误差随 t 线性增长，<b>发散</b>。</p>
+      <p>这就是实际系统要串积分环节提高型别的原因——但要付相位代价（见频域稳定判据那一页）。</p>
+    </div>
+    <div class="note">
+      <h3><i>5</i>相对阶决定 t=0 的瞬间</h3>
+      <p>一阶 Φ(s) 的相对阶是 1，脉冲响应在 t=0 有<b>跳变</b>，跳到 1/T；二阶相对阶是 2，脉冲响应 <code>h(0)=0</code>，从零起步，初始斜率才是 ωₙ²。</p>
+      <p>所以二阶脉冲曲线必须"从 0 起来再冲高"，而一阶是"一上来就最高然后一路衰减"。这不是画法差异，是阶次决定的。</p>
+      <p>另外：脉冲响应的<b>面积恒等于 1</b>（= Φ(0) 直流增益），两条曲线面积一样，只是形状不同。</p>
+    </div>
+    <div class="note">
+      <h3><i>6</i>这张图是怎么算出来的</h3>
+      <p>曲线不是套解析式画的，是<b>状态方程 RK4 数值积分</b>：一阶 <code>x′=(u−x)/T</code>；二阶 <code>x₁′=x₂, x₂′=ωₙ²(u−x₁)−2ζωₙx₂</code>。冲激输入按相对阶给初值（一阶 x(0⁺)=1/T，二阶 x₂(0⁺)=ωₙ²），其余三种把 u(t) 直接代入。</p>
+      <p>左下角那行小字是把数值解与闭式解逐点相减的最大相对偏差——一阶四种输入、二阶脉冲与阶跃都有闭式，可以硬对。</p>
+      <p class="warn">斜坡与加速度的误差"稳态值"只在极限意义下存在；有限窗口里看到的是<b>趋势</b>（恒定差距 / 越拉越大），别把窗口末端当成稳态。</p>
+    </div>
+  </div>
+
+</div>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>v<a?a:(v>b?b:v);
+const N=1600;                       /* 主曲线采样数 */
+
+/* ================= 状态 ================= */
+const ST={sys:1, inp:'step', T:1, z:0.5, w:1, cur:null, playing:false, S:null, map:null,
+          shown:{T:1,w:1}, tip:null};
+
+/* ================= 数值格式 ================= */
+function fmt(v,d){
+  if(!isFinite(v)) return v>0?'∞':'−∞';
+  const a=Math.abs(v);
+  if(a!==0 && (a<1e-4 || a>=1e5)) return v.toExponential(1).replace('-','−').replace('e+','e');
+  let s;
+  if(d!==undefined) s=v.toFixed(d);
+  else s=v.toFixed(a>=100?0:a>=10?1:a>=1?2:3);
+  if(s.indexOf('.')>=0) s=s.replace(/\.?0+$/,'');
+  return s.replace('-','−');
+}
+function fx(v){ return v.toFixed(2); }
+function niceStep(x){
+  if(!(x>0)||!isFinite(x)) return 1;
+  const p=Math.pow(10,Math.floor(Math.log10(x))), r=x/p;
+  return (r<=1?1:r<=2?2:r<=5?5:10)*p;
+}
+
+/* ================= 时间窗 ================= */
+function winLen(sys){
+  sys=sys||ST.sys;
+  if(sys===1) return 6*ST.T;
+  const z=ST.z, w=ST.w;
+  const sg = z<=1 ? z*w : w*(z-Math.sqrt(Math.max(z*z-1,0)));
+  let t=6/Math.max(sg,1e-6);
+  t=Math.max(t,4/w);
+  t=Math.min(t,45/w);
+  return t;
+}
+
+/* ================= 输入信号 u(t)（冲激单独处理） ================= */
+function uOf(t,inp){
+  if(inp==='step') return 1;
+  if(inp==='ramp') return t;
+  if(inp==='acc')  return 0.5*t*t;
+  return 0;                                   /* imp：全靠初值 */
+}
+function rOf(t,inp){                          /* 可画出来的输入 */
+  if(inp==='step') return 1;
+  if(inp==='ramp') return t;
+  if(inp==='acc')  return 0.5*t*t;
+  return NaN;
+}
+
+/* ================= RK4 积分 =================
+   一阶：x′ = (u − x)/T
+   二阶：x₁′ = x₂ ,  x₂′ = ωₙ²(u − x₁) − 2ζωₙx₂
+   冲激输入按相对阶给初值：一阶 x(0⁺)=1/T；二阶 x₂(0⁺)=ωₙ²           */
+function sim(sys,inp,T,z,w,tEnd,n){
+  n=n||N;
+  const dt=tEnd/n;
+  const Y=new Float64Array(n+1), Rv=new Float64Array(n+1);
+  const imp=(inp==='imp');
+  const u=t=>uOf(t,inp);
+  if(sys===1){
+    let x = imp ? 1/T : 0;
+    for(let i=0;i<=n;i++){
+      const t=i*dt;
+      Y[i]=x; Rv[i]=rOf(t,inp);
+      if(i===n) break;
+      const k1=(u(t)-x)/T;
+      const k2=(u(t+dt/2)-(x+dt/2*k1))/T;
+      const k3=(u(t+dt/2)-(x+dt/2*k2))/T;
+      const k4=(u(t+dt)-(x+dt*k3))/T;
+      x += dt/6*(k1+2*k2+2*k3+k4);
+    }
+  }else{
+    const w2=w*w, c2=2*z*w;
+    let a=0, b= imp ? w2 : 0;
+    for(let i=0;i<=n;i++){
+      const t=i*dt;
+      Y[i]=a; Rv[i]=rOf(t,inp);
+      if(i===n) break;
+      const k1a=b,                     k1b=w2*(u(t)-a)-c2*b;
+      const a2=a+dt/2*k1a, b2=b+dt/2*k1b;
+      const k2a=b2,                    k2b=w2*(u(t+dt/2)-a2)-c2*b2;
+      const a3=a+dt/2*k2a, b3=b+dt/2*k2b;
+      const k3a=b3,                    k3b=w2*(u(t+dt/2)-a3)-c2*b3;
+      const a4=a+dt*k3a,   b4=b+dt*k3b;
+      const k4a=b4,                    k4b=w2*(u(t+dt)-a4)-c2*b4;
+      a += dt/6*(k1a+2*k2a+2*k3a+k4a);
+      b += dt/6*(k1b+2*k2b+2*k3b+k4b);
+    }
+  }
+  return {Y:Y,R:Rv,tEnd:tEnd,n:n};
+}
+
+/* ================= 闭式解（用于对拍） ================= */
+function anaOne(inp,t,T){
+  const e=Math.exp(-t/T);
+  if(inp==='imp')  return e/T;
+  if(inp==='step') return 1-e;
+  if(inp==='ramp') return t-T+T*e;
+  return t*t/2 - T*t + T*T*(1-e);
+}
+function anaTwo(inp,t,z,w){
+  if(inp==='imp'){
+    if(z<1-1e-9){ const wd=w*Math.sqrt(1-z*z); return w*w/wd*Math.exp(-z*w*t)*Math.sin(wd*t); }
+    if(z<=1+1e-9) return w*w*t*Math.exp(-w*t);
+    const r=Math.sqrt(z*z-1), s1=-w*(z-r), s2=-w*(z+r);
+    return w*w/(s1-s2)*(Math.exp(s1*t)-Math.exp(s2*t));
+  }
+  if(z<1-1e-9){ const wd=w*Math.sqrt(1-z*z);
+    return 1-Math.exp(-z*w*t)*(Math.cos(wd*t)+z/Math.sqrt(1-z*z)*Math.sin(wd*t)); }
+  if(z<=1+1e-9) return 1-(1+w*t)*Math.exp(-w*t);
+  const r=Math.sqrt(z*z-1), s1=-w*(z-r), s2=-w*(z+r);
+  const C1=w*w/(s1*(s1-s2)), C2=w*w/(s2*(s2-s1));
+  return 1+C1*Math.exp(s1*t)+C2*Math.exp(s2*t);
+}
+/* 有闭式的工况：一阶全部；二阶脉冲与阶跃 */
+function hasAna(sys,inp){ return sys===1 || inp==='imp' || inp==='step'; }
+function anaAt(sys,inp,t,T,z,w){ return sys===1?anaOne(inp,t,T):anaTwo(inp,t,z,w); }
+
+function maxRelErr(S){
+  const sys=ST.sys, inp=ST.inp;
+  if(!hasAna(sys,inp)) return null;
+  let mx=0, sy=0;
+  for(let i=0;i<=S.n;i++){
+    const t=i*S.tEnd/S.n;
+    const a=anaAt(sys,inp,t,ST.T,ST.z,ST.w);
+    if(!isFinite(a)) continue;
+    const d=Math.abs(a-S.Y[i]);
+    if(d>mx) mx=d;
+    if(Math.abs(a)>sy) sy=Math.abs(a);
+  }
+  return mx/Math.max(sy,1);
+}
+
+/* ================= 二阶关键点 ================= */
+function underD(){ return ST.z<1-1e-9; }
+function wd(){ return ST.w*Math.sqrt(Math.max(1-ST.z*ST.z,0)); }
+function pulsePeak(){
+  const z=ST.z,w=ST.w;
+  if(z<1-1e-9){
+    const d=wd(), t=Math.atan2(d,z*w)/d;
+    return {t:t, h:anaTwo('imp',t,z,w)};
+  }
+  if(z<=1+1e-9){
+    const t=1/w;
+    return {t:t, h:anaTwo('imp',t,z,w)};
+  }
+  const r=Math.sqrt(z*z-1), s1=-w*(z-r), s2=-w*(z+r);
+  const t=Math.log(s2/s1)/(s1-s2);
+  return {t:t, h:anaTwo('imp',t,z,w)};
+}
+function settleIdx(S,ref,band){
+  const n=S.n, dt=S.tEnd/n;
+  for(let i=n;i>=0;i--){ if(Math.abs(S.Y[i]-ref)>band) return {t:(i+1)*dt, found:i<n}; }
+  return {t:0, found:true};
+}
+
+/* ================= 指标 ================= */
+function specList(S){
+  const T=ST.T, z=ST.z, w=ST.w, inp=ST.inp, sys=ST.sys;
+  const out=[];
+  const add=(k,v,s,cls)=>{ out.push({k:k,v:v,s:s||'',cls:cls||''}); };
+
+  if(sys===1){
+    if(inp==='imp'){
+      add('h(0⁺)','1/T','= '+fmt(1/T)+'，跳变','hi');
+      add('衰减到 5%',fmt(Math.log(20)*T)+' s','3T');
+      add('面积 ∫h dt','1','= Φ(0)');
+    }else if(inp==='step'){
+      add('t_r 10→90%',fmt(Math.log(9)*T)+' s','T·ln9');
+      add('t_s ±5%',fmt(Math.log(20)*T)+' s','T·ln20');
+      add('σ%','0','一阶不振荡');
+      add('e_ss','0','Ⅰ 型，阶跃无差');
+    }else if(inp==='ramp'){
+      add('e_ss','T','= '+fmt(T)+'，恒定滞后','hi');
+      add('误差到 0.95T',fmt(Math.log(20)*T)+' s','此后不再变');
+      add('稳态斜率','1','与输入同速');
+    }else{
+      add('e_ss','∞','误差发散','warn');
+      add('e(t)','Tt − T²','随 t 线性增长');
+      add('能否跟踪','不能','Ⅰ 型跟不上加速度','warn');
+    }
+  }else{
+    if(inp==='imp'){
+      const pk=pulsePeak();
+      add('h(0⁺)','0','相对阶 2，从零起');
+      add('峰值 h_max',fmt(pk.h),'e^(−ζωₙt_m) 峰','hi');
+      add('t_m 峰值时刻',fmt(pk.t)+' s','arctan(ω_d/ζωₙ)/ω_d');
+      add('面积 ∫h dt','1','= Φ(0)');
+    }else if(inp==='step'){
+      if(underD()){
+        const d=wd(), b=Math.acos(clamp(z,-1,1));
+        const sg=Math.exp(-Math.PI*z/Math.sqrt(1-z*z))*100;
+        const st=settleIdx(S,1,0.05);
+        add('t_r 首达 1',fmt((Math.PI-b)/d)+' s','(π−β)/ω_d');
+        add('t_p 峰值',fmt(Math.PI/d)+' s','π/ω_d');
+        add('σ%',fmt(sg,1)+' %','e^(−πζ/√(1−ζ²))','hi');
+        add('t_s ±5%',st.found?fmt(st.t)+' s':'&gt; 窗口','数值搜索');
+      }else{
+        const st=settleIdx(S,1,0.05);
+        add('t_r','—','单调，不穿越 1');
+        add('t_p','—','无峰值');
+        add('σ%','0','ζ ≥ 1 无超调');
+        add('t_s ±5%',st.found?fmt(st.t)+' s':'&gt; 窗口','数值搜索');
+      }
+      add('e_ss','0','Ⅰ 型，阶跃无差');
+    }else if(inp==='ramp'){
+      add('e_ss','2ζ/ωₙ','= '+fmt(2*z/w)+'，恒定滞后','hi');
+      add('误差到 95%',fmt(3/(z*w))+' s','≈ 3/(ζωₙ)');
+      add('稳态斜率','1','与输入同速');
+    }else{
+      add('e_ss','∞','误差发散','warn');
+      add('e(t)','≈ (2ζ/ωₙ)·t','随 t 线性增长');
+      add('能否跟踪','不能','Ⅰ 型跟不上加速度','warn');
+    }
+  }
+  return out;
+}
+
+/* ================= 主图 ================= */
+function drawMain(S,anim){
+  const svg=$('svgMain');
+  /* TT 抬到 30：顶上留一条 28px 的空带，专门给「拖 T / ωₙ」的浮动提示用，
+     放进去就永远不会压到 σ、h_max、t_s 这些真正说明形状的标注 */
+  const W=680,H=344,L=58,R=W-20,TT=30,B=H-46;
+  const n=S.n, tEnd=S.tEnd, Y=S.Y, Rv=S.R;
+
+  let lo=0, hi=0, any=false;
+  for(let i=0;i<=n;i++){ const v=Y[i]; if(isFinite(v)){ any=true; if(v<lo)lo=v; if(v>hi)hi=v; } }
+  const hasR=isFinite(Rv[0]);
+  if(hasR){ for(let i=0;i<=n;i++){ const v=Rv[i]; if(isFinite(v)){ if(v<lo)lo=v; if(v>hi)hi=v; } } }
+  if(!any){ lo=0; hi=1; }
+  if(hi-lo<1e-9) hi=lo+1;
+  const pad=(hi-lo)*0.13; hi+=pad; lo-=pad;
+
+  const sx=t=>L+(t/tEnd)*(R-L);
+  const vy=v=>B-(v-lo)/(hi-lo)*(B-TT);
+  ST.map={L:L,R:R,TT:TT,B:B,tEnd:tEnd,sx:sx,vy:vy};
+  const hot=!!ST.tip;                 /* 正在拖 T / ωₙ：横轴才是唯一在变的东西 */
+
+  let s='';
+  /* --- 网格 --- */
+  const gs=niceStep((hi-lo)/4.4);
+  for(let v=Math.ceil(lo/gs)*gs; v<=hi+1e-9; v+=gs){
+    const y=vy(v);
+    s+=`<line x1="${L}" y1="${y.toFixed(1)}" x2="${R}" y2="${y.toFixed(1)}" stroke="#CFCCC2" stroke-width="0.6" opacity="${Math.abs(v)<1e-9?0.9:0.55}"/>`;
+    s+=`<text x="${L-8}" y="${(y+3.4).toFixed(1)}" font-size="10" fill="#8A8880" text-anchor="end" font-family="var(--mono)">${fmt(v)}</text>`;
+  }
+  const ts=niceStep(tEnd/5);
+  for(let t=0;t<=tEnd+1e-9;t+=ts){
+    const x=sx(t);
+    s+=`<line x1="${x.toFixed(1)}" y1="${TT}" x2="${x.toFixed(1)}" y2="${B}" stroke="#CFCCC2" stroke-width="0.6" opacity="0.45"/>`;
+    s+=`<text x="${x.toFixed(1)}" y="${(B+15).toFixed(1)}" font-size="10" fill="${hot?'#B04524':'#8A8880'}"${hot?' font-weight="600"':''} text-anchor="middle" font-family="var(--mono)">${fmt(t)}</text>`;
+  }
+
+  /* --- 输入信号 r(t)：阶跃时它与稳态目标重合，只画一条绿线 --- */
+  if(hasR){
+    let d='';
+    const step=Math.max(1,Math.round(n/400));
+    for(let i=0;i<=n;i+=step){
+      const t=i*tEnd/n;
+      d+=(d?'L':'M')+sx(t).toFixed(1)+' '+vy(Rv[i]).toFixed(1);
+    }
+    const isStep=(ST.inp==='step');
+    s+=`<path d="${d}" fill="none" stroke="${isStep?'#3F8F5B':'#A8A49A'}" stroke-width="1.3" stroke-dasharray="5 4" opacity="${isStep?0.65:1}"/>`;
+  }else{
+    /* 冲激：t=0 处画一个箭头，表示面积 1 的瞬时冲量 */
+    const x0=sx(0), y0=vy(0);
+    s+=`<path d="M${x0.toFixed(1)} ${(y0-6).toFixed(1)}V${(y0-34).toFixed(1)}" stroke="#8A8880" stroke-width="1.4"/>`;
+    s+=`<path d="M${(x0-4).toFixed(1)} ${(y0-28).toFixed(1)}L${x0.toFixed(1)} ${(y0-36).toFixed(1)}L${(x0+4).toFixed(1)} ${(y0-28).toFixed(1)}" fill="none" stroke="#8A8880" stroke-width="1.4" stroke-linejoin="round"/>`;
+    s+=`<text x="${(x0+8).toFixed(1)}" y="${(y0-22).toFixed(1)}" font-size="10" fill="#8A8880">δ(t)，面积 1</text>`;
+  }
+
+  /* --- 输出曲线 --- */
+  let d='';
+  if(ST.inp==='imp' && ST.sys===1){
+    d=`M${sx(0).toFixed(1)} ${vy(0).toFixed(1)}L${sx(0).toFixed(1)} ${vy(Y[0]).toFixed(1)}`;
+  }
+  const step=Math.max(1,Math.round(n/900));
+  for(let i=0;i<=n;i+=step){
+    const v=Y[i];
+    if(!isFinite(v)) continue;
+    d+=(d?'L':'M')+sx(i*tEnd/n).toFixed(1)+' '+vy(v).toFixed(1);
+  }
+  s+=`<path id="curve" d="${d}" fill="none" stroke="#185FA5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+
+  /* --- 关键点标注 --- */
+  const lab=(x,y,txt,col,anchor)=>{
+    return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-size="10" fill="${col}" text-anchor="${anchor||'start'}">${txt}</text>`;
+  };
+  if(ST.inp==='imp'){
+    if(ST.sys===1){
+      s+=`<circle cx="${sx(0).toFixed(1)}" cy="${vy(Y[0]).toFixed(1)}" r="3.2" fill="#D85A30"/>`;
+      s+=lab(sx(0)+7, vy(Y[0])-7, 'h(0⁺) = '+fmt(1/ST.T), '#D85A30');
+    }else{
+      const pk=pulsePeak();
+      if(pk.t<=tEnd){
+        s+=`<circle cx="${sx(pk.t).toFixed(1)}" cy="${vy(pk.h).toFixed(1)}" r="3.4" fill="#D85A30"/>`;
+        s+=lab(sx(pk.t)+7, vy(pk.h)-7, 'h_max = '+fmt(pk.h), '#D85A30');
+      }
+    }
+  }
+  if(ST.inp==='step'){
+    if(underD() && ST.sys===2){
+      const d0=wd(), tp=Math.PI/d0;
+      const ymax=1+Math.exp(-Math.PI*ST.z/Math.sqrt(1-ST.z*ST.z));
+      if(tp<=tEnd){
+        s+=`<circle cx="${sx(tp).toFixed(1)}" cy="${vy(ymax).toFixed(1)}" r="3.4" fill="#D85A30"/>`;
+        s+=lab(sx(tp)+7, vy(ymax)-6, 'σ '+(Math.exp(-Math.PI*ST.z/Math.sqrt(1-ST.z*ST.z))*100).toFixed(1)+'%', '#D85A30');
+      }
+    }
+    const st=settleIdx(S,1,0.05);
+    if(st.found && st.t>0 && st.t<tEnd*0.985){
+      s+=`<line x1="${sx(st.t).toFixed(1)}" y1="${TT}" x2="${sx(st.t).toFixed(1)}" y2="${B}" stroke="#C9973F" stroke-width="1" stroke-dasharray="4 4" opacity="0.7"/>`;
+      s+=`<text x="${(sx(st.t)+4).toFixed(1)}" y="${TT+11}" font-size="10" fill="#A87B26">t<tspan dy="2.5" font-size="7.5">s</tspan></text>`;
+    }
+  }
+
+  /* --- 游标层 --- */
+  s+=`<g id="curL"></g>`;
+
+  /* --- 轴线与轴名 --- */
+  s+=`<line x1="${L}" y1="${TT-6}" x2="${L}" y2="${B}" stroke="#B4B2A9" stroke-width="1"/>`;
+  s+=`<line x1="${L}" y1="${vy(0).toFixed(1)}" x2="${R}" y2="${vy(0).toFixed(1)}" stroke="${hot?'#D85A30':'#B4B2A9'}" stroke-width="${hot?1.3:1}"/>`;
+  s+=`<text x="${L}" y="${TT-12}" font-size="10.5" fill="#5F5E5A">y(t)</text>`;
+  s+=`<text x="${R}" y="${B+30}" font-size="10.5" fill="${hot?'#B04524':'#5F5E5A'}" text-anchor="end"${hot?' font-weight="600"':''}>t / s</text>`;
+
+  svg.innerHTML=s;
+  if(hot) paintTip();
+
+  /* 描边动画：只在切换时放一次 */
+  const p=svg.querySelector('#curve');
+  if(p && anim){
+    try{
+      const len=p.getTotalLength();
+      p.style.transition='none';
+      p.style.strokeDasharray=len;
+      p.style.strokeDashoffset=len;
+      p.getBoundingClientRect();
+      p.style.transition='stroke-dashoffset .52s cubic-bezier(.4,0,.2,1)';
+      p.style.strokeDashoffset=0;
+      setTimeout(()=>{ p.style.transition=''; p.style.strokeDasharray=''; p.style.strokeDashoffset=''; },620);
+    }catch(e){}
+  }
+  drawCursor();
+}
+
+/* ================= 拖 T / ωₙ 的提示 =================
+   这两个参数只做时间轴缩放（时间尺度相似），窗口长 ∝ 1/参数，所以画出来的曲线一模一样。
+   学生拖了看不到变化，第一反应是「坏了」——必须当场说清，并把眼睛指到真正在变的横轴上。 */
+const TIP_HOLD=1500;
+let tipTimer=null;
+function bumpTip(key){
+  const now=performance.now();
+  if(!ST.tip || ST.tip.key!==key || now-ST.tip.t0>TIP_HOLD+600){
+    /* 新的一次拖动：锚在拖动前的值上，这样数字说的是「这一次拖了多少」 */
+    ST.tip={key:key, from:ST.shown[key], to:ST[key],
+            winFrom:ST.S?ST.S.tEnd:winLen(ST.sys), winTo:0, t0:now};
+  }else{
+    ST.tip.to=ST[key]; ST.tip.t0=now;
+  }
+  clearTimeout(tipTimer);
+  tipTimer=setTimeout(hideTip,TIP_HOLD);
+  schedule();
+}
+function hideTip(){
+  const g=$('tipG');
+  ST.tip=null;
+  if(g){ g.style.transition='opacity .22s'; g.style.opacity='0'; setTimeout(()=>refresh(false),230); }
+  else refresh(false);
+}
+function paintTip(){
+  const svg=$('svgMain'), m=ST.map, tip=ST.tip;
+  if(!m||!tip) return;
+  const sym=tip.key==='T'?'T':'ωₙ';
+  const r=tip.to/tip.from, near=!isFinite(r)||Math.abs(r-1)<0.02;
+  const txt=near ? sym+' 只伸缩时间轴　曲线形状不变'
+                 : sym+' ×'+r.toFixed(1)+'　时间窗 '+fmt(tip.winFrom)+' → '+fmt(tip.winTo)+' s　形状不变';
+  const cx=(m.L+m.R)/2;
+  svg.insertAdjacentHTML('beforeend',
+    `<g id="tipG" pointer-events="none">
+       <rect id="tipSh" x="0" y="0" width="10" height="10" rx="7" fill="rgba(0,0,0,.07)"/>
+       <rect id="tipBg" x="0" y="0" width="10" height="10" rx="7" fill="#FBEEE8" stroke="#D85A30" stroke-width="1.1"/>
+       <text id="tipTx" x="${cx.toFixed(1)}" y="19" font-size="11" fill="#B04524"
+             text-anchor="middle" font-weight="600">${txt}</text>
+     </g>`);
+  /* 先量字再画框：中英混排宽度算不准，量出来的框才不会一边空一边挤 */
+  const b=svg.querySelector('#tipTx').getBBox();
+  const w=b.width+26, h=b.height+9, x=cx-w/2, y=b.y-4;   /* 落在画框上方那条空带里 */
+  svg.querySelector('#tipBg').setAttribute('x',x.toFixed(1));
+  svg.querySelector('#tipBg').setAttribute('y',y.toFixed(1));
+  svg.querySelector('#tipBg').setAttribute('width',w.toFixed(1));
+  svg.querySelector('#tipBg').setAttribute('height',h.toFixed(1));
+  svg.querySelector('#tipSh').setAttribute('x',x.toFixed(1));
+  svg.querySelector('#tipSh').setAttribute('y',(y+1.8).toFixed(1));
+  svg.querySelector('#tipSh').setAttribute('width',w.toFixed(1));
+  svg.querySelector('#tipSh').setAttribute('height',h.toFixed(1));
+}
+
+/* ================= 游标 ================= */
+function drawCursorRaw(){
+  const g=$('curL'); if(!g) return;
+  const m=ST.map, S=ST.S;
+  if(!m||!S||ST.cur===null||!isFinite(ST.cur)||ST.cur>m.tEnd){ g.innerHTML=''; return; }
+  const t=ST.cur;
+  const i=Math.round(t/m.tEnd*S.n);
+  const y=S.Y[i];
+  if(!isFinite(y)){ g.innerHTML=''; return; }
+  const x=m.sx(t), yy=m.vy(y);
+  let s=`<line x1="${x.toFixed(1)}" y1="${m.TT}" x2="${x.toFixed(1)}" y2="${m.B}" stroke="#D85A30" stroke-width="1" opacity="0.35"/>`;
+  const hasR=isFinite(S.R[i]);
+  if(hasR){
+    const yr=m.vy(S.R[i]);
+    s+=`<line x1="${x.toFixed(1)}" y1="${yy.toFixed(1)}" x2="${x.toFixed(1)}" y2="${yr.toFixed(1)}" stroke="#D85A30" stroke-width="2.6" opacity="0.75"/>`;
+    s+=`<circle cx="${x.toFixed(1)}" cy="${yr.toFixed(1)}" r="3" fill="#fff" stroke="#A8A49A" stroke-width="1.4"/>`;
+    const e=S.R[i]-y;
+    const mid=(yy+yr)/2;
+    const right = x < (m.L+m.R)/2;
+    s+=`<text x="${(right?x+9:x-9).toFixed(1)}" y="${(mid+4).toFixed(1)}" font-size="10" fill="#B04524" text-anchor="${right?'start':'end'}">e = ${fmt(e)}</text>`;
+  }
+  s+=`<circle cx="${x.toFixed(1)}" cy="${yy.toFixed(1)}" r="4" fill="#D85A30"/>`;
+  g.innerHTML=s;
+}
+/* 游标动一下，电路也跟着动一格：两边永远量的是同一时刻 */
+function drawCursor(){ drawCursorRaw(); paintCircuit(); }
+
+/* ================= 图例 ================= */
+function lineSw(col,dash){
+  return `<svg width="18" height="7"><line x1="0" y1="3.5" x2="18" y2="3.5" stroke="${col}" stroke-width="${dash?1.4:2}"${dash?' stroke-dasharray="5 4"':''}/></svg>`;
+}
+function renderLegend(){
+  const inp=ST.inp;
+  let h='<span>'+lineSw('#185FA5',false)+'<b>'+(inp==='imp'?'h(t)':'y(t)')+'</b> 输出</span>';
+  if(inp==='imp'){
+    h+='<span><svg width="18" height="13"><path d="M9 12V2M5 6L9 2L13 6" fill="none" stroke="#8A8880" stroke-width="1.3" stroke-linejoin="round"/></svg>δ(t)　面积 1，瞬间注入</span>';
+  }else if(inp==='step'){
+    h+='<span>'+lineSw('#3F8F5B',true)+'<b>r(t) = 1</b>　输入，也是稳态目标</span>';
+  }else{
+    h+='<span>'+lineSw('#A8A49A',true)+'<b>r(t) = '+(inp==='ramp'?'t':'t²/2')+'</b>　输入</span>';
+  }
+  $('legend').innerHTML=h;
+}
+
+/* ================= 指标渲染 ================= */
+function renderSpecs(S){
+  const list=specList(S);
+  $('specs').innerHTML=list.map(o=>
+    `<div class="sp ${o.cls}"><div class="k">${o.k}</div><div class="v">${o.v}</div><div class="s">${o.s}</div></div>`
+  ).join('');
+}
+
+/* ================= 关系提示 + 自检 ================= */
+function renderNote(S){
+  const inp=ST.inp;
+  let rel='';
+  if(inp==='imp'){
+    rel=ST.sys===1
+      ? '<b>h(t) = d/dt g(t)</b>　脉冲响应就是阶跃响应的斜率。一阶在 <code>t=0</code> 直接跳到 <code>1/T</code>，正对应阶跃响应的初始斜率 <code>1/T</code>。'
+      : '<b>h(t) = d/dt g(t)</b>　脉冲响应就是阶跃响应的斜率。二阶相对阶为 2，<code>h(0⁺)=0</code>，起跳的快慢看初始斜率 <code>ωₙ²</code>；之后振荡衰减，冲激面积仍是 1。';
+  }else if(inp==='step'){
+    rel='<b>g(t) = ∫₀ᵗ h(τ)dτ</b>　阶跃响应是脉冲响应的累积。它是这一族的"母函数"，另三条由它求导、积分得到。';
+  }else if(inp==='ramp'){
+    rel='<b>y(t) = ∫₀ᵗ g(τ)dτ</b>　再积一次。斜率最终追上输入，但永远差一个常数——这就是稳态误差。';
+  }else{
+    rel='<b>y(t) = ∫₀ᵗ∫₀ᵗ g</b>　积第三次。输出跟不上 <code>t²/2</code>，误差项随时间线性增长，稳态误差发散。';
+  }
+  const err=maxRelErr(S);
+  let chk='';
+  if(err!==null){
+    const bad=err>1e-4;
+    chk=`<span class="ok" style="${bad?'color:#A32D2D':''}">RK4 与闭式解：最大相对偏差 ${err.toExponential(1).replace('-','−')}${bad?'（偏大，检查参数）':' ✓'}</span>`;
+  }else{
+    chk=`<span class="ok" style="color:#8A8880">斜坡 / 加速度没有简洁闭式，这一档用同一套 RK4 直接积分</span>`;
+  }
+  $('plotNote').innerHTML=`${rel}<br>${chk}`;
+}
+
+/* ================= 右栏：解析式 ================= */
+function renderAna(){
+  const T=ST.T, z=ST.z, w=ST.w, inp=ST.inp, sys=ST.sys;
+  let tag='', html='', tail='';
+
+  if(sys===1){
+    tag='一阶 · 相对阶 1';
+    if(inp==='imp'){
+      html=`<div class="f">h(t) = <span class="c">(1/T)</span>·e<sup>−t/T</sup><br>`
+        +`&nbsp;&nbsp;&nbsp;&nbsp;= ${fmt(1/T)}·e<sup>−${fmt(1/T)}t</sup></div>`;
+      tail='<p>冲激只在 <code>t=0</code> 注入一份初始"位移" <code>1/T</code>，之后系统自由衰减，没有外力推动，所以只有一条指数衰减。</p>';
+    }else if(inp==='step'){
+      html=`<div class="f">g(t) = 1 − e<sup>−t/T</sup><br>`
+        +`&nbsp;&nbsp;&nbsp;&nbsp;= 1 − e<sup>−${fmt(1/T)}t</sup></div>`;
+      tail='<p>只有一个负实极点 <code>−1/T</code>，解里只能出现 <code>e<sup>−t/T</sup></code> 这一种项，所以<b>必然单调</b>：既不会超调，也不会振荡。</p>';
+    }else if(inp==='ramp'){
+      html=`<div class="f">y(t) = t − T + T·e<sup>−t/T</sup><br>`
+        +`&nbsp;&nbsp;&nbsp;&nbsp;= t − ${fmt(T)} + ${fmt(T)}·e<sup>−${fmt(1/T)}t</sup></div>`;
+      tail=`<p>把 <code>g(t)</code> 积一次就得到它。稳态时 <code>e<sup>−t/T</sup>→0</code>，输出变成 <code>t − T</code>：斜率与输入相同，<b>永远落后 T</b>。</p>`;
+    }else{
+      html=`<div class="f">y(t) = t²/2 − T·t + T²(1 − e<sup>−t/T</sup>)<br>`
+        +`&nbsp;&nbsp;&nbsp;&nbsp;= t²/2 − ${fmt(T)}t + ${fmt(T*T)}(1 − e<sup>−${fmt(1/T)}t</sup>)</div>`;
+      tail=`<p>再积一次。误差 <code>e = r − y = T·t − T²</code>，<b>随 t 一直变大</b>，没有稳态值——Ⅰ 型系统无法跟踪加速度输入。</p>`;
+    }
+  }else{
+    const under=underD();
+    if(inp==='imp'){
+      tag=under?'二阶 · 欠阻尼 · 相对阶 2':(Math.abs(z-1)<1e-9?'二阶 · 临界':'二阶 · 过阻尼');
+      if(under){
+        const d=wd();
+        html=`<div class="f">h(t) = ωₙ²/ω_d · e<sup>−ζωₙt</sup>·sin(ω_d t)<br>`
+          +`&nbsp;&nbsp;&nbsp;&nbsp;= ${fmt(w*w/d)}·e<sup>−${fmt(z*w)}t</sup>·sin(${fmt(d)}t)</div>`;
+      }else if(Math.abs(z-1)<1e-9){
+        html=`<div class="f">h(t) = ωₙ²·t·e<sup>−ωₙt</sup><br>&nbsp;&nbsp;&nbsp;&nbsp;= ${fmt(w*w)}t·e<sup>−${fmt(w)}t</sup></div>`;
+      }else{
+        const r=Math.sqrt(z*z-1), s1=-w*(z-r), s2=-w*(z+r);
+        html=`<div class="f">h(t) = ωₙ²/(s₁−s₂)·(e<sup>s₁t</sup> − e<sup>s₂t</sup>)<br>`
+          +`&nbsp;&nbsp;&nbsp;&nbsp;= ${fmt(w*w/(s1-s2))}·(e<sup>${fmt(s1)}t</sup> − e<sup>${fmt(s2)}t</sup>)</div>`;
+      }
+      tail='<p>注意 <code>h(0)=0</code>：二阶的相对阶是 2，冲激只注入速度、不注入位移，所以曲线<b>从零起、先冲高、再衰减</b>。峰值时刻由 <code>dh/dt=0</code> 定。</p>';
+    }else if(inp==='step'){
+      if(under){
+        tag='二阶 · 欠阻尼 0<ζ<1';
+        const d=wd();
+        html=`<div class="f">g(t) = 1 − e<sup>−ζωₙt</sup>[cos ω_d t + ζ/√(1−ζ²)·sin ω_d t]<br>`
+          +`&nbsp;&nbsp;&nbsp;&nbsp;= 1 − e<sup>−${fmt(z*w)}t</sup>[cos ${fmt(d)}t + ${fmt(z/Math.sqrt(1-z*z))}·sin ${fmt(d)}t]</div>`;
+        tail='<p>一个实部 <code>−ζωₙ</code>（决定衰减快慢）、一个虚部 <code>ω_d</code>（决定振荡周期）。超调是这对共轭极点必然的产物。</p>';
+      }else if(Math.abs(z-1)<1e-9){
+        tag='二阶 · 临界阻尼 ζ=1';
+        html=`<div class="f">g(t) = 1 − (1 + ωₙt)·e<sup>−ωₙt</sup><br>&nbsp;&nbsp;&nbsp;&nbsp;= 1 − (1 + ${fmt(w)}t)·e<sup>−${fmt(w)}t</sup></div>`;
+        tail='<p>重极点 <code>−ωₙ</code>。这是<b>不振荡前提下最快</b>的响应：再快就会超调，再慢就是过阻尼。</p>';
+      }else{
+        tag='二阶 · 过阻尼 ζ>1';
+        const r=Math.sqrt(z*z-1), s1=-w*(z-r), s2=-w*(z+r);
+        const C1=w*w/(s1*(s1-s2)), C2=w*w/(s2*(s2-s1));
+        html=`<div class="f">g(t) = 1 + C₁e<sup>s₁t</sup> + C₂e<sup>s₂t</sup><br>`
+          +`&nbsp;&nbsp;&nbsp;&nbsp;s₁,₂ = ${fmt(s1)}, ${fmt(s2)}<br>`
+          +`&nbsp;&nbsp;&nbsp;&nbsp;C₁,₂ = ${fmt(C1)}, ${fmt(C2)}</div>`;
+        tail=`<p>两个实极点，一快一慢。靠原点的那个（<code>${fmt(s1)}</code>）衰减慢，<b>主导</b>整条曲线的尾巴——所以过阻尼虽然不超调，但很拖。</p>`;
+      }
+    }else if(inp==='ramp'){
+      tag='二阶 · 斜坡输入';
+      html=`<div class="f">y(t) = t − 2ζ/ωₙ + 瞬态（同族衰减项）<br>`
+        +`&nbsp;&nbsp;&nbsp;&nbsp;= t − ${fmt(2*z/w)} + 衰减振荡</div>`;
+      tail=`<p>稳态时瞬态衰减完，输出变成 <code>t − 2ζ/ωₙ</code>：与输入同斜率，<b>落后一个常数</b>。</p>
+        <p>这个常数就是稳态误差 <code>e_ss = 2ζ/ωₙ = 1/K_v</code>。<b>ζ 越大、ωₙ 越小，跟得越差</b>——和"阻尼大更稳"是两件事。</p>`;
+    }else{
+      tag='二阶 · 加速度输入';
+      html=`<div class="f">y(t) = t²/2 − (2ζ/ωₙ)·t + 常数 + 瞬态<br>`
+        +`&nbsp;&nbsp;&nbsp;&nbsp;e(t) ≈ ${fmt(2*z/w)}·t − 常数</div>`;
+      tail=`<p><code>t²/2</code> 这一项被完全复现（Φ(0)=1），但 <code>t</code> 项留下残余，误差<b>随时间线性增长</b>，稳态误差为无穷。</p>`;
+    }
+  }
+  $('anaTag').textContent=tag;
+  $('anaInfo').innerHTML=html+tail;
+}
+
+/* ================= 极点图 ================= */
+function drawPole(){
+  const svg=$('svgPole');
+  const W=260;
+  const isTwo=ST.sys===2;
+  const H=isTwo?196:92;
+  svg.setAttribute('viewBox','0 0 '+W+' '+H);
+
+  let pts=[], kind='', norm=isTwo;
+  if(!isTwo){
+    pts=[[-1/ST.T,0]]; kind='one';
+  }else{
+    const z=ST.z;
+    if(z<1-1e-9){ const d=Math.sqrt(1-z*z); pts=[[-z,d],[-z,-d]]; kind='cplx'; }
+    else if(z<=1+1e-9){ pts=[[-1,0]]; kind='dbl'; }
+    else { const r=Math.sqrt(z*z-1); pts=[[-z+r,0],[-z-r,0]]; kind='real'; }
+  }
+
+  /* 数据范围：右边留一列放 σ 轴名、顶上留一行放 jω 轴名，两者都落在画框外，
+     不会压到单位圆（0 与 1 之间的那道弧最容易被文字骑上去） */
+  const MT=16, MG=6, labW=norm?22:27;
+  let xmin=-6.35, xmax=1.04, yAbs=norm?0:0.62;
+  if(norm){
+    xmin=Math.min(-1.18, Math.min(...pts.map(p=>p[0])))-0.34;
+    xmax=1.04;
+    yAbs=Math.max(1.18, Math.max(...pts.map(p=>Math.abs(p[1])))+0.10);
+  }
+  const AW=W-2*MG-labW, AH=H-MT-MG;
+  const s=Math.min(AW/(xmax-xmin),AH/(2*yAbs));
+  const cw=(xmax-xmin)*s, chh=2*yAbs*s;
+  const ox=MG+(AW-cw)/2, oy=MT+(AH-chh)/2;
+  const px=v=>ox+(v-xmin)*s;
+  const py=v=>oy+(yAbs-v)*s;
+
+  let out='';
+  /* 左半平面淡底 */
+  out+=`<rect x="${ox.toFixed(1)}" y="${oy.toFixed(1)}" width="${(px(0)-ox).toFixed(1)}" height="${chh.toFixed(1)}" fill="#E6F1FB" opacity="0.5"/>`;
+
+  /* 单位圆（二阶，按 ωₙ 归一化后极点必落在圆上） */
+  if(norm){
+    out+=`<circle cx="${px(0).toFixed(1)}" cy="${py(0).toFixed(1)}" r="${s.toFixed(1)}" fill="none" stroke="#9EC3E4" stroke-width="1" stroke-dasharray="4 4" opacity="0.9"/>`;
+  }
+
+  /* 轴 */
+  out+=`<line x1="${ox.toFixed(1)}" y1="${py(0).toFixed(1)}" x2="${(ox+cw).toFixed(1)}" y2="${py(0).toFixed(1)}" stroke="#B4B2A9" stroke-width="1"/>`;
+  out+=`<line x1="${px(0).toFixed(1)}" y1="${oy.toFixed(1)}" x2="${px(0).toFixed(1)}" y2="${(oy+chh).toFixed(1)}" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="3 3"/>`;
+
+  /* 极点 */
+  const cross=(x,y)=>`<path d="M${(x-4).toFixed(1)} ${(y-4).toFixed(1)}L${(x+4).toFixed(1)} ${(y+4).toFixed(1)}M${(x+4).toFixed(1)} ${(y-4).toFixed(1)}L${(x-4).toFixed(1)} ${(y+4).toFixed(1)}" stroke="#185FA5" stroke-width="2.2" stroke-linecap="round"/>`;
+  pts.forEach(p=>{ out+=cross(px(p[0]),py(p[1])); });
+
+  /* 轴名落在留白里，与图元完全脱开 */
+  out+=`<text x="${(W-MG).toFixed(1)}" y="${(py(0)-4).toFixed(1)}" font-size="9" fill="#8A8880" text-anchor="end">${norm?'σ/ωₙ':'σ (1/s)'}</text>`;
+  if(norm) out+=`<text x="${(px(0)+5).toFixed(1)}" y="${(oy-5).toFixed(1)}" font-size="9" fill="#8A8880">jω/ωₙ</text>`;
+
+  /* 坐标读数：能压在极点正下方就居中；靠近虚轴的读数会被虚轴骑过，改成右对齐挂到左侧。
+     二阶图上单位圆那道弧会从读数旁边擦过，给读数加一圈白描边（paint-order:stroke），
+     虚线本就有断口，看上去只是断口变长，字始终清楚。一阶没有圆，不加，免得在淡底上多出白边。 */
+  const HALO=norm?'stroke="#fff" stroke-width="2.6" stroke-linejoin="round" paint-order="stroke"':'';
+  const wOf=str=>{ let w=0; for(const ch of str) w+=(ch.codePointAt(0)>=0x2E80?9.7:5.25); return w; };
+  const lab=(x,dx,str,fs)=>{
+    const w=wOf(str);
+    let lx=x, anc='middle';
+    if(x+w/2>px(0)-4){
+      anc='end'; lx=Math.min(x-6, px(0)-4);
+      if(lx-w<ox+1){ anc='start'; lx=ox+1; }
+    }
+    return `<text x="${lx.toFixed(1)}" y="${(py(0)+dx).toFixed(1)}" font-size="${fs}" fill="#185FA5" text-anchor="${anc}" font-family="var(--mono)" ${HALO}>${str}</text>`;
+  };
+
+  if(kind==='one'){
+    out+=lab(px(pts[0][0]),16,fmt(pts[0][0]),9.5);
+  }else if(kind==='dbl'){
+    out+=lab(px(-1),30,'−1（二重）',9.5);
+  }else if(kind==='cplx'){
+    out+=`<text x="${(px(pts[0][0])-9).toFixed(1)}" y="${(py(pts[0][1])-8).toFixed(1)}" font-size="9.5" fill="#185FA5" text-anchor="end" font-family="var(--mono)" ${HALO}>${fmt(pts[0][0])}${pts[0][1]>=0?'+':'−'}j${fmt(Math.abs(pts[0][1]))}</text>`;
+    /* 从原点到极点的半径：它与负实轴的夹角 β 满足 cos β = ζ */
+    out+=`<line x1="${px(0).toFixed(1)}" y1="${py(0).toFixed(1)}" x2="${px(pts[0][0]).toFixed(1)}" y2="${py(pts[0][1]).toFixed(1)}" stroke="#C9973F" stroke-width="1.1" stroke-dasharray="3 3" opacity="0.85"/>`;
+    out+=`<text x="${(px(pts[0][0]/2)-15).toFixed(1)}" y="${(py(pts[0][1]/2)+3).toFixed(1)}" font-size="9" fill="#A87B26" text-anchor="end">β</text>`;
+  }else{
+    const a=pts[0], b=pts[1];                 /* a 靠原点、b 更靠左 */
+    const near=Math.abs(px(a[0])-px(b[0]))<62; /* 两极点在屏幕上挨得近 → 读数错行 */
+    out+=lab(px(b[0]),16,fmt(b[0],2),9.5);
+    out+=lab(px(a[0]),near?29:16,fmt(a[0],2),9.5);
+  }
+  svg.innerHTML=out;
+
+  /* 说明 */
+  let note='';
+  if(kind==='one'){
+    note=`只有一个实极点 <b>${fmt(-1/ST.T)}</b>，位置随 T 移动（T 越大越靠近原点、越慢）。实极点只产生指数项 → 四条响应<b>全部单调</b>，不可能振荡。`;
+  }else if(kind==='cplx'){
+    note=`按 ωₙ 归一化后，这对抗共轭极点<b>正好落在单位圆上</b>，与负实轴的夹角 β 满足 <code>cos β = ζ</code>。ζ 越小，极点越靠上、越贴近虚轴 → 振荡越久才衰减。`;
+  }else if(kind==='dbl'){
+    note=`重极点 <b>−1</b>（即 −ωₙ），落在单位圆与负实轴的交点。这是<b>不超调前提下最快</b>的分界：ζ 再小就振荡，ζ 再大就拖着一条慢尾巴。`;
+  }else{
+    note=`过阻尼的两个极点互为<b>倒数</b>：${fmt(pts[0][0],2)}（圆内）与 ${fmt(pts[1][0],2)}（圆外）。靠原点的那个衰减慢，<b>主导</b>整条响应，所以不超调但很拖。`;
+  }
+  $('poleNote').innerHTML=note;
+}
+
+/* ================= 实物对照：RC 一阶 / RLC 二阶 =================
+   归一化取值 C = 1 F，好让元件值直接等于页面上的参数：
+   一阶 u_i --R-- C--地：τ = RC = R，正好是横轴上的 T；
+   二阶 u_i --R--L-- C--地：ωₙ = 1/√(LC) ⇒ L = 1/ωₙ²，ζ = (R/2)√(C/L) ⇒ R = 2ζ/ωₙ，
+        所以拖 ωₙ 是在改 L（顺带 R），ζ 不变；拖 ζ 就是在拖 R。
+   u_C 直接取曲线上那一点，i 取 du_C/dt（C=1 ⇒ i = C·u̇ = u̇），两者不可能对不上。 */
+const CX1=56, CX2=300, CYT=46, CYB=116, CY0=81;
+const SRCICON={
+  step:'M-9 5H-2V-5H9',
+  imp:'M-9 5H-2L-0.5 -7L1 5H9',
+  ramp:'M-9 5L9 -5',
+  acc:'M-9 4Q-1 4 9 -6'
+};
+function cirP(){
+  if(ST.sys===1){ const R=ST.T; return {two:false,R:R,C:1,tau:R}; }
+  const w=ST.w, z=ST.z;
+  return {two:true,R:2*z/w,L:1/(w*w),C:1,w:w,z:z};
+}
+function drawCircuit(){
+  const svg=$('svgCir'); if(!svg) return;
+  const p=cirP();
+  const seg=(x1,y1,x2,y2)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#B4B2A9" stroke-width="1.3" stroke-linecap="round"/>`;
+  let s='';
+  /* 引线：左竖（源）、右竖（电容）、底边 */
+  s+=seg(CX1,CYT,CX1,CY0-19)+seg(CX1,CY0+19,CX1,CYB);
+  s+=seg(CX2,CYT,CX2,75)+seg(CX2,87,CX2,CYB);
+  s+=seg(CX2,CYB,CX1,CYB);
+  /* 顶边：按元件断开 */
+  if(!p.two){
+    s+=seg(CX1,CYT,132,CYT)+seg(178,CYT,CX2,CYT);
+    s+=`<rect x="132" y="${CYT-9}" width="46" height="18" rx="1.5" fill="#fff" stroke="#185FA5" stroke-width="1.4"/>`;
+    s+=`<text x="155" y="${CYT-16}" font-size="10" fill="#5F5E5A" text-anchor="middle">R</text>`;
+  }else{
+    s+=seg(CX1,CYT,108,CYT)+seg(148,CYT,186,CYT)+seg(244,CYT,CX2,CYT);
+    s+=`<rect x="108" y="${CYT-9}" width="40" height="18" rx="1.5" fill="#fff" stroke="#185FA5" stroke-width="1.4"/>`;
+    s+=`<text x="128" y="${CYT-16}" font-size="10" fill="#5F5E5A" text-anchor="middle">R</text>`;
+    let d='';
+    for(let k=0;k<4;k++){ const x0=186+k*14.5; d+=`M${x0} ${CYT}A7.25 7.25 0 0 1 ${x0+14.5} ${CYT}`; }
+    s+=`<path d="${d}" fill="none" stroke="#185FA5" stroke-width="1.4"/>`;
+    s+=`<text x="215" y="${CYT-16}" font-size="10" fill="#5F5E5A" text-anchor="middle">L</text>`;
+  }
+  /* 激励源：符号跟着输入换 */
+  s+=`<circle cx="${CX1}" cy="${CY0}" r="19" fill="#fff" stroke="#8A8880" stroke-width="1.3"/>`;
+  s+=`<path d="${SRCICON[ST.inp]}" fill="none" stroke="#185FA5" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" transform="translate(${CX1} ${CY0})"/>`;
+  s+=`<text x="${CX1-24}" y="${CY0+4}" font-size="10" fill="#5F5E5A" text-anchor="end">u<tspan dy="2.5" font-size="7.5">i</tspan></text>`;
+  /* 地 */
+  s+=seg(CX1,CYB,CX1,CYB+9);
+  s+=`<line x1="${CX1-9}" y1="${CYB+9}" x2="${CX1+9}" y2="${CYB+9}" stroke="#8A8880" stroke-width="1.3"/>`;
+  s+=`<line x1="${CX1-5.5}" y1="${CYB+13}" x2="${CX1+5.5}" y2="${CYB+13}" stroke="#8A8880" stroke-width="1.3"/>`;
+  s+=`<line x1="${CX1-2}" y1="${CYB+17}" x2="${CX1+2}" y2="${CYB+17}" stroke="#8A8880" stroke-width="1.3"/>`;
+  /* 电容：极板、电荷、极性符号 */
+  s+=`<rect id="cirQ" x="${CX2-14}" y="75" width="28" height="12" fill="#185FA5" opacity="0"/>`;
+  s+=`<line id="cirPlT" x1="${CX2-17}" y1="75" x2="${CX2+17}" y2="75" stroke="#185FA5" stroke-width="2.2" stroke-linecap="round"/>`;
+  s+=`<line id="cirPlB" x1="${CX2-17}" y1="87" x2="${CX2+17}" y2="87" stroke="#185FA5" stroke-width="2.2" stroke-linecap="round"/>`;
+  s+=`<text x="${CX2-23}" y="85" font-size="10" fill="#5F5E5A" text-anchor="end">C</text>`;
+  s+=`<text id="cirSgT" x="${CX2+23}" y="79" font-size="11" fill="#B04524" opacity="0">+</text>`;
+  s+=`<text id="cirSgB" x="${CX2+23}" y="92" font-size="11" fill="#185FA5" opacity="0">−</text>`;
+  /* 电流箭头（底边回路上方） */
+  s+=`<line id="cirIa" x1="176" y1="${CYB-10}" x2="250" y2="${CYB-10}" stroke="#D85A30" stroke-width="2" stroke-linecap="round" opacity="0"/>`;
+  s+=`<path id="cirIh" d="" fill="#D85A30" opacity="0"/>`;
+  s+=`<text x="258" y="${CYB-6}" font-size="10" fill="#A87B26">i</text>`;
+  /* 流动的电荷 */
+  s+=`<g id="cirDots">`+Array.from({length:8},()=>`<circle r="2" fill="#185FA5" opacity=".5"/>`).join('')+`</g>`;
+  svg.innerHTML=s;
+
+  const cells = p.two
+    ? [['u<sub>i</sub>','cirUI'],['u<sub>C</sub>','cirUC'],['i','cirI'],['ω<sub>n</sub>','cirW'],['R','cirR'],['L','cirL']]
+    : [['u<sub>i</sub>','cirUI'],['u<sub>C</sub>','cirUC'],['i','cirI'],['τ = RC','cirTau'],['R','cirR'],['C','cirC']];
+  $('cirRead').innerHTML=cells.map(c=>`<div><span>${c[0]}</span><b id="${c[1]}">—</b></div>`).join('');
+
+  const GO='<b class="go">怎么动起来</b>：在主图上划过（或点顶上的「走一遍」），极板电荷与电流就跟着那个时刻走。<br>';
+  $('cirNote').innerHTML = GO + (p.two
+    ? `归一化取值 <code>C = 1 F</code>、<code>L = 1/ωₙ²</code>、<code>R = 2ζ/ωₙ</code>：拖 ωₙ 是在改 <b>L</b>（顺带 R），ζ 不变；拖 ζ 就是在拖 <b>R</b>。L 与 C 之间来回倒能量、R 每周期吃掉一部分——振铃之所以会衰减，就是这一条。`
+    : `归一化取值 <code>C = 1 F</code>，于是 <code>τ = RC</code> 就是横轴上的 <b>T</b>：拖 T 就是在拖 R。电流 <code>i = C·du_C/dt</code> 正是 <b>u_C 的斜率</b>——所以 u_C 画的是阶跃响应时，i 画出来的就是脉冲响应。`);
+}
+function paintCircuit(){
+  const svg=$('svgCir'); if(!svg||!ST.S||!$('cirDots')) return;
+  const S=ST.S, n=S.n, tEnd=S.tEnd, p=cirP();
+  let t=(ST.cur===null||!isFinite(ST.cur))?tEnd:ST.cur;
+  t=Math.max(0,Math.min(tEnd,t));
+  const i=Math.max(0,Math.min(n,Math.round(t/tEnd*n)));
+  const uc=S.Y[i], rv=S.R[i];
+  const k0=Math.max(0,i-1), k1=Math.min(n,i+1);
+  const dt=Math.max(1e-12,(k1-k0)*tEnd/n);
+  const cur=(S.Y[k1]-S.Y[k0])/dt;              /* C=1 F ⇒ i = C·u̇ = u̇ */
+  const st=ST.cirStat||{umax:1,imax:1};
+  const qu=Math.min(1,Math.abs(uc)/st.umax), qi=Math.min(1,Math.abs(cur)/st.imax);
+
+  const setT=(id,v)=>{ const e=$(id); if(e) e.textContent=v; };
+  const fz=v=>{ const s=fmt(v); return s==='−0'?'0':s; };   /* 别让 −0.0002 显示成 “−0” */
+  setT('cirUI', isFinite(rv)?fmt(rv)+' V':'δ(t)');
+  setT('cirUC', fz(uc)+' V');
+  setT('cirI', fz(cur)+' A');
+  if(p.two){ setT('cirW',fmt(p.w)+' rad/s'); setT('cirR',fmt(p.R,2)+' Ω'); setT('cirL',fmt(p.L,2)+' H'); }
+  else{ setT('cirTau',fmt(p.tau,2)+' s'); setT('cirR',fmt(p.R,2)+' Ω'); setT('cirC','1 F'); }
+  setT('cirSub',(p.two?'RLC 二阶':'RC 一阶')+' · t = '+fmt(t)+' s');
+
+  /* 电荷：极板间的“场”强弱 + 极性符号 */
+  $('cirQ').setAttribute('opacity',(qu*0.34).toFixed(2));
+  $('cirPlT').setAttribute('opacity',(0.35+0.65*qu).toFixed(2));
+  $('cirPlB').setAttribute('opacity',(0.35+0.65*qu).toFixed(2));
+  const sgT=$('cirSgT'), sgB=$('cirSgB');
+  sgT.textContent = uc>=0?'+':'−'; sgT.setAttribute('fill', uc>=0?'#B04524':'#185FA5');
+  sgB.textContent = uc>=0?'−':'+'; sgB.setAttribute('fill', uc>=0?'#185FA5':'#B04524');
+  sgT.setAttribute('opacity',(qu<0.02?0:0.9).toFixed(2));
+  sgB.setAttribute('opacity',(qu<0.02?0:0.9).toFixed(2));
+
+  /* 电荷沿回路流动：位移量 = 已流过的电荷 = C·u_C（按量程归一，跟主图自适应一致） */
+  const Wd=CX2-CX1, Hd=CYB-CYT, P=2*(Wd+Hd);
+  const phase=(uc/st.umax)*200;
+  const dots=svg.querySelectorAll('#cirDots circle');
+  for(let k=0;k<dots.length;k++){
+    let sp=phase+k*P/dots.length; sp=((sp%P)+P)%P;
+    let x,y;
+    if(sp<Wd){ x=CX1+sp; y=CYT; }
+    else if(sp<Wd+Hd){ x=CX2; y=CYT+(sp-Wd); }
+    else if(sp<2*Wd+Hd){ x=CX2-(sp-Wd-Hd); y=CYB; }
+    else { x=CX1; y=CYB-(sp-2*Wd-Hd); }
+    dots[k].setAttribute('cx',x.toFixed(1));
+    dots[k].setAttribute('cy',y.toFixed(1));
+  }
+
+  /* 电流箭头：粗细 = 大小，方向 = 正负 */
+  const ia=$('cirIa'), ih=$('cirIh'), y0=CYB-10;
+  ia.setAttribute('stroke-width',(1.1+3.4*qi).toFixed(2));
+  ia.setAttribute('opacity',(0.12+0.88*qi).toFixed(2));
+  ih.setAttribute('opacity',(0.12+0.88*qi).toFixed(2));
+  ih.setAttribute('d', cur>=0
+    ? `M176 ${y0}L184 ${y0-4}L184 ${y0+4}Z`
+    : `M250 ${y0}L242 ${y0-4}L242 ${y0+4}Z`);
+}
+
+/* ================= 八格矩阵 ================= */
+const MINI=[['imp','脉冲 δ(t)'],['step','阶跃 1(t)'],['ramp','斜坡 t'],['acc','加速度 t²/2']];
+function miniD(sys,inp){
+  const tEnd=winLen(sys);
+  const S=sim(sys,inp,ST.T,ST.z,ST.w,tEnd,180);
+  const n=S.n, Y=S.Y;
+  let lo=0,hi=0;
+  for(let i=0;i<=n;i++){ const v=Y[i]; if(isFinite(v)){ if(v<lo)lo=v; if(v>hi)hi=v; } }
+  const hasR=isFinite(S.R[0]);
+  if(hasR){ for(let i=0;i<=n;i++){ const v=S.R[i]; if(isFinite(v)){ if(v<lo)lo=v; if(v>hi)hi=v; } } }
+  if(hi-lo<1e-9) hi=lo+1;
+  const pad=(hi-lo)*0.14; hi+=pad; lo-=pad;
+  const L=7,R=143,TT=8,B=72;
+  const sx=t=>L+(t/tEnd)*(R-L);
+  const vy=v=>B-(v-lo)/(hi-lo)*(B-TT);
+  let d='';
+  if(inp==='imp' && sys===1){
+    d=`M${sx(0).toFixed(1)} ${vy(0).toFixed(1)}L${sx(0).toFixed(1)} ${vy(Y[0]).toFixed(1)}`;
+  }
+  for(let i=0;i<=n;i++){
+    const v=Y[i]; if(!isFinite(v)) continue;
+    d+=(d?'L':'M')+sx(i*tEnd/n).toFixed(1)+' '+vy(v).toFixed(1);
+  }
+  return {d:d, zero:vy(0).toFixed(1)};
+}
+function buildMatrix(){
+  const g=$('mGrid');
+  let html='<div class="mlab"></div>';
+  MINI.forEach(m=>{ html+=`<div class="mhd">${m[1]}</div>`; });
+  [['一阶',1],['二阶',2]].forEach(row=>{
+    html+=`<div class="mlab">${row[0]}</div>`;
+    MINI.forEach(m=>{
+      html+=`<div class="mcell" data-sys="${row[1]}" data-in="${m[0]}">`
+        +`<svg viewBox="0 0 150 82"><path class="axis" d="M7 72H143M7 8V72" fill="none" stroke="#CFCCC2" stroke-width="0.8"/>`
+        +`<path class="mc" fill="none" stroke="#185FA5" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg></div>`;
+    });
+  });
+  g.innerHTML=html;
+}
+function renderMatrix(){
+  document.querySelectorAll('.mcell').forEach(cell=>{
+    const sys=+cell.dataset.sys, inp=cell.dataset.in;
+    const p=cell.querySelector('.mc');
+    const o=miniD(sys,inp);
+    p.setAttribute('d',o.d);
+    cell.classList.toggle('on', sys===ST.sys && inp===ST.inp);
+  });
+}
+
+/* ================= 表头 ================= */
+function renderHeader(){
+  if(ST.sys===1){
+    $('tfSlot').innerHTML=`Φ(s) = <b>1 / (Ts + 1)</b>　T = ${fmt(ST.T)} s`;
+  }else{
+    $('tfSlot').innerHTML=`Φ(s) = <b>ωₙ² / (s² + 2ζωₙs + ωₙ²)</b>　ζ = ${fmt(ST.z,2)}，ωₙ = ${fmt(ST.w)}`;
+  }
+  $('plotSub').textContent=(ST.sys===1?'一阶':'二阶')+' · '+({imp:'单位脉冲 δ(t)',step:'单位阶跃 1(t)',ramp:'单位斜坡 t',acc:'单位加速度 t²/2'})[ST.inp];
+}
+
+/* ================= 刷新 ================= */
+function refresh(anim){
+  const tEnd=winLen(ST.sys);
+  const S=sim(ST.sys,ST.inp,ST.T,ST.z,ST.w,tEnd,N);
+  ST.S=S;
+  if(ST.tip) ST.tip.winTo=S.tEnd;
+  /* 电路的显示量程，跟主图一样按数据自适应 */
+  let umax=0, imax=0;
+  for(let i=0;i<=S.n;i++){ const v=Math.abs(S.Y[i]); if(isFinite(v)&&v>umax) umax=v; }
+  const dtn=S.tEnd/S.n;
+  for(let i=1;i<S.n;i++){
+    const d=Math.abs((S.Y[i+1]-S.Y[i-1])/(2*dtn));
+    if(isFinite(d)&&d>imax) imax=d;
+  }
+  ST.cirStat={umax:umax||1, imax:imax||1};
+  drawCircuit();          /* 先重建原理图（拓扑/符号可能变了），再画曲线 */
+  drawMain(S,anim);
+  paintCircuit();
+  renderLegend();
+  renderSpecs(S);
+  renderNote(S);
+  renderAna();
+  drawPole();
+  renderMatrix();
+  renderHeader();
+  ST.shown.T=ST.T; ST.shown.w=ST.w;   /* 下一次拖动的锚点 */
+}
+
+/* ================= 交互 ================= */
+function syncUI(){
+  document.querySelectorAll('#segSys button').forEach(b=>b.classList.toggle('on',+b.dataset.sys===ST.sys));
+  document.querySelectorAll('#segIn button').forEach(b=>b.classList.toggle('on',b.dataset.in===ST.inp));
+  $('pgT').classList.toggle('off',ST.sys!==1);
+  $('pgZ').classList.toggle('off',ST.sys!==2);
+  $('pgW').classList.toggle('off',ST.sys!==2);
+  $('rT').value=ST.T; $('rZ').value=ST.z; $('rW').value=ST.w;
+  $('vT').textContent=fx(ST.T); $('vZ').textContent=fx(ST.z); $('vW').textContent=fx(ST.w);
+}
+function setSys(v){ ST.sys=v; ST.cur=null; syncUI(); refresh(true); }
+function setInp(v){ ST.inp=v; ST.cur=null; syncUI(); refresh(true); }
+
+/* 滑块变化：用 rAF 合并，避免同一帧重算多次 */
+let pend=false;
+function schedule(){
+  if(pend) return;
+  pend=true;
+  requestAnimationFrame(()=>{ pend=false; refresh(false); });
+}
+
+$('rT').addEventListener('input',e=>{ ST.T=+e.target.value; $('vT').textContent=fx(ST.T); bumpTip('T'); });
+$('rZ').addEventListener('input',e=>{ ST.z=+e.target.value; $('vZ').textContent=fx(ST.z); schedule(); });
+$('rW').addEventListener('input',e=>{ ST.w=+e.target.value; $('vW').textContent=fx(ST.w); bumpTip('w'); });
+
+document.querySelectorAll('#segSys button').forEach(b=>b.addEventListener('click',()=>setSys(+b.dataset.sys)));
+document.querySelectorAll('#segIn button').forEach(b=>b.addEventListener('click',()=>setInp(b.dataset.in)));
+
+$('mGrid').addEventListener('click',e=>{
+  const cell=e.target.closest('.mcell'); if(!cell) return;
+  ST.sys=+cell.dataset.sys; ST.inp=cell.dataset.in;
+  ST.cur=null; syncUI(); refresh(true);
+});
+
+/* 主图游标 */
+const SVG=$('svgMain');
+function seek(e){
+  const m=ST.map; if(!m) return;
+  const r=SVG.getBoundingClientRect();
+  const vx=(e.clientX-r.left)/r.width*680;
+  ST.cur=clamp((vx-m.L)/(m.R-m.L)*m.tEnd,0,m.tEnd);
+  drawCursor();
+}
+let drag=false;
+SVG.addEventListener('pointerdown',e=>{ drag=true; if(SVG.setPointerCapture) SVG.setPointerCapture(e.pointerId); seek(e); });
+SVG.addEventListener('pointermove',e=>{ if(drag) seek(e); else if(e.pointerType==='mouse') seek(e); });
+SVG.addEventListener('pointerup',()=>{ drag=false; });
+SVG.addEventListener('pointerleave',()=>{ if(!drag && !ST.playing){ ST.cur=null; drawCursor(); } });
+
+/* 走一遍 */
+let raf=null, t0=0;
+const DUR=2.6;
+function loop(now){
+  if(!ST.playing) return;
+  const el=(now-t0)/1000;
+  const ph=(el%DUR)/DUR;
+  ST.cur=ph*ST.S.tEnd;
+  drawCursor();
+  raf=requestAnimationFrame(loop);
+}
+$('btnPlay').addEventListener('click',()=>{
+  ST.playing=!ST.playing;
+  const b=$('btnPlay');
+  b.classList.toggle('on',ST.playing);
+  b.textContent=ST.playing?'⏸ 停':'▶ 走一遍';
+  if(ST.playing){ t0=performance.now(); raf=requestAnimationFrame(loop); }
+  else if(raf){ cancelAnimationFrame(raf); raf=null; }
+});
+
+/* ================= 启动 ================= */
+buildMatrix();
+syncUI();
+refresh(true);
+
+/* 诊断接口 */
+window.__TS__={
+  set:(sys,inp,T,z,w)=>{ ST.sys=sys; ST.inp=inp; if(T!==undefined)ST.T=T; if(z!==undefined)ST.z=z; if(w!==undefined)ST.w=w; syncUI(); refresh(false); },
+  state:()=>({sys:ST.sys,inp:ST.inp,T:ST.T,z:ST.z,w:ST.w,tEnd:winLen(ST.sys),
+    Y:ST.S?Array.from(ST.S.Y):null,n:ST.S?ST.S.n:0}),
+  specs:()=>specList(ST.S),
+  err:()=>maxRelErr(ST.S),
+  ana:(sys,inp,t,T,z,w)=>anaAt(sys,inp,t,T,z,w)
+};
+})();
+</script>
+</body>
+</html>
