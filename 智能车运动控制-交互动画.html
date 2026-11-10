@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>全国大学生智能汽车竞赛 · 智能车运动控制 | 二自由度运动学与双环 PID</title>
+<style>
+:root{
+  --ink:#2C2C2A; --ink2:#5F5E5A; --ink3:#8A8880;
+  --panel:#F1EFE8; --panel2:#FAF9F5; --line:rgba(0,0,0,.12);
+  --blue:#185FA5; --blue-l:#E6F1FB; --orange:#D85A30; --orange-l:#FBEEE8;
+  --green:#3F8F5B; --green-l:#E8F3EC; --red:#A32D2D; --purple:#6B4FA8;
+  --gold:#C9973F; --grid:#E4E2DB; --magenta:#BE1E8A;
+  --mono:ui-monospace,Consolas,"Courier New",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:22px 24px 40px;background:#fff;color:var(--ink);font-family:var(--sans)}
+.wrap{max-width:1232px;margin:0 auto;font-size:13px}
+h1{font-size:16.5px;font-weight:600;margin:0 0 7px;letter-spacing:.1px}
+.lead{font-size:13px;line-height:1.7;color:var(--ink2);margin:0 0 15px;max-width:1080px}
+.lead b{color:var(--ink);font-weight:600}
+.lead code,.note code,.stage-note code,.theory code,.cap code,.tele code{font-family:var(--mono);font-size:11.5px;background:var(--panel);padding:1px 5px;border-radius:4px;color:var(--blue);overflow-wrap:anywhere}
+
+.bar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:var(--panel);border-radius:10px;padding:9px 12px;margin-bottom:12px}
+.seg{display:inline-flex;background:#fff;border:.5px solid var(--line);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:transparent;font:inherit;font-size:12px;padding:6px 10px;cursor:pointer;color:var(--ink2);white-space:nowrap}
+.seg button+button{border-left:.5px solid var(--line)}
+.seg button.on{background:var(--blue);color:#fff}
+.sp{flex:1}
+.btn{font:inherit;font-size:12px;padding:6px 11px;border:.5px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;color:var(--ink);white-space:nowrap}
+.btn:hover{background:var(--panel2)}
+.btn.on{background:var(--orange);border-color:var(--orange);color:#fff}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.blue.on{background:var(--blue);border-color:var(--blue)}
+
+.card{background:var(--panel2);border:.5px solid var(--line);border-radius:12px;padding:9px 10px 6px;min-width:0}
+.chd{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 2px 5px;flex-wrap:wrap}
+.chd h2{font-size:11.5px;font-weight:600;margin:0;color:var(--ink);letter-spacing:.15px}
+.chd .sub{font-size:10.5px;color:var(--ink3);font-family:var(--mono);line-height:1.5}
+svg{width:100%;height:auto;display:block;overflow:visible}
+svg text{font-family:var(--sans)}
+.kl{font-size:10.5px;fill:var(--ink3)}
+.lb{font-size:12px;fill:var(--ink2)}
+.tt{font-size:12px;font-weight:600;fill:var(--ink)}
+.bf{font-family:var(--mono);font-size:10.5px;fill:var(--ink2)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* 建模推导 */
+.stage-card{background:var(--panel2);border:.5px solid var(--line);border-radius:12px;padding:10px 11px 8px;margin-bottom:12px}
+.stage-tabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px}
+.stage-tabs button{font:inherit;font-size:11px;padding:5px 9px;border:.5px solid var(--line);background:#fff;border-radius:7px;cursor:pointer;color:var(--ink2)}
+.stage-tabs button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.stage-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(270px,1fr);gap:14px;align-items:start}
+.stage-scroll{overflow-x:auto;background:#fff;border:.5px solid var(--line);border-radius:9px}
+#svgStage{width:100%;min-width:640px}
+.stage-note{background:#fff;border:.5px solid var(--line);border-radius:9px;padding:10px 12px;font-size:11.5px;line-height:1.72;color:var(--ink2)}
+.stage-note h3{font-size:12px;color:var(--ink);margin:0 0 6px;font-weight:600}
+.stage-note p{margin:0 0 6px}
+.stage-note p:last-child{margin-bottom:0}
+.stage-note b{color:var(--ink)}
+.stage-note .live{margin-top:8px;padding-top:7px;border-top:.5px dashed var(--line);font-family:var(--mono);font-size:10.5px;color:var(--ink3);line-height:1.6}
+
+/* 参数 */
+.designbar{background:var(--panel);border-radius:10px;padding:10px 12px;margin-bottom:12px}
+.design-step{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:9px;font-size:11.5px;color:var(--ink2)}
+.param-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 16px}
+.param{display:flex;flex-direction:column;gap:4px;min-width:0}
+.phead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:11.5px;color:var(--ink2)}
+.phead span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pval{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:3px;background:#D8D5CC;border-radius:2px;outline:0;margin:7px 0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--blue);border:2px solid #fff;box-shadow:0 0 0 .5px var(--line);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--blue);border:2px solid #fff;cursor:pointer}
+.param.v input[type=range]::-webkit-slider-thumb{background:var(--orange)}
+.param.v input[type=range]::-moz-range-thumb{background:var(--orange)}
+.pgroup{grid-column:1/-1;display:flex;align-items:center;gap:7px;font-size:10.5px;color:var(--ink3);margin-top:3px;border-top:.5px dashed var(--line);padding-top:7px}
+.pgroup:first-child{border-top:0;margin-top:0;padding-top:0}
+.pgroup i{font-style:normal;width:7px;height:7px;border-radius:2px;background:var(--blue);display:inline-block}
+.pgroup i.v{background:var(--orange)}
+.badge{display:inline-block;padding:1px 6px;border-radius:5px;font-size:10px;font-weight:600;white-space:nowrap}
+.badge.ok{background:var(--green-l);color:var(--green)}
+.badge.off{background:#FBF3E4;color:#7A5B22}
+.badge.bad{background:#FBE9E9;color:var(--red)}
+.status{font-size:10.8px;color:var(--ink3);margin-top:9px;line-height:1.6}
+
+/* 指标 */
+.specs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;padding:2px 0 4px;margin-bottom:12px}
+.spec{background:var(--panel);border-radius:7px;padding:5px 8px 6px;min-width:0}
+.spec i{display:block;font-style:normal;font-size:9.5px;color:var(--ink3);letter-spacing:.2px;white-space:nowrap}
+.spec b{display:block;font-family:var(--mono);font-size:12.5px;font-weight:600;margin-top:1px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.spec em{display:block;font-style:normal;font-size:9.5px;color:var(--ink3);margin-top:1px;line-height:1.35;overflow-wrap:anywhere}
+.spec.bad b{color:var(--red)}
+.spec.hl b{color:var(--blue)}
+
+/* 赛道场景 */
+.track-grid{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(265px,1fr);gap:14px;align-items:start;margin-bottom:12px}
+.track-panel{background:#374151;border-radius:12px;padding:10px 12px 9px;min-width:0;border:.5px solid rgba(0,0,0,.18)}
+.track-title{display:flex;align-items:center;gap:8px;color:#93C5FD;font-size:12.5px;font-weight:600;margin:0 0 8px 1px}
+.track-title:before{content:"";display:block;width:3px;height:14px;border-radius:2px;background:#3B82F6}
+.track-title .tag{margin-left:auto;font-family:var(--mono);font-size:10px;color:#9CA3AF;font-weight:400}
+.track-canvas{background:#2C3542;border-radius:9px;overflow:hidden;border:.5px solid rgba(255,255,255,.10)}
+#svgTrack{width:100%;display:block}
+.track-hud{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-family:var(--mono);font-size:10.5px;color:#D1D5DB}
+.track-hud span{white-space:nowrap}
+.track-hud b{color:#F9FAFB;font-weight:600}
+.track-hud .er{color:#FCA5A5}
+.track-ctl{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.track-ctl input[type=range]{flex:1;min-width:110px;background:#4B5563;height:4px;margin:0}
+.track-ctl input[type=range]::-webkit-slider-thumb{background:#60A5FA;border-color:#1F2937}
+.track-ctl .t{font-family:var(--mono);font-size:10.5px;color:#D1D5DB;white-space:nowrap}
+.track-ctl button{font:inherit;font-size:11px;color:#E5E7EB;background:#4B5563;border:.5px solid rgba(255,255,255,.16);border-radius:6px;padding:4px 9px;cursor:pointer}
+.track-ctl button:hover{background:#5B6575}
+.legend{display:flex;gap:11px;flex-wrap:wrap;margin-top:8px;font-size:10px;color:#9CA3AF}
+.legend i{display:inline-block;width:12px;height:3px;border-radius:2px;vertical-align:middle;margin-right:4px}
+.tele{background:var(--panel2);border:.5px solid var(--line);border-radius:12px;padding:10px 11px 7px;min-width:0}
+.tele-big{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:9px}
+.tele-cell{background:#fff;border:.5px solid var(--line);border-radius:8px;padding:6px 9px}
+.tele-cell i{display:block;font-style:normal;font-size:10px;color:var(--ink3)}
+.tele-cell b{display:block;font-family:var(--mono);font-size:17px;font-weight:600;margin-top:1px;font-variant-numeric:tabular-nums}
+.tele-cell b small{font-size:10px;color:var(--ink3);font-weight:400;margin-left:2px}
+#svgGauge{width:100%;display:block}
+.tele-table{width:100%;border-collapse:collapse;font-size:10.5px;margin-top:6px}
+.tele-table td{border-bottom:.5px solid var(--line);padding:3px 2px;color:var(--ink2)}
+.tele-table td:last-child{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink)}
+.tele-note{font-size:10.5px;line-height:1.6;color:var(--ink3);margin-top:7px;padding-top:6px;border-top:.5px dashed var(--line)}
+
+.main,.main2{display:grid;gap:14px;align-items:start;margin-bottom:12px}
+.main,.main2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.scroll-wrap{min-width:0}
+.plot-scroll{overflow-x:auto}
+#svgStep,#svgErr,#svgSpd,#svgVel,#svgZS,#svgPole{width:100%;min-width:430px}
+.cap{font-size:10px;color:#A8A59C;line-height:1.6;padding:5px 2px 1px}
+.scroll-hint{display:none;font-size:10px;color:var(--ink3);text-align:right;padding:3px 4px 0}
+
+/* 对照 */
+.cmpbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.cmp{background:#fff;border:.5px solid var(--line);border-radius:9px;padding:7px 10px;min-width:0}
+.cmp i{display:block;font-style:normal;font-size:10px;color:var(--ink3);margin-bottom:3px}
+.cmp .row{display:flex;align-items:baseline;gap:6px;font-family:var(--mono);font-size:11.5px;white-space:nowrap}
+.cmp .row .old{color:var(--ink3)}
+.cmp .row .ar{color:var(--gold)}
+.cmp .row .new{color:var(--green);font-weight:600}
+.theory{font-size:11px;line-height:1.6;color:var(--ink2);overflow-x:auto}
+.theory h3{font-size:11.5px;color:var(--ink);margin:9px 0 5px;font-weight:600}
+.theory h3:first-child{margin-top:0}
+.theory table{width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:7px}
+.theory th,.theory td{border-bottom:.5px solid var(--line);padding:4px 5px;text-align:left;vertical-align:top}
+.theory th{color:var(--ink3);font-weight:500;background:var(--panel)}
+.theory td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.theory .dev{background:#fff;border:.5px solid var(--line);border-radius:7px;padding:7px 9px;font-family:var(--mono);font-size:10px;line-height:1.7;margin-bottom:8px;overflow-wrap:anywhere}
+.theory .warn{background:#FBF3E4;border-left:2px solid var(--gold);border-radius:0 5px 5px 0;padding:6px 8px;font-size:10.5px;color:#7A5B22;line-height:1.6;margin-top:6px}
+.notes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+.note{background:var(--panel2);border:.5px solid var(--line);border-radius:10px;padding:11px 13px;min-width:0}
+.note h3{font-size:12px;font-weight:600;margin:0 0 5px;color:var(--ink);display:flex;gap:6px;align-items:baseline}
+.note h3 i{font-style:normal;font-family:var(--mono);font-size:10.5px;color:#fff;background:var(--ink3);width:15px;height:15px;line-height:15px;text-align:center;border-radius:4px;flex:none}
+.note p{font-size:11.5px;line-height:1.72;color:var(--ink2);margin:0 0 5px}
+.note p:last-child{margin-bottom:0}
+.note b{color:var(--ink);font-weight:600}
+.note ul,.note ol{margin:4px 0;padding-left:20px}
+.note li{font-size:11.5px;line-height:1.7;color:var(--ink2);margin-bottom:3px}
+.note code{font-size:10.5px}
+.note .warn{display:block;margin-top:6px;padding:6px 8px;background:#FBF3E4;border-left:2px solid var(--gold);border-radius:0 5px 5px 0;font-size:11px;color:#7A5B22;line-height:1.65}
+#probe{display:none}
+@media (max-width:1000px){
+  .main,.main2,.stage-grid,.track-grid{grid-template-columns:1fr}
+  .notes{grid-template-columns:1fr 1fr}
+  .param-grid{grid-template-columns:1fr 1fr}
+  .specs{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .cmpbar{grid-template-columns:1fr 1fr}
+  .stage-scroll{max-width:100%}
+  .scroll-hint{display:block}
+}
+@media (max-width:680px){
+  body{padding:16px 12px 32px}
+  .notes{grid-template-columns:1fr}
+  .param-grid{grid-template-columns:1fr}
+  .specs{grid-template-columns:1fr 1fr}
+  .cmpbar{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>全国大学生智能汽车竞赛 · 智能车运动控制</h1>
+<p class="lead">从<b>二自由度（自行车）运动学模型</b>出发，把「摄像头看到的中心线偏差」变成课本里的<b>二阶系统闭环校正</b>：转向环 <code>PD</code> 的 <code>Kp / Kd</code> 直接对应 <code>ωn / ζ</code>，超调量严格定义在中心线阶跃响应上；速度环 <code>PI</code> 是另一条标准二阶闭环。可在 <b>S 赛道</b> 与 <b>8 字赛道</b> 间切换，实时看行驶轨迹、横向误差与跟踪指标，对照自己的实车调试经验。</p>
+
+<div class="bar">
+  <div class="seg" id="segTrack">
+    <button data-v="S" class="on">S 赛道</button>
+    <button data-v="8">8 字赛道</button>
+  </div>
+  <button class="btn blue" id="btnFF">曲率前馈：关</button>
+  <button class="btn" id="btnNoTs">忽略舵机惯性：关</button>
+  <button class="btn" id="btnDesign">按 ζ≈0.707 整定</button>
+  <button class="btn" id="btnReset">恢复默认</button>
+  <span class="sp"></span>
+  <span id="badgeStab" class="badge ok">闭环稳定</span>
+</div>
+
+<!-- 建模推导 -->
+<div class="stage-card">
+  <div class="stage-tabs" id="stageTabs"></div>
+  <div class="stage-grid">
+    <div class="stage-scroll" id="stageScroll"><div id="svgStage"></div></div>
+    <div class="stage-note" id="stageNote"></div>
+  </div>
+  <div class="scroll-hint">← 左右滑动查看完整框图 →</div>
+</div>
+
+<!-- 参数 -->
+<div class="designbar">
+  <div class="design-step">
+    <b>双环 PID 参数</b>
+    <span>拖动任一滑块，赛道轨迹、响应曲线、极点位置与全部指标同步重算</span>
+    <span class="sp"></span>
+    <span id="stabilityText" class="mono"></span>
+  </div>
+  <div class="param-grid" id="paramGrid"></div>
+  <div class="status" id="statusText"></div>
+</div>
+
+<!-- 指标 -->
+<div class="specs" id="specs"></div>
+
+<!-- 赛道场景 + 遥测 -->
+<div class="track-grid">
+  <div class="track-panel">
+    <div class="track-title">赛道场景模拟 <span class="tag" id="trackTag">S · 全长 15.85 m</span></div>
+    <div class="track-canvas"><div id="svgTrack"></div></div>
+    <div class="track-hud">
+      <span>t <b id="hudT">0.00 s</b></span>
+      <span>v <b id="hudV">— m/s</b></span>
+      <span>δ <b id="hudD">— °</b></span>
+      <span>e <b class="er" id="hudE">— m</b></span>
+      <span>进度 <b id="hudP">0%</b></span>
+    </div>
+    <div class="track-ctl">
+      <button id="btnPlay">▶ 播放</button>
+      <input type="range" id="rngT" min="0" max="1000" value="0" step="1">
+      <span class="t" id="ctlT">0.00 / 0.00 s</span>
+    </div>
+    <div class="legend">
+      <span><i style="background:#FFFFFF"></i>赛道边界</span>
+      <span><i style="background:#F2B926"></i>中心线</span>
+      <span><i style="background:#22C55E"></i>起点</span>
+      <span><i style="background:#EF4444"></i>终点 / 瞄准点</span>
+      <span><i style="background:#3B82F6"></i>智能车</span>
+      <span><i style="background:#93C5FD"></i>行驶轨迹</span>
+    </div>
+  </div>
+  <div class="tele card">
+    <div class="chd"><h2>实时遥测 / 全程指标</h2><span class="sub" id="teleSub">—</span></div>
+    <div class="tele-big">
+      <div class="tele-cell"><i>横向误差 e</i><b id="teleE">—<small>m</small></b></div>
+      <div class="tele-cell"><i>车速 v</i><b id="teleV">—<small>m/s</small></b></div>
+    </div>
+    <div id="svgGauge"></div>
+    <table class="tele-table" id="teleTable"></table>
+    <div class="tele-note" id="teleNote"></div>
+  </div>
+</div>
+
+<!-- 四张时域图 -->
+<div class="main">
+  <div class="card"><div class="chd"><h2>① 中心线阶跃响应 · 超调量的定义处</h2><span class="sub" id="subStep">—</span></div>
+    <div class="plot-scroll" id="scrollStep"><div id="svgStep"></div></div><div class="cap" id="capStep"></div><div class="scroll-hint">← 左右滑动 →</div></div>
+  <div class="card"><div class="chd"><h2>② 赛道横向误差 e(t) · 路径跟踪响应</h2><span class="sub" id="subErr">—</span></div>
+    <div class="plot-scroll" id="scrollErr"><div id="svgErr"></div></div><div class="cap" id="capErr"></div><div class="scroll-hint">← 左右滑动 →</div></div>
+  <div class="card"><div class="chd"><h2>③ 速度环阶跃响应 · 1.2 → 2.4 m/s</h2><span class="sub" id="subSpd">—</span></div>
+    <div class="plot-scroll" id="scrollSpd"><div id="svgSpd"></div></div><div class="cap" id="capSpd"></div><div class="scroll-hint">← 左右滑动 →</div></div>
+  <div class="card"><div class="chd"><h2>④ 赛道车速 v(t) 与给定 v_cmd(t)</h2><span class="sub" id="subVel">—</span></div>
+    <div class="plot-scroll" id="scrollVel"><div id="svgVel"></div></div><div class="cap" id="capVel"></div><div class="scroll-hint">← 左右滑动 →</div></div>
+</div>
+
+<!-- 两张分析图 -->
+<div class="main2">
+  <div class="card"><div class="chd"><h2>⑤ 阻尼比 ζ ↔ 超调量 σ · 理论公式数值验证</h2><span class="sub" id="subZS">—</span></div>
+    <div class="plot-scroll" id="scrollZS"><div id="svgZS"></div></div><div class="cap" id="capZS"></div><div class="scroll-hint">← 左右滑动 →</div></div>
+  <div class="card"><div class="chd"><h2>⑥ s 平面闭环极点 · Kd 根轨迹</h2><span class="sub" id="subPole">—</span></div>
+    <div class="plot-scroll" id="scrollPole"><div id="svgPole"></div></div><div class="cap" id="capPole"></div><div class="scroll-hint">← 左右滑动 →</div></div>
+</div>
+
+<!-- 校正收益 -->
+<div class="cmpbar" id="cmpbar"></div>
+
+<!-- 理论 / 实测对照 -->
+<div class="card" style="margin-bottom:12px">
+  <div class="chd"><h2>推导式与理论 / 实测对照</h2><span class="sub">单文件离线 · 无外部依赖</span></div>
+  <div class="theory" id="theory"></div>
+</div>
+
+<div class="notes" id="notes"></div>
+<div id="probe"></div>
+</div>
+
+<script>
+'use strict';
+/* =======================================================================
+   智能车运动控制 · 二自由度运动学 + 转向/速度双环 PID
+   全部数值在浏览器内实时计算，无外部库
+   ======================================================================= */
+var PI=Math.PI, SQ=Math.sqrt;
+var QS=new URLSearchParams(location.search);
+var PROBE=QS.get('probe')==='1', STILL=QS.get('still')==='1';
+
+/* ---------- 复数 / 多项式 ---------- */
+function cadd(a,b){return [a[0]+b[0],a[1]+b[1]];}
+function cmul(a,b){return [a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0]];}
+function cdiv(a,b){var d=b[0]*b[0]+b[1]*b[1];return d<1e-300?[NaN,NaN]:[(a[0]*b[0]+a[1]*b[1])/d,(a[1]*b[0]-a[0]*b[1])/d];}
+function pval(c,z){var r=[0,0],i;for(i=0;i<c.length;i++)r=cadd(cmul(r,z),[c[i],0]);return r;}
+function polyRoots(coef){
+  var c=coef.slice(),i,j,k,it;while(c.length>1&&Math.abs(c[0])<1e-300)c.shift();
+  var n=c.length-1;if(n<1)return [];
+  var a=c.map(function(v){return v/c[0];}),R=1;
+  for(k=1;k<=n;k++)R=Math.max(R,Math.pow(Math.abs(a[k]),1/k));
+  R*=2;if(!isFinite(R)||R<1)R=1;
+  var z=[];for(i=0;i<n;i++){var th=2*PI*(i+.23)/n;z.push([.8*R*Math.cos(th),.8*R*Math.sin(th)]);}
+  for(it=0;it<500;it++){
+    var mx=0;
+    for(i=0;i<n;i++){
+      var nu=pval(a,z[i]),de=[1,0];
+      for(j=0;j<n;j++)if(j!==i)de=cmul(de,[z[i][0]-z[j][0],z[i][1]-z[j][1]]);
+      var dz=cdiv(nu,de);
+      if(isFinite(dz[0])&&isFinite(dz[1])){z[i][0]-=dz[0];z[i][1]-=dz[1];mx=Math.max(mx,Math.hypot(dz[0],dz[1]));}
+    }
+    if(mx<1e-12*Math.max(1,R))break;
+  }
+  return z;
+}
+function maxRe(c){var r=polyRoots(c),m=-Infinity;r.forEach(function(p){if(p[0]>m)m=p[0];});return m;}
+function domComplex(c){
+  var r=polyRoots(c),best=null;
+  r.forEach(function(p){if(Math.abs(p[1])<1e-7)return;if(best===null||p[0]>best[0])best=p;});
+  if(!best)return null;
+  var mag=Math.hypot(best[0],best[1]),z=-best[0]/mag;
+  return {re:best[0],im:Math.abs(best[1]),wn:mag,z:z,sigma:z<1?100*Math.exp(-PI*z/SQ(1-z*z)):0};
+}
+
+/* ---------- 车辆常数 ---------- */
+var E={L:.30,Ts:.06,Tm:.12,dmax:.52,W:.62};
+var DEF={Kps:1.2,Kis:0,Kds:.424,Kpv:.6,Kiv:8,Kdv:0,vNom:2.0,vFast:2.4,vSlow:1.2,
+  kBend:.35,kslow:.15,ff:false,noTs:false,track:'S'};
+var st={};for(var _k in DEF)st[_k]=DEF[_k];
+st.play=false;st.playT=0;st.stage=0;st.amp=.30;
+var PARAMS=[
+  {g:'转向环 PID · 决定横向误差闭环极点',cls:'',items:[
+    {k:'Kps',n:'Kp 转向比例',min:.2,max:3.0,step:.01,unit:'',cls:''},
+    {k:'Kis',n:'Ki 转向积分',min:0,max:3.0,step:.01,unit:'',cls:''},
+    {k:'Kds',n:'Kd 转向微分',min:0,max:1.2,step:.005,unit:'',cls:''},
+    {k:'vNom',n:'理论标称速度 vₙ',min:1.0,max:3.0,step:.05,unit:'m/s',cls:''}]},
+  {g:'速度环 PID · 前馈 + PI，决定车速闭环',cls:'v',items:[
+    {k:'Kpv',n:'Kp 速度比例',min:0,max:3.0,step:.02,unit:'',cls:'v'},
+    {k:'Kiv',n:'Ki 速度积分',min:1,max:40,step:.2,unit:'',cls:'v'},
+    {k:'Kdv',n:'Kd 速度微分',min:0,max:.06,step:.002,unit:'',cls:'v'},
+    {k:'vFast',n:'直道给定 v_fast',min:1.2,max:3.2,step:.05,unit:'m/s',cls:'v'}]}
+];
+
+/* ---------- 转向环理论 ---------- */
+function qv(v){return v*v/E.L;}
+function theory(Kp,Kd,v){
+  var wn=v*SQ(Kp/E.L), z=v*Kd/(2*SQ(E.L*Kp));
+  return {wn:wn,z:z,sigma:z<1?100*Math.exp(-PI*z/SQ(1-z*z)):0,
+    tp:z<1?PI/(wn*SQ(1-z*z)):null,ts:3/(z*wn),wd:z<1?wn*SQ(1-z*z):0};
+}
+function charPoly(Kp,Ki,Kd,v,Ts){
+  var q=qv(v);
+  if(Ts<=0&&Ki<=0)return [1,q*Kd,q*Kp];
+  if(Ki<=0)return [Ts,1,q*Kd,q*Kp];
+  return [Ts,1,q*Kd,q*Kp,q*Ki];
+}
+function routh(Kp,Ki,Kd,v,Ts){
+  var q=qv(v),kdCrit=Ts*Kp,kiMax=q*Kp*(Kd-Ts*Kp);
+  return {kdCrit:kdCrit,kiMax:kiMax,kdOK:Kd>kdCrit,kiOK:Ki<kiMax,stable:Kd>kdCrit&&Ki<kiMax&&Kd>0};
+}
+/* 速度环：u = vcmd + Kpv·ev + Kiv∫ev + Kdv·(−v̇)，v̇=(u−v)/Tm
+   闭环 V/Vcmd = [(1+Kpv)s+Kiv] / [Tm s²+(1+Kpv)s+Kiv]（Kdv=0，含零点） */
+function speedTheory(Kpv,Kiv){
+  var wn=SQ(Kiv/E.Tm),z=(1+Kpv)/(2*SQ(E.Tm*Kiv));
+  return {wn:wn,z:z,sigma:z<1?100*Math.exp(-PI*z/SQ(1-z*z)):0,
+    ts:3/(z*wn),tp:z<1?PI/(wn*SQ(1-z*z)):null};
+}
+function speedStep(Kpv,Kiv,Kdv,v0,vcmd,Tend,M){
+  Tend=Tend||2;M=M||2000;var dt=Tend/M,v=v0,I=0,vp=v,out=[];
+  for(var k=0;k<=M;k++){
+    out.push({t:k*dt,v:v,ref:vcmd});
+    if(k===M)break;
+    var ev=vcmd-v,dev=-(v-vp)/dt;vp=v;
+    var u=vcmd+Kpv*ev+Kiv*I+Kdv*dev;
+    I+=ev*dt;v+=(u-v)/E.Tm*dt;
+    if(!isFinite(v)){v=NaN;}
+  }
+  return out;
+}
+
+/* ---------- 中心线阶跃响应（RK4） ---------- */
+/* e=r−y ; ÿ=(v²/L)δ ; δ̇=(Kp e+Ki I+Kd ė−δ)/Ts ; İ=e
+   Ts→0 时代入 δ=cmd，退化为 2 阶/3 阶，避免刚性积分 */
+function stepResponse(Kp,Ki,Kd,v,Ts,Tend,M,amp){
+  amp=amp===undefined?1:amp;M=M||3000;Tend=Tend||6;
+  var dt=Tend/M,q=qv(v),out=[],e=amp,ed=0,d=0,I=0,fast=Ts<=1e-9;
+  function rhs(s){
+    if(fast)return [s[1],-q*(Kp*s[0]+Ki*s[2]+Kd*s[1]),s[0]];
+    return [s[1],-q*s[2],(Kp*s[0]+Ki*s[3]+Kd*s[1]-s[2])/Ts,s[0]];
+  }
+  function ax(s,h,kk){return s.map(function(x,i){return x+h*kk[i];});}
+  for(var k=0;k<=M;k++){
+    out.push({t:k*dt,y:amp-e,e:e,d:d});
+    if(k===M)break;
+    var s=fast?[e,ed,I]:[e,ed,d,I];
+    var k1=rhs(s),k2=rhs(ax(s,dt/2,k1)),k3=rhs(ax(s,dt/2,k2)),k4=rhs(ax(s,dt,k3));
+    var n=s.map(function(_,i){return s[i]+dt/6*(k1[i]+2*k2[i]+2*k3[i]+k4[i]);});
+    if(fast){e=n[0];ed=n[1];I=n[2];d=Kp*e+Ki*I+Kd*ed;}
+    else{e=n[0];ed=n[1];d=n[2];I=n[3];}
+    if(!isFinite(e))break;
+  }
+  return out;
+}
+function metrics(out,amp,band){
+  band=band||.05;
+  var peak=-Infinity,tp=null,tr=null,ts=0,iae=0,i,dt=out.length>1?out[1].t:1;
+  for(i=0;i<out.length;i++){
+    var y=out[i].y;if(!isFinite(y))return {unstable:true,sigma:NaN,tp:null,tr:null,ts:NaN,ess:NaN,iae:NaN,peak:NaN};
+    if(y>peak){peak=y;tp=out[i].t;}
+    iae+=Math.abs(amp-y)*dt;
+  }
+  for(i=1;i<out.length;i++)if(tr===null&&out[i-1].y<amp&&out[i].y>=amp)
+    tr=out[i-1].t+(amp-out[i-1].y)/(out[i].y-out[i-1].y)*(out[i].t-out[i-1].t);
+  var lo=amp*(1-band),hi=amp*(1+band);
+  for(i=0;i<out.length;i++)if(out[i].y<lo||out[i].y>hi)ts=out[i].t;
+  return {sigma:Math.max(0,(peak-amp)/amp*100),tp:tp,tr:tr,ts:ts,iae:iae,
+    ess:out[out.length-1].y-amp,peak:peak,unstable:false};
+}
+
+/* ---------- 赛道 ---------- */
+function wrap(a){while(a>PI)a-=2*PI;while(a<-PI)a+=2*PI;return a;}
+function buildTrack(kind){
+  var raw=[],i,N=3000;
+  if(kind==='S'){
+    for(i=0;i<=N;i++){var x=12*i/N;raw.push([x,1.6*Math.sin(2*PI*x/8)]);}
+  }else{
+    for(i=0;i<=N;i++){var t=2*PI*i/N;raw.push([4.5*Math.sin(t),2.2*Math.sin(2*t)]);}
+  }
+  var cum=[0],j;
+  for(j=1;j<raw.length;j++)cum.push(cum[j-1]+Math.hypot(raw[j][0]-raw[j-1][0],raw[j][1]-raw[j-1][1]));
+  var total=cum[cum.length-1],M=1400,pts=[],k=1;
+  for(j=0;j<=M;j++){
+    var s=total*j/M;
+    while(k<cum.length-1&&cum[k]<s)k++;
+    var s0=cum[k-1],s1=cum[k],f=(s1-s0)>1e-9?(s-s0)/(s1-s0):0;
+    pts.push({x:raw[k-1][0]+f*(raw[k][0]-raw[k-1][0]),y:raw[k-1][1]+f*(raw[k][1]-raw[k-1][1])});
+  }
+  for(j=0;j<pts.length;j++){
+    var a=pts[Math.max(0,j-1)],b=pts[Math.min(pts.length-1,j+1)];
+    pts[j].th=Math.atan2(b.y-a.y,b.x-a.x);
+  }
+  for(j=0;j<pts.length;j++){
+    var p=pts[Math.max(0,j-2)],q=pts[Math.min(pts.length-1,j+2)];
+    pts[j].kap=wrap(q.th-p.th)/Math.max(1e-6,Math.hypot(q.x-p.x,q.y-p.y));
+  }
+  var minx=Infinity,maxx=-Infinity,miny=Infinity,maxy=-Infinity;
+  pts.forEach(function(p){minx=Math.min(minx,p.x);maxx=Math.max(maxx,p.x);miny=Math.min(miny,p.y);maxy=Math.max(maxy,p.y);});
+  return {pts:pts,total:total,closed:kind==='8',M:M,kind:kind,
+    bbox:{minx:minx-E.W/2-.25,maxx:maxx+E.W/2+.25,miny:miny-E.W/2-.25,maxy:maxy+E.W/2+.25}};
+}
+function nearest(tr,cx,cy,i0){
+  var best=i0,bd=Infinity,i,lo=Math.max(0,i0-12),hi=Math.min(tr.M,i0+140);
+  for(i=lo;i<=hi;i++){
+    var p=tr.pts[i],dx=cx-p.x,dy=cy-p.y,dd=dx*dx+dy*dy;
+    if(dd<bd){bd=dd;best=i;}
+  }
+  return best;
+}
+function simulate(tr,P,Tmax){
+  var dt=.005,N=Math.round(Tmax/dt),Ts=P.noTs?0:E.Ts;
+  var p0=tr.pts[0],cx=p0.x,cy=p0.y,psi=p0.th,d=0,v=P.vFast,Ie=0,Iv=0,u=P.vFast,vp=v;
+  var i0=0,traj=[],es=[],vs=[],vcs=[],ds=[],ts=[],prs=[],done=false,time=0;
+  for(var k=0;k<N;k++){
+    var idx=nearest(tr,cx,cy,i0);i0=idx;
+    var pt=tr.pts[idx],nx=-Math.sin(pt.th),ny=Math.cos(pt.th);
+    var e=(pt.x-cx)*nx+(pt.y-cy)*ny;
+    var ed=v*Math.sin(wrap(pt.th-psi));
+    Ie+=e*dt;
+    var vcmd=Math.max(.8,(Math.abs(pt.kap)>P.kBend?P.vSlow:P.vFast)-P.kslow*Math.abs(e));
+    var ev=vcmd-v;Iv+=ev*dt;
+    var dev=-(v-vp)/dt;vp=v;
+    u=vcmd+P.Kpv*ev+P.Kiv*Iv+P.Kdv*dev;
+    var dff=(P.ff?1:0)*Math.atan(E.L*pt.kap);
+    var cmd=Math.max(-E.dmax,Math.min(E.dmax,dff+P.Kps*e+P.Kis*Ie+P.Kds*ed));
+    if(Ts<=0)d=cmd;            /* 忽略舵机惯性：δ=δ_cmd 代数关系，避免刚性积分发散 */
+    else d+=(cmd-d)/Ts*dt;
+    psi+=v*Math.tan(d)/E.L*dt;
+    cx+=v*Math.cos(psi)*dt;cy+=v*Math.sin(psi)*dt;
+    v+=(u-v)/E.Tm*dt;v=Math.max(0,Math.min(8,v));
+    time+=dt;
+    if(k%2===0){traj.push([cx,cy,psi,d]);es.push(e);vs.push(v);vcs.push(vcmd);ds.push(d);ts.push(time);prs.push([pt.x,pt.y,idx]);}
+    if(!isFinite(cx)||!isFinite(cy)||Math.abs(e)>8){done=true;break;}
+    if(idx>=tr.M-3)break;
+  }
+  var iae=0,ise=0,mx=0,sum=0;
+  es.forEach(function(e){iae+=Math.abs(e)*dt*2;ise+=e*e*dt*2;mx=Math.max(mx,Math.abs(e));sum+=e;});
+  return {traj:traj,es:es,vs:vs,vcs:vcs,ds:ds,ts:ts,prs:prs,time:time,
+    iae:iae,rmse:SQ(ise/Math.max(1,es.length)),maxe:mx,meanE:sum/Math.max(1,es.length),
+    vmean:vs.reduce(function(a,b){return a+b;},0)/Math.max(1,vs.length),
+    endIdx:i0,diverged:done,done:!done&&i0>=tr.M-3};
+}
+
+/* ---------- 计算缓存 ---------- */
+var TRACKS={S:buildTrack('S'),'8':buildTrack('8')};
+var C={};
+function compute(){
+  var P={Kps:st.Kps,Kis:st.Kis,Kds:st.Kds,Kpv:st.Kpv,Kiv:st.Kiv,Kdv:st.Kdv,
+    vFast:st.vFast,vSlow:st.vSlow,kBend:DEF.kBend,kslow:DEF.kslow,
+    ff:st.ff,noTs:st.noTs};
+  var v=st.vNom,Ts=st.noTs?0:E.Ts;
+  var th=theory(st.Kps,st.Kds,v),rt=routh(st.Kps,st.Kis,st.Kds,v,Ts);
+  var spd=speedTheory(st.Kpv,st.Kiv);
+  var poly=charPoly(st.Kps,st.Kis,st.Kds,v,Ts);
+  var poles=polyRoots(poly),dPole=domComplex(poly);
+  var amp=st.amp;
+  var resp=stepResponse(st.Kps,st.Kis,st.Kds,v,Ts,6,3000,amp);
+  var respM=metrics(resp,amp,.05);
+  var ideal=stepResponse(st.Kps,0,st.Kds,v,0,6,3000,amp);
+  var idealM=metrics(ideal,amp,.05);
+  var sresp=speedStep(st.Kpv,st.Kiv,st.Kdv,1.2,2.4,2,2000);
+  var spk=-Infinity,stp=null,sts=0;
+  sresp.forEach(function(p){if(!isFinite(p.v))return;if(p.v>spk){spk=p.v;stp=p.t;}if(p.v<2.328||p.v>2.472)sts=p.t;});
+  var spdM={sigma:Math.max(0,(spk-2.4)/1.2*100),tp:stp,ts:sts};
+  var tr=TRACKS[st.track];
+  var sim=simulate(tr,P,st.track==='S'?12:22);
+  /* 前馈收益参照：同样参数下关掉前馈再跑一次 */
+  var ref=sim;
+  if(P.ff){
+    var Pn={};for(var _q in P)Pn[_q]=P[_q];Pn.ff=false;
+    ref=simulate(tr,Pn,st.track==='S'?12:22);
+  }
+  /* ζ—σ 数值验证点：Ts=0 / Ki=0 */
+  var zs=[];[.10,.20,.30,.424,.55,.70,.85,1.0,1.2].forEach(function(Kd){
+    zs.push({z:theory(st.Kps,Kd,v).z,m:metrics(stepResponse(st.Kps,0,Kd,v,0,12,6000,1),1,.05).sigma});
+  });
+  /* Kd 根轨迹：Ts 固定，Ki 固定 */
+  var locus=[];
+  for(var Kd=.005;Kd<=1.2;Kd+=.012){
+    var pp=polyRoots(charPoly(st.Kps,st.Kis,Kd,v,Ts));
+    pp.forEach(function(p){locus.push([Kd,p[0],p[1]]);});
+  }
+  C={P:P,v:v,Ts:Ts,th:th,rt:rt,spd:spd,poly:poly,poles:poles,dPole:dPole,
+    amp:amp,resp:resp,respM:respM,ideal:ideal,idealM:idealM,
+    sresp:sresp,spdM:spdM,tr:tr,sim:sim,ref:ref,zs:zs,locus:locus};
+  return C;
+}
+
+/* ---------- 绘图工具 ---------- */
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function f(x,n){if(x===null||x===undefined||!isFinite(x))return '—';return Number(x).toFixed(n===undefined?2:n);}
+function svg(w,h,inner,cls){return '<svg viewBox="0 0 '+w+' '+h+'" xmlns="http://www.w3.org/2000/svg" '+(cls?'class="'+cls+'"':'')+'>'+inner+'</svg>';}
+function txt(x,y,s,cls,anchor,size,fill,extra){
+  return '<text x="'+f(x,1)+'" y="'+f(y,1)+'"'+(cls?' class="'+cls+'"':'')+
+    (anchor?' text-anchor="'+anchor+'"':'')+(size?' font-size="'+size+'"':'')+
+    (fill?' fill="'+fill+'"':'')+(extra||'')+'>'+s+'</text>';
+}
+function line(x1,y1,x2,y2,col,w,dash,op){
+  return '<line x1="'+f(x1,1)+'" y1="'+f(y1,1)+'" x2="'+f(x2,1)+'" y2="'+f(y2,1)+
+    '" stroke="'+col+'" stroke-width="'+(w||1)+'"'+(dash?' stroke-dasharray="'+dash+'"':'')+
+    (op!==undefined?' opacity="'+op+'"':'')+'/>';
+}
+function rect(x,y,w,h,fill,stroke,sw,rx,op){
+  return '<rect x="'+f(x,1)+'" y="'+f(y,1)+'" width="'+f(Math.max(0,w),1)+'" height="'+f(Math.max(0,h),1)+
+    '" rx="'+(rx||0)+'" fill="'+fill+'"'+(stroke?' stroke="'+stroke+'" stroke-width="'+(sw||1)+'"':'')+
+    (op!==undefined?' opacity="'+op+'"':'')+'/>';
+}
+function circ(x,y,r,fill,stroke,sw){
+  return '<circle cx="'+f(x,1)+'" cy="'+f(y,1)+'" r="'+f(r,1)+'" fill="'+fill+'"'+
+    (stroke?' stroke="'+stroke+'" stroke-width="'+(sw||1)+'"':'')+'/>';
+}
+function path(d,col,w,dash,fill,op){
+  return '<path d="'+d+'" fill="'+(fill||'none')+'" stroke="'+col+'" stroke-width="'+(w||1)+'"'+
+    (dash?' stroke-dasharray="'+dash+'"':'')+(op!==undefined?' opacity="'+op+'"':'')+' stroke-linejoin="round" stroke-linecap="round"/>';
+}
+function polyPath(arr,X,Y,close){
+  if(!arr.length)return '';var d='',i;
+  for(i=0;i<arr.length;i++)d+=(i?'L':'M')+f(X(arr[i][0]),1)+' '+f(Y(arr[i][1]),1);
+  return d+(close?'Z':'');
+}
+/* 通用坐标系 */
+function frame(W,H,pad,xmin,xmax,ymin,ymax){
+  var L=pad.l,R=W-pad.r,T=pad.t,B=H-pad.b;
+  var X=function(v){return L+(v-xmin)/(xmax-xmin)*(R-L);};
+  var Y=function(v){return B-(v-ymin)/(ymax-ymin)*(B-T);};
+  return {W:W,H:H,L:L,R:R,T:T,B:B,X:X,Y:Y,xmin:xmin,xmax:xmax,ymin:ymin,ymax:ymax};
+}
+function axes(F,xt,yt,xlab,ylab,col){
+  var s='',i;
+  col=col||'#E4E2DB';
+  for(i=0;i<xt.length;i++)s+=line(F.X(xt[i]),F.T,F.X(xt[i]),F.B,col,1)
+    +txt(F.X(xt[i]),F.B+13,f(xt[i],xt[i]%1?1:0),'kl','middle',9.5,'#8A8880');
+  for(i=0;i<yt.length;i++)s+=line(F.L,F.Y(yt[i]),F.R,F.Y(yt[i]),col,1)
+    +txt(F.L-6,F.Y(yt[i])+3.5,f(yt[i],yt[i]%1?1:0),'kl','end',9.5,'#8A8880');
+  s+=line(F.L,F.T,F.L,F.B,'#B9B6AD',1)+line(F.L,F.B,F.R,F.B,'#B9B6AD',1);
+  if(xlab)s+=txt((F.L+F.R)/2,F.H-2,xlab,'kl','middle',9.5,'#8A8880');
+  if(ylab)s+=txt(F.L,F.T-4,ylab,'kl','start',9.5,'#8A8880');
+  return s;
+}
+/* ================= 建模推导六步 ================= */
+var STAGES=[
+ {t:'① 二自由度运动学',h:'车辆怎么动',
+  p:'把四轮车等效成<b>自行车模型</b>：后轴为参考点，前轮转角 δ 产生横摆角速度。小角度下 <code>tanδ≈δ</code>，得到课程里最基础的一阶积分链。',
+  f:'状态：ẋ = v cosψ　ẏ = v sinψ　ψ̇ = (v/L)·δ',
+  w:'注意：到这里为止全是<b>一阶积分</b>，系统本身不会振荡——振荡是闭环校正「造」出来的。'},
+ {t:'② 执行机构惯性',h:'舵机与电机不是瞬时的',
+  p:'实车上舵机有机械延迟、电机有电气/机械时间常数，各补一个<b>一阶惯性环节</b>，这正是课本「控制系统数学模型」章节的串联建模。',
+  f:'δ̇ = (δ_cmd − δ)/Ts　　v̇ = (u − v)/Tm',
+  w:'Ts = 0.06 s 是舵机，Tm = 0.12 s 是电机。把 Ts 计入后，二阶会升成三阶，稳定边界随之出现。'},
+ {t:'③ 横向误差闭环',h:'PD 造出二阶系统',
+  p:'摄像头给出中心线偏差 <code>e = r − y</code>。在小横摆角下 <code>ÿ ≈ (v²/L)δ</code>，所以 <code>ë = −(v²/L)δ</code>。令转向指令 <code>δ_cmd = Kp·e + Kd·ė</code>，Ts→0 时代入即得<b>标准二阶特征式</b>。',
+  f:'ë + (v²Kd/L)·ė + (v²Kp/L)·e = 0',
+  w:'这一步是整页的核心：Kp 决定「回正多快」，Kd 决定「阻尼多大」，与实车调参手感完全一致。'},
+ {t:'④ 二阶时域公式',h:'ωn、ζ、σ 全部落地',
+  p:'与 <code>s² + 2ζωn s + ωn²</code> 逐项对照，直接读出自然频率与阻尼比，再套课本的超调量与峰值时间公式。',
+  f:'ωn = v·√(Kp/L)　ζ = v·Kd / (2√(L·Kp))',
+  w:'σ = 100·e^(−πζ/√(1−ζ²))，tp = π/(ωn√(1−ζ²))，ts ≈ 3/(ζωn)。σ 只在这里定义。'},
+ {t:'⑤ 舵机惯性 + 积分',h:'三阶 / 四阶与 Routh 边界',
+  p:'保留 Ts、再加积分 <code>Ki∫e dt</code> 消静差，闭环特征式升到三阶 / 四阶。用 Routh 判据可以直接读出两条稳定边界，实车上「Kd 给小了就画龙」「Ki 给大了就低频摆」都能在这里解释。',
+  f:'Ts·s³ + s² + (v²Kd/L)s + v²Kp/L = 0',
+  w:'Kd &gt; Ts·Kp；Ki &lt; (v²/L)·Kp·(Kd − Ts·Kp)。默认点 Kd,crit = 0.072、Ki,max = 5.632。'},
+ {t:'⑥ 速度环',h:'第二条标准二阶闭环',
+  p:'速度给定按赛道曲率分两档（直道快、入弯慢）。控制器用<b>前馈 + PI</b>，微分项对测量值微分（微分先行），避免给定跳变冲击。',
+  f:'V/Vcmd = [(1+Kpv)s + Kiv] / [Tm·s² + (1+Kpv)s + Kiv]',
+  w:'ωn=√(Kiv/Tm)，ζ=(1+Kpv)/(2√(Tm·Kiv))。分子有零点，所以极点是标准二阶，但超调量<b>不满足</b>课本 σ 公式——页面如实标注。'}
+];
+function box(x,y,w,h,label,col,fill,sub){
+  return rect(x,y,w,h,fill||'#fff',col,1.2,7)+
+    txt(x+w/2,y+h/2+(sub?-4:4),label,'tt','middle',11.5,col)+
+    (sub?txt(x+w/2,y+h/2+12,sub,'bf','middle',9.5,'#8A8880'):'');
+}
+function arrow(x1,y1,x2,y2,col){
+  var s=line(x1,y1,x2,y2,col,1.4);
+  var a=Math.atan2(y2-y1,x2-x1),L=6;
+  s+='<path d="M'+f(x2,1)+' '+f(y2,1)+'L'+f(x2-L*Math.cos(a-.42),1)+' '+f(y2-L*Math.sin(a-.42),1)+
+     'L'+f(x2-L*Math.cos(a+.42),1)+' '+f(y2-L*Math.sin(a+.42),1)+'Z" fill="'+col+'"/>';
+  return s;
+}
+function plus(x,y,r,col){return circ(x,y,r,'#fff',col,1.2)+line(x-r+2,y,x+r-2,y,col,1)+line(x,y-r+2,x,y+r-2,col,1);}
+function stageSVG(n){
+  var W=760,H=250,s='',B='#185FA5',O='#D85A30',G='#3F8F5B',PU='#6B4FA8',GY='#8A8880';
+  s+=rect(0,0,W,H,'#fff');
+  if(n===0){
+    /* 自行车模型示意 */
+    var cx0=130,cy0=150,Lp=170;
+    s+=line(40,205,720,205,'#D8D5CC',1,'4 4');
+    s+=line(cx0-Lp/2,cy0,cx0+Lp/2,cy0,'#B9B6AD',6);
+    s+=rect(cx0-Lp/2-16,cy0-45,Lp+32,34,'#E6F1FB',B,1.5,9);
+    s+=txt(cx0,cy0-24,'智能车（二自由度等效）','tt','middle',11.5,B);
+    s+=rect(cx0-Lp/2-9,cy0-13,18,26,'#374151','',0,3);
+    s+=rect(cx0+Lp/2-9,cy0-13,18,26,'#374151','',0,3);
+    s+=line(cx0+Lp/2,cy0,cx0+Lp/2+62,cy0-30,O,3);
+    s+=txt(cx0+Lp/2+68,cy0-34,'前轮 δ','tt','start',11.5,O);
+    s+=arrow(cx0,cy0-64,cx0+96,cy0-64,G);
+    s+=txt(cx0+48,cy0-72,'v','tt','middle',11.5,G);
+    s+=arrow(cx0-58,cy0+40,cx0-58,cy0-40,PU);
+    s+=txt(cx0-92,cy0+6,'ψ','tt','middle',12,PU);
+    s+=line(cx0-Lp/2,cy0+36,cx0+Lp/2,cy0+36,'#B9B6AD',1);
+    s+=txt(cx0,cy0+52,'轴距 L = 0.30 m','bf','middle',10,GY);
+    s+=txt(430,86,'运动学方程','tt','start',12,'#2C2C2A');
+    s+=rect(418,98,310,104,'#FAF9F5','#E4E2DB',1,8);
+    s+=txt(434,124,'ẋ = v·cosψ','bf','start',11.5,B);
+    s+=txt(434,148,'ẏ = v·sinψ','bf','start',11.5,B);
+    s+=txt(434,172,'ψ̇ = (v/L)·tanδ ≈ (v/L)·δ','bf','start',11.5,B);
+    s+=txt(434,193,'参考点取后轴中心；小角度线性化','kl','start',9.5,GY);
+  }else if(n===1){
+    s+=txt(30,30,'两条执行机构通道（课程「一阶惯性环节串联」）','tt','start',12,'#2C2C2A');
+    s+=box(70,66,120,42,'δ_cmd','#fff',B);s+=arrow(192,87,258,87,B);
+    s+=box(260,66,130,42,'1/(Ts s + 1)','#E6F1FB',B,'Ts = 0.06 s');
+    s+=arrow(392,87,458,87,B);s+=box(460,66,90,42,'δ','#fff',B);
+    s+=txt(30,150,'u（驱动给定）','bf','start',10.5,GY);
+    s+=box(70,158,120,42,'u','#fff',O);s+=arrow(192,179,258,179,O);
+    s+=box(260,158,130,42,'1/(Tm s + 1)','#FBEEE8',O,'Tm = 0.12 s');
+    s+=arrow(392,179,458,179,O);s+=box(460,158,90,42,'v','#fff',O);
+    s+=rect(578,60,158,146,'#FAF9F5','#E4E2DB',1,8);
+    s+=txt(592,84,'状态空间形式','tt','start',11,'#2C2C2A');
+    s+=txt(592,107,'δ̇=(δ_cmd−δ)/Ts','bf','start',10,'#5F5E5A');
+    s+=txt(592,130,'v̇=(u−v)/Tm','bf','start',10,'#5F5E5A');
+    s+=txt(592,158,'δ_max = 0.52 rad','bf','start',10,'#5F5E5A');
+    s+=txt(592,181,'(≈ 29.8°)','bf','start',10,GY);
+  }else if(n===2){
+    s+=box(28,96,66,38,'r 中心线','#fff',G);
+    s+=arrow(96,115,132,115,G);s+=plus(146,115,12,B);
+    s+=txt(146,90,'e = r − y','bf','middle',10,O);
+    s+=arrow(160,115,206,115,B);
+    s+=box(208,92,116,46,'转向 PD','#E6F1FB',B,'Kp + Kd·s');
+    s+=arrow(326,115,368,115,B);
+    s+=box(370,92,118,46,'1/(Ts s+1)','#fff',PU,'舵机');
+    s+=arrow(490,115,528,115,PU);
+    s+=box(530,92,96,46,'(v²/L)/s²','#FBEEE8',O,'横向动力学');
+    s+=arrow(628,115,668,115,O);s+=box(670,96,62,38,'y','#fff',G);
+    s+=line(700,136,700,196,GY,1.1);s+=line(700,196,146,196,GY,1.1);
+    s+=arrow(146,196,146,130,GY);
+    s+=txt(420,192,'单位负反馈','kl','middle',10,GY);
+    s+=rect(28,214,704,28,'#FAF9F5','#E4E2DB',1,6);
+    s+=txt(42,232,'Ts→0 闭环特征式：s² + (v²Kd/L)·s + (v²Kp/L) = 0　⇔　ë + (v²Kd/L)ė + (v²Kp/L)e = 0','bf','start',10.5,B);
+  }else if(n===3){
+    s+=rect(28,28,704,52,'#E6F1FB','#185FA5',1,8);
+    s+=txt(48,60,'s² + 2ζωn·s + ωn²　⇔　s² + (v²Kd/L)·s + v²Kp/L','bf','start',13,B);
+    s+=txt(28,108,'逐项对照','tt','start',11.5,'#2C2C2A');
+    s+=rect(28,118,336,112,'#FAF9F5','#E4E2DB',1,8);
+    s+=txt(46,143,'ωn = v·√(Kp / L)','bf','start',12,B);
+    s+=txt(46,168,'ζ  = v·Kd / (2√(L·Kp))','bf','start',12,B);
+    s+=txt(46,197,'ωd = ωn√(1−ζ²)','bf','start',11,'#5F5E5A');
+    s+=txt(46,219,'ts ≈ 3/(ζωn)（包络估算）','bf','start',10.5,GY);
+    s+=rect(380,118,352,112,'#FBEEE8','#D85A30',1,8);
+    s+=txt(398,143,'σ  = 100·e^(−πζ/√(1−ζ²))  [%]','bf','start',11.5,O);
+    s+=txt(398,168,'tp = π/(ωn√(1−ζ²))','bf','start',11.5,O);
+    s+=txt(398,193,'欠阻尼 ζ&lt;1 才有超调','bf','start',10.5,'#5F5E5A');
+    s+=txt(398,217,'Kp↑ → ωn↑（快），ζ↓（更冲）','bf','start',10.5,GY);
+  }else if(n===4){
+    s+=txt(28,28,'闭环特征多项式（v²/L 记作 q）','tt','start',11.5,'#2C2C2A');
+    s+=rect(28,38,704,44,'#E6F1FB','#185FA5',1,8);
+    s+=txt(44,66,'PD + 舵机：Ts·s³ + s² + q·Kd·s + q·Kp = 0','bf','start',12,B);
+    s+=rect(28,90,704,44,'#F3EDFA','#6B4FA8',1,8);
+    s+=txt(44,118,'PID + 舵机：Ts·s⁴ + s³ + q·Kd·s² + q·Kp·s + q·Ki = 0','bf','start',12,PU);
+    s+=txt(28,162,'Routh 判据给出的两条稳定边界','tt','start',11.5,'#2C2C2A');
+    s+=rect(28,172,336,56,'#FBEEE8','#D85A30',1,8);
+    s+=txt(46,196,'Kd &gt; Ts·Kp','bf','start',12.5,O);
+    s+=txt(46,216,'微分不足 → 共轭极点右穿虚轴（画龙）','kl','start',9.5,GY);
+    s+=rect(380,172,352,56,'#FBEEE8','#D85A30',1,8);
+    s+=txt(398,196,'Ki &lt; q·Kp·(Kd − Ts·Kp)','bf','start',12,O);
+    s+=txt(398,216,'积分过大 → 低频振荡甚至失稳','kl','start',9.5,GY);
+  }else{
+    s+=box(28,96,66,38,'v_cmd','#fff',G);
+    s+=arrow(96,115,130,115,G);s+=plus(146,115,12,O);
+    s+=arrow(160,115,202,115,O);
+    s+=box(204,92,124,46,'速度 PID','#FBEEE8',O,'前馈 + Kp/Ki/Kd');
+    s+=arrow(330,115,368,115,O);
+    s+=box(370,92,130,46,'1/(Tm s + 1)','#fff',B,'电机');
+    s+=arrow(502,115,540,115,B);s+=box(542,96,62,38,'v','#fff',G);
+    s+=line(573,136,573,196,GY,1.1);s+=line(573,196,146,196,GY,1.1);
+    s+=arrow(146,196,146,130,GY);
+    s+=rect(28,214,704,28,'#FAF9F5','#E4E2DB',1,6);
+    s+=txt(42,232,'V/Vcmd = [(1+Kpv)s + Kiv] / [Tm·s² + (1+Kpv)s + Kiv]　（Kdv=0）','bf','start',10.5,O);
+    s+=txt(620,60,'ωn=√(Kiv/Tm)','bf','middle',10.5,B);
+    s+=txt(620,82,'ζ=(1+Kpv)/(2√(Tm·Kiv))','bf','middle',10,B);
+  }
+  return svg(W,H,s);
+}
+function renderStage(){
+  document.getElementById('stageTabs').innerHTML=STAGES.map(function(o,i){
+    return '<button data-i="'+i+'" class="'+(i===st.stage?'on':'')+'">'+o.t+'</button>';}).join('');
+  document.getElementById('svgStage').innerHTML=stageSVG(st.stage);
+  var o=STAGES[st.stage],c=C;
+  document.getElementById('stageNote').innerHTML=
+    '<h3>'+o.h+'</h3><p>'+o.p+'</p>'+
+    '<div class="theory"><div class="dev">'+esc(o.f)+'</div></div>'+
+    '<p>'+o.w+'</p>'+
+    '<div class="live">当前：Kp='+f(st.Kps,2)+'　Ki='+f(st.Kis,2)+'　Kd='+f(st.Kds,3)+
+    '　vₙ='+f(st.vNom,2)+' m/s<br>ωn='+f(c.th.wn,3)+' rad/s　ζ='+f(c.th.z,4)+
+    '　σ₂='+f(c.th.sigma,2)+'%<br>Ts='+(st.noTs?'0 (已忽略)':'0.06 s')+'　Kd,crit='+f(c.rt.kdCrit,3)+
+    '　Ki,max='+f(c.rt.kiMax,3)+'</div>';
+}
+
+/* ================= 参数面板 / 指标卡 ================= */
+function buildParams(){
+  var h='';
+  PARAMS.forEach(function(g){
+    h+='<div class="pgroup"><i class="'+(g.cls||'')+'"></i>'+g.g+'</div>';
+    g.items.forEach(function(p){
+      var val=st[p.k];
+      h+='<div class="param '+(p.cls||'')+'"><div class="phead"><span>'+p.n+'</span>'+
+        '<span class="pval" id="pv_'+p.k+'">'+f(val,p.step<.01?3:2)+(p.unit?' '+p.unit:'')+'</span></div>'+
+        '<input type="range" data-k="'+p.k+'" min="'+p.min+'" max="'+p.max+'" step="'+p.step+'" value="'+val+'"></div>';
+    });
+  });
+  document.getElementById('paramGrid').innerHTML=h;
+}
+function renderSpecs(){
+  var c=C,t=c.th,r=c.rt,m=c.respM,s=c.sim,sp=c.spd;
+  var items=[
+    ['ζ · 转向环阻尼比',f(t.z,4),'vₙ·Kd/(2√(L·Kp))',t.z<.45||t.z>1.2?'bad':''],
+    ['ωn · 自然频率',f(t.wn,3)+' rad/s','vₙ·√(Kp/L)',''],
+    ['σ₂ · 二阶理论超调',f(t.sigma,2)+' %','100e^(−πζ/√(1−ζ²))','hl'],
+    ['σ · 阶跃实测超调',f(m.sigma,2)+' %','含 Ts / Ki 的实际闭环',m.unstable?'bad':''],
+    ['tp · 峰值时间',f(m.tp,3)+' s','理论 '+f(t.tp,3)+' s',''],
+    ['ts · 调节时间(5%)',f(m.ts,3)+' s','包络估算 '+f(t.ts,3)+' s',''],
+    ['IAE · 横向误差积分',f(s.iae,3)+' m·s','∫|e|dt 全程',''],
+    ['RMSE · 跟踪误差',f(s.rmse,4)+' m','√(∫e²dt/T)',''],
+    ['max|e| · 最大偏差',f(s.maxe,4)+' m','赛道宽 ±'+f(E.W/2,2)+' m',s.maxe>E.W/2?'bad':''],
+    ['v̄ · 平均车速',f(s.vmean,3)+' m/s','完成 '+f(s.time,2)+' s',''],
+    ['速度环 ωn',f(sp.wn,3)+' rad/s','√(Kiv/Tm)',''],
+    ['速度环 ζ',f(sp.z,4),'(1+Kpv)/(2√(Tm·Kiv))',''],
+    ['速度环 σ(极点公式)',f(sp.sigma,2)+' %','含零点，实测 '+f(c.spdM.sigma,2)+'%',''],
+    ['meanE · 平均偏差',f(s.meanE,4)+' m','∫e dt / T（静差）',''],
+    ['稳定裕度 Kd/Kd_crit',r.kdCrit>1e-9?f(st.Kds/r.kdCrit,2):'—',
+      r.kdCrit>1e-9?'临界 '+f(r.kdCrit,3):'Ts=0 时无此边界',r.kdOK?'':'bad']
+  ];
+  document.getElementById('specs').innerHTML=items.map(function(o){
+    return '<div class="spec '+(o[3]||'')+'"><i>'+o[0]+'</i><b>'+o[1]+'</b><em>'+o[2]+'</em></div>';}).join('');
+  document.getElementById('statusText').innerHTML=
+    'Routh 稳定条件：Kd &gt; Ts·Kp = <b>'+f(r.kdCrit,3)+'</b>（当前 '+f(st.Kds,3)+'，'+(r.kdOK?'满足':'<span style="color:var(--red)">不满足</span>')+'）；'+
+    'Ki &lt; (vₙ²/L)·Kp·(Kd − Ts·Kp) = <b>'+f(r.kiMax,3)+'</b>（当前 '+f(st.Kis,2)+'，'+(r.kiOK?'满足':'<span style="color:var(--red)">不满足</span>')+'）。'+
+    '　闭环特征式：'+esc(polyText(c.poly))+'，max Re(p) = <b>'+f(maxRe(c.poly),4)+'</b>。<br>'+
+    '说明：Routh 边界按<b>理论标称速度 vₙ</b> 的线性模型判定；赛道上车速在 v_fast / v_slow 间变化，且有舵角限幅与曲率前馈，'+
+    '所以 Routh 判为不稳定时非线性仿真仍可能勉强跑完全程（但会出现明显振荡）。vₙ 只进入理论公式，赛道车速由下方速度给定决定。';
+  var bg=document.getElementById('badgeStab');
+  bg.className='badge '+(r.stable&&!s.diverged?'ok':(r.stable?'off':'bad'));
+  bg.textContent=!r.stable?'Routh 不稳定（标称点）':(s.diverged?'赛道跟踪发散':(s.done?'闭环稳定 · 全程完成':'闭环稳定'));
+  document.getElementById('stabilityText').textContent='max Re(p) = '+f(maxRe(c.poly),4);
+}
+function polyText(p){
+  var n=p.length-1,out=[],i;
+  for(i=0;i<p.length;i++){
+    var e=n-i,c=p[i];if(Math.abs(c)<1e-12)continue;
+    var sg=c<0?'−':(out.length?' + ':'');
+    var a=Math.abs(c);
+    out.push(sg+(Math.abs(a-1)<1e-9&&e>0?'':f(a,4).replace(/\.?0+$/,'')+'·')+(e===0?'1':e===1?'s':'s^'+e));
+  }
+  return out.join('')+' = 0';
+}
+/* ================= 赛道场景 ================= */
+var TW=1000,TH=430,TPX=34,TPY=30,TX={};
+function trackMap(tr){
+  var b=tr.bbox,bw=b.maxx-b.minx,bh=b.maxy-b.miny;
+  var sc=Math.min((TW-2*TPX)/bw,(TH-2*TPY)/bh);
+  var ox=(TW-bw*sc)/2,oy=(TH-bh*sc)/2;
+  return {sc:sc,X:function(x){return ox+(x-b.minx)*sc;},
+    Y:function(y){return TH-oy-(y-b.miny)*sc;}};
+}
+function trackStatic(){
+  var tr=C.tr,M=TX,X=M.X,Y=M.Y,s='',i,P=tr.pts,left=[],right=[],mid=[];
+  for(i=0;i<P.length;i++){
+    var p=P[i],nx=-Math.sin(p.th),ny=Math.cos(p.th),h=E.W/2;
+    left.push([p.x+nx*h,p.y+ny*h]);right.push([p.x-nx*h,p.y-ny*h]);mid.push([p.x,p.y]);
+  }
+  var CV=function(a){return [X(a[0]),Y(a[1])];};
+  s+=rect(0,0,TW,TH,'#2C3542');
+  /* 网格 */
+  for(i=0;i<=10;i++)s+=line(TW*i/10,0,TW*i/10,TH,'#FFFFFF',.5,'',.045);
+  for(i=0;i<=5;i++)s+=line(0,TH*i/5,TW,TH*i/5,'#FFFFFF',.5,'',.045);
+  /* 路面 */
+  var road=polyPath(left.map(CV),function(a){return a;},function(b){return b;},false)+
+    ' '+right.map(CV).reverse().map(function(a,j){return 'L'+f(a[0],1)+' '+f(a[1],1);}).join('')+'Z';
+  s+=path(road,'none',0,null,'#4B5563',.55);
+  s+=path(polyPath(left.map(CV),function(a){return a;},function(b){return b;},false),'#FFFFFF',Math.max(2.5,M.sc*0.055));
+  s+=path(polyPath(right.map(CV),function(a){return a;},function(b){return b;},false),'#FFFFFF',Math.max(2.5,M.sc*0.055));
+  /* 中心线黄色虚线 */
+  s+=path(polyPath(mid.map(CV),function(a){return a;},function(b){return b;},tr.closed),'#F2B926',Math.max(2,M.sc*0.032),'9 9');
+  /* 起终点线 */
+  function mark(idx,col,label){
+    var p=P[idx],nx=-Math.sin(p.th)*E.W/2,ny=Math.cos(p.th)*E.W/2;
+    return line(X(p.x+nx),Y(p.y+ny),X(p.x-nx),Y(p.y-ny),col,Math.max(4,M.sc*0.075))+
+      txt(X(p.x)+ (idx===0?10:-10),Y(p.y)-12,label,'tt',idx===0?'start':'end',11,col);
+  }
+  s+=mark(0,'#22C55E','起点');
+  s+=mark(tr.M-4,'#EF4444','终点');
+  /* 曲率提示 */
+  if(tr.kind==='S'){
+    [[1.9,'入弯 · 右'],[5.9,'反向弯 · 左'],[10.1,'出弯']].forEach(function(o){
+      s+=txt(X(o[0]),Y(2.08),o[1],'kl','middle',10,'#9CA3AF');
+    });
+  }else{
+    s+=txt(X(0),Y(2.75),'8 字环线 · 交叉点','kl','middle',10,'#9CA3AF');
+    s+=txt(X(-4.3),Y(-2.6),'左环','kl','middle',10,'#9CA3AF');
+    s+=txt(X(4.3),Y(2.6),'右环','kl','middle',10,'#9CA3AF');
+  }
+  s+=txt(TW-14,22,(tr.kind==='S'?'S 赛道 · 双向变曲率':'8 字环线 · 双向交叉弯道'),'kl','end',10,'#6B7280');
+  s+=txt(TW-14,TH-12,'白：边界　黄虚线：中心线　蓝：智能车','kl','end',9.5,'#6B7280');
+  return s;
+}
+function renderTrackStatic(){
+  TX=trackMap(C.tr);
+  var tr=C.tr;
+  document.getElementById('trackTag').textContent=(tr.kind==='S'?'S 赛道':'8 字环线')+' · 全长 '+f(tr.total,2)+' m';
+  document.getElementById('svgTrack').innerHTML=
+    '<svg viewBox="0 0 '+TW+' '+TH+'" xmlns="http://www.w3.org/2000/svg" id="tkSvg">'+
+    '<g id="tkStatic">'+trackStatic()+'</g><g id="tkDyn"></g></svg>';
+  var sl=document.getElementById('rngT');sl.max=1000;
+  document.getElementById('ctlT').textContent='0.00 / '+f(C.sim.time,2)+' s';
+}
+function renderTrackFrame(){
+  var S=C.sim,n=S.traj.length,M=TX,X=M.X,Y=M.Y;
+  var i=Math.max(0,Math.min(n-1,Math.round(st.playT/.01)));
+  var cur=S.traj[i]||[0,0,0,0],pr=S.prs[i]||[cur[0],cur[1],0];
+  var s='',j;
+  /* 行驶轨迹拖尾 */
+  var tail=[];for(j=0;j<=i;j++)tail.push([X(S.traj[j][0]),Y(S.traj[j][1])]);
+  if(tail.length>1)s+=path(polyPath(tail,function(a){return a;},function(b){return b;},false),'#93C5FD',Math.max(2,M.sc*.030),null,'none',.85);
+  /* 横向误差线 + 瞄准点 */
+  s+=line(X(cur[0]),Y(cur[1]),X(pr[0]),Y(pr[1]),'#EF4444',1.8,'4 3',.95);
+  s+=circ(X(pr[0]),Y(pr[1]),Math.max(3,M.sc*.045),'#EF4444','#FFFFFF',1.2);
+  /* 车身 */
+  var Lc=Math.max(13,.34*M.sc),Wc=Math.max(8,.19*M.sc),ang=-cur[2]*180/PI;
+  s+='<g transform="translate('+f(X(cur[0]),1)+','+f(Y(cur[1]),1)+') rotate('+f(ang,2)+')">';
+  s+=rect(-Lc/2,-Wc/2,Lc,Wc,'#3B82F6','#1E40AF',1.4,3);
+  s+=rect(-Lc/2+2,-Wc/2+2,Lc*.42,Wc-4,'#60A5FA','',0,2);
+  s+=rect(Lc/2-3,-Wc/2-1,3,Wc+2,'#F9FAFB','',0,1);
+  s+=line(0,-Wc/2-2,0,Wc/2+2,'#BFDBFE',.8);
+  s+='</g>';
+  var dyn=document.getElementById('tkDyn');if(dyn)dyn.innerHTML=s;
+  /* HUD */
+  var e=S.es[i],v=S.vs[i],d=S.ds[i];
+  document.getElementById('hudT').textContent=f(S.ts[i]||0,2)+' s';
+  document.getElementById('hudV').textContent=f(v,2)+' m/s';
+  document.getElementById('hudD').textContent=f(d*180/PI,1)+' °';
+  document.getElementById('hudE').textContent=(e>=0?'+':'')+f(e,3)+' m';
+  document.getElementById('hudP').textContent=Math.round(S.prs[i][2]/C.tr.M*100)+'%';
+  document.getElementById('ctlT').textContent=f(S.ts[i]||0,2)+' / '+f(S.time,2)+' s';
+  /* 遥测 */
+  document.getElementById('teleE').innerHTML=f(e,3)+'<small>m</small>';
+  document.getElementById('teleV').innerHTML=f(v,2)+'<small>m/s</small>';
+  document.getElementById('teleSub').textContent='t = '+f(S.ts[i]||0,2)+' s · 帧 '+i+'/'+n;
+  renderGauge(e,v,d);
+}
+function renderGauge(e,v,d){
+  var W=300,H=86,s='',cx=W/2;
+  s+=rect(0,0,W,H,'#fff');
+  var lim=Math.max(.35,C.sim.maxe*1.1);
+  s+=txt(6,14,'横向误差 ±'+f(lim,2)+' m','kl','start',9.5,'#8A8880');
+  s+=rect(10,20,W-20,12,'#F1EFE8','#E4E2DB',1,6);
+  s+=line(cx,18,cx,34,'#B9B6AD',1);
+  var ex=cx+Math.max(-1,Math.min(1,e/lim))*(W-26)/2;
+  s+=rect(Math.min(cx,ex),21,Math.abs(ex-cx),10,'#EF4444','',0,5,.85);
+  s+=circ(ex,26,4,'#A32D2D');
+  s+=txt(10,50,'车速 0 — 3.2 m/s','kl','start',9.5,'#8A8880');
+  s+=rect(10,56,(W-20)*.62,12,'#F1EFE8','#E4E2DB',1,6);
+  s+=rect(10,56,(W-20)*.62*Math.max(0,Math.min(1,v/3.2)),12,'#3F8F5B','',0,5,.8);
+  s+=txt(W-10,66,f(v,2),'bf','end',11,'#2C2C2A');
+  s+=txt(10,80,'舵角 δ = '+f(d*180/PI,1)+'° （限幅 ±'+f(E.dmax*180/PI,1)+'°）','kl','start',9.5,'#8A8880');
+  document.getElementById('svgGauge').innerHTML=svg(W,H,s);
+}
+function renderTele(){
+  var S=C.sim,c=C;
+  var rows=[
+    ['赛道 / 总弧长',(c.tr.kind==='S'?'S 赛道':'8 字环线')+' · '+f(c.tr.total,2)+' m'],
+    ['完成时间 / 完成度',f(S.time,2)+' s · '+Math.round(S.endIdx/c.tr.M*100)+'%'],
+    ['平均车速 v̄',f(S.vmean,3)+' m/s'],
+    ['IAE  ∫|e|dt',f(S.iae,3)+' m·s'],
+    ['RMSE',f(S.rmse,4)+' m'],
+    ['最大横向误差 max|e|',f(S.maxe,4)+' m'],
+    ['平均偏差 meanE（静差）',f(S.meanE,4)+' m'],
+    ['速度给定 直道 / 弯道',f(st.vFast,2)+' / '+f(st.vSlow,2)+' m/s'],
+    ['曲率前馈 δ_ff',c.P.ff?'开（atan(Lκ)）':'关（纯反馈）'],
+    ['舵机惯性 Ts',st.noTs?'忽略（理想二阶）':'0.06 s（三/四阶）']
+  ];
+  document.getElementById('teleTable').innerHTML=rows.map(function(r){
+    return '<tr><td>'+r[0]+'</td><td>'+r[1]+'</td></tr>';}).join('');
+  document.getElementById('teleNote').innerHTML=
+    (c.P.ff?'已加曲率前馈：弯道稳态偏差被大幅压低，PID 只负责校正残余；':'纯反馈：弯道存在稳态横向误差，可加大 <code>Ki</code> 或打开曲率前馈消静差；')+
+    (S.diverged?'<b style="color:var(--red)">当前参数下轨迹发散，请增大 Kd 或减小 Ki。</b>':'')+
+    '<br>路径跟踪用 <code>IAE / RMSE / max|e|</code> 评价，超调量只在左上角中心线阶跃响应里定义，两套指标不混用。';
+}
+/* ================= 六张分析图 ================= */
+var BLUE='#185FA5',ORANGE='#D85A30',GREEN='#3F8F5B',RED='#A32D2D',PURPLE='#6B4FA8',GOLD='#C9973F',GREY='#8A8880';
+function legend(x,y,items,size){
+  var s='',xx=x;size=size||10;
+  items.forEach(function(o){
+    s+=line(xx,y-3,xx+15,y-3,o[1],2.2,o[2]||null);
+    s+=txt(xx+19,y,o[0],'kl','start',size,'#5F5E5A');
+    xx+=19+o[0].length*(size*.95)+15;
+  });
+  return s;
+}
+function plotStep(){
+  var W=520,H=252,F=frame(W,H,{l:46,r:16,t:16,b:32},0,6,0,C.amp*1.75),s='';
+  var a=C.amp,hi=a*1.05,lo=a*.95;
+  s+=rect(F.L,F.Y(hi),F.R-F.L,F.Y(lo)-F.Y(hi),'#DCEEE2');
+  s+=axes(F,[0,1,2,3,4,5,6],[0,.1,.2,.3,.4,.5],'t / s','e, r / m');
+  s+=line(F.L,F.Y(a),F.R,F.Y(a),GREY,1,'5 4');
+  s+=txt(F.R-3,F.Y(a)-5,'r = '+f(a,2)+' m','kl','end',9.5,GREY);
+  /* 理想二阶（Ts=0, Ki=0）虚线 */
+  var iarr=C.ideal.map(function(o){return [o.t,o.y];});
+  s+=path(polyPath(iarr,F.X,F.Y),ORANGE,1.8,'6 4');
+  /* 当前闭环实线 */
+  var arr=C.resp.map(function(o){return [o.t,o.y];});
+  s+=path(polyPath(arr,F.X,F.Y),BLUE,2.2);
+  /* σ 与 tp */
+  var m=C.respM,t=C.th;
+  if(!m.unstable&&m.tp!==null&&m.tp<6){
+    s+=line(F.X(m.tp),F.Y(m.peak),F.X(m.tp),F.Y(a),GOLD,1,'3 3');
+    s+=circ(F.X(m.tp),F.Y(m.peak),3.2,GOLD);
+    s+=txt(F.X(m.tp)+5,F.Y(m.peak)-6,'σ '+f(m.sigma,2)+'%','bf','start',10,GOLD);
+  }
+  if(!m.unstable&&m.ts<6){
+    s+=line(F.X(m.ts),F.T+6,F.X(m.ts),F.B,BLUE,1,'2 4',.55);
+    s+=txt(F.X(m.ts)+4,F.B-16,'ts '+f(m.ts,2)+'s','bf','start',9,BLUE);
+  }
+  s+=legend(F.L+8,F.T+10,[['当前闭环 (含Ts/Ki)',BLUE],['理想二阶 (Ts=0,Ki=0)',ORANGE,'6 4']],9.5);
+  s+=txt(F.R-4,F.B-6,'σ₂ 理论 '+f(t.sigma,2)+'% · σ 实测 '+f(m.sigma,2)+'%','bf','end',9.5,BLUE);
+  document.getElementById('svgStep').innerHTML=svg(W,H,s);
+  document.getElementById('subStep').textContent='ζ='+f(t.z,4)+'　ωn='+f(t.wn,3)+' rad/s　r='+f(a,2)+' m';
+  document.getElementById('capStep').innerHTML=
+    '实线为当前参数（Ts='+(st.noTs?'0':'0.06')+' s，Ki='+f(st.Kis,2)+'）的闭环阶跃；橙虚线为去掉舵机惯性与积分后的<b>理想二阶</b>。'+
+    '把 Ki 拖到 0 并打开「忽略舵机惯性」，两条曲线重合，实测 σ 与理论 σ₂ 误差 &lt; 0.0001%。<code>ts≈3/(ζωn)</code> 是包络估算，与 5% 带实测有正常偏差。';
+}
+function plotErr(){
+  var W=520,H=252,S=C.sim,T=Math.max(1,S.time),mx=Math.max(.25,S.maxe*1.25,E.W/2*1.15);
+  var F=frame(W,H,{l:46,r:16,t:16,b:32},0,T,-mx,mx),s='',i;
+  s+=axes(F,[0,T*.25,T*.5,T*.75,T],[-mx,-mx/2,0,mx/2,mx],'t / s','e / m');
+  /* 赛道半宽参考 */
+  s+=line(F.L,F.Y(E.W/2),F.R,F.Y(E.W/2),RED,1,'4 4',.5);
+  s+=line(F.L,F.Y(-E.W/2),F.R,F.Y(-E.W/2),RED,1,'4 4',.5);
+  s+=line(F.L,F.Y(0),F.R,F.Y(0),'#B9B6AD',1.2);
+  var pts=[],d='';
+  for(i=0;i<S.es.length;i++)pts.push([S.ts[i],S.es[i]]);
+  if(pts.length){
+    d=polyPath(pts,F.X,F.Y)+'L'+f(F.X(pts[pts.length-1][0]),1)+' '+f(F.Y(0),1)+
+      'L'+f(F.X(pts[0][0]),1)+' '+f(F.Y(0),1)+'Z';
+    s+=path(d,'none',0,null,'#EF4444',.16)+path(polyPath(pts,F.X,F.Y),RED,1.6);
+  }
+  var pk=-Infinity,pki=0;
+  for(i=0;i<S.es.length;i++)if(Math.abs(S.es[i])>pk){pk=Math.abs(S.es[i]);pki=i;}
+  if(pts.length){
+    var pe=Math.max(0,S.es[pki]),px=F.X(S.ts[pki]),py=F.Y(pe);
+    s+=circ(px,py,3,GOLD)+txt(px+5,py-5,'max|e| '+f(pk,3),'bf','start',9.5,GOLD);
+  }
+  s+=txt(F.R-4,F.T+11,'IAE '+f(S.iae,3)+' · RMSE '+f(S.rmse,4),'bf','end',9.5,RED);
+  document.getElementById('svgErr').innerHTML=svg(W,H,s);
+  document.getElementById('subErr').textContent=(C.tr.kind==='S'?'S 赛道':'8 字环线')+' · '+f(T,2)+' s · IAE '+f(S.iae,3);
+  document.getElementById('capErr').innerHTML=
+    '全程横向误差时域曲线，红色虚线是赛道半宽 ±'+f(E.W/2,2)+' m（视觉上的出界参考）。'+
+    '弯道的稳态偏差靠 <code>Ki</code> 或曲率前馈消除；<code>Kd</code> 太小会出现明显的来回「画龙」。'+
+    (S.diverged?' <b style="color:var(--red)">当前参数轨迹发散。</b>':'');
+}
+function plotSpd(){
+  var W=520,H=252,F=frame(W,H,{l:46,r:16,t:16,b:32},0,2,1.0,3.4),s='';
+  s+=rect(F.L,F.Y(2.4*1.05),F.R-F.L,F.Y(2.4*.95)-F.Y(2.4*1.05),'#E8F3EC');
+  s+=axes(F,[0,.5,1,1.5,2],[1.2,1.8,2.4,3.0,3.4],'t / s','v / (m/s)');
+  s+=line(F.L,F.Y(2.4),F.R,F.Y(2.4),GREY,1,'5 4');
+  s+=path(polyPath(C.sresp.map(function(o){return [o.t,o.v];}),F.X,F.Y),BLUE,2.2);
+  var sm=C.spdM;
+  if(isFinite(sm.tp)&&sm.tp<2){
+    var pk=2.4+sm.sigma/100*1.2;
+    s+=circ(F.X(sm.tp),F.Y(pk),3,GOLD);
+    s+=txt(F.X(sm.tp)+5,F.Y(pk)-6,'σ '+f(sm.sigma,2)+'%','bf','start',9.5,GOLD);
+  }
+  s+=legend(F.L+8,F.T+10,[['实际车速 v(t)',BLUE],['给定 v_cmd = 2.4',GREY,'5 4']],9.5);
+  s+=txt(F.R-4,F.B-6,'ωn='+f(C.spd.wn,3)+' rad/s · ζ='+f(C.spd.z,3),'bf','end',9.5,BLUE);
+  document.getElementById('svgSpd').innerHTML=svg(W,H,s);
+  document.getElementById('subSpd').textContent='Kpv='+f(st.Kpv,2)+'　Kiv='+f(st.Kiv,1)+'　Kdv='+f(st.Kdv,3);
+  document.getElementById('capSpd').innerHTML=
+    '闭环 <code>V/Vcmd = [(1+Kpv)s+Kiv]/[Tm s²+(1+Kpv)s+Kiv]</code> 的<b>极点</b>是标准二阶（ωn=√(Kiv/Tm)，ζ=(1+Kpv)/(2√(Tm·Kiv))），'+
+    '但分子带零点，实测超调 '+f(sm.sigma,2)+'% 明显大于极点公式给出的 '+f(C.spd.sigma,2)+'%。'+
+    '所以本页的超调量从不取自速度环。';
+}
+function plotVel(){
+  var W=520,H=252,S=C.sim,T=Math.max(1,S.time),top=Math.max(3.2,st.vFast*1.25);
+  var F=frame(W,H,{l:46,r:16,t:16,b:32},0,T,0,top),s='';
+  s+=axes(F,[0,T*.25,T*.5,T*.75,T],[0,1,2,3],'t / s','v / (m/s)');
+  s+=path(polyPath(S.vcs.map(function(v,i){return [S.ts[i],v];}),F.X,F.Y),ORANGE,1.7,'6 4');
+  s+=path(polyPath(S.vs.map(function(v,i){return [S.ts[i],v];}),F.X,F.Y),BLUE,2);
+  s+=legend(F.L+8,F.T+10,[['实际车速 v',BLUE],['速度给定 v_cmd',ORANGE,'6 4']],9.5);
+  s+=txt(F.R-4,F.B-6,'v̄ = '+f(S.vmean,3)+' m/s','bf','end',9.5,BLUE);
+  document.getElementById('svgVel').innerHTML=svg(W,H,s);
+  document.getElementById('subVel').textContent='直道 '+f(st.vFast,2)+' / 弯道 '+f(st.vSlow,2)+' m/s · 曲率阈值 '+f(DEF.kBend,2);
+  document.getElementById('capVel').innerHTML=
+    '速度给定按曲率分两档：|κ| &gt; '+f(DEF.kBend,2)+' m⁻¹ 判为弯道，入弯是一次明确的速度阶跃。'+
+    '微分项采用<b>微分先行</b>（对测量值 v 微分而非误差），给定跳变不会造成输出冲击。'+
+    '速度环带宽远高于路径变化，所以它对横向误差影响很小，主要体现在这张速度曲线上。';
+}
+function plotZS(){
+  var W=520,H=252,F=frame(W,H,{l:46,r:16,t:16,b:32},0,1.2,0,70),s='',i;
+  s+=axes(F,[0,.2,.4,.6,.8,1.0,1.2],[0,10,20,30,40,50,60,70],'ζ · 阻尼比','σ / %');
+  var th=[];
+  for(i=0;i<=240;i++){
+    var z=i/200;if(z>=1)break;
+    th.push([z,100*Math.exp(-PI*z/SQ(1-z*z))]);
+  }
+  s+=path(polyPath(th,F.X,F.Y),BLUE,2.2);
+  C.zs.forEach(function(o){
+    if(o.z<1&&isFinite(o.m))s+=circ(F.X(o.z),F.Y(o.m),2.8,ORANGE,'#fff',1);
+  });
+  var z0=C.th.z,y0=C.th.sigma;
+  if(z0<1.2){
+    s+=line(F.X(z0),F.T,F.X(z0),F.B,GOLD,1,'3 3');
+    s+=circ(F.X(Math.min(z0,1.19)),F.Y(y0),5.2,RED,'#fff',1.5);
+    s+=txt(Math.min(F.X(z0)+7,F.R-172),F.Y(y0)-9,'当前 ζ='+f(z0,3)+' → σ₂='+f(y0,2)+'%','bf','start',10,RED);
+  }
+  s+=legend(F.R-200,F.T+10,[['课本理论曲线',BLUE],['数值仿真验证点',ORANGE]],9.5);
+  document.getElementById('svgZS').innerHTML=svg(W,H,s);
+  document.getElementById('subZS').textContent='σ = 100·e^(−πζ/√(1−ζ²)) · 当前 ζ='+f(z0,4);
+  document.getElementById('capZS').innerHTML=
+    '橙点是 <code>Ts=0, Ki=0</code> 下扫 <code>Kd</code> 得到的 RK4 数值仿真实测超调，全部落在课本理论曲线上（最大误差 &lt; 0.0001%，峰值时间 tp 也逐一吻合）。'+
+    '红点是当前 Kd 对应的理论工作点；若同时打开了舵机惯性或积分，实际超调会偏离该点——这正是闭环零点与高阶极点的影响。';
+}
+function plotPole(){
+  var W=520,H=252,F=frame(W,H,{l:44,r:16,t:16,b:32},-14,2,-12,12),s='';
+  s+=axes(F,[-12,-8,-4,0],[-10,-5,0,5,10],'Re(s)','Im(s)');
+  s+=line(F.X(0),F.T,F.X(0),F.B,RED,1.4,'5 3',.75);
+  s+=line(F.L,F.Y(0),F.R,F.Y(0),'#B9B6AD',1.2);
+  /* 等阻尼射线 ζ=0.707 */
+  var k=-Math.tan(Math.acos(.707));
+  s+=line(F.X(0),F.Y(0),F.X(-14),F.Y(-14*k),GOLD,1,'4 4',.8);
+  s+=line(F.X(0),F.Y(0),F.X(-14),F.Y(14*k),GOLD,1,'4 4',.8);
+  s+=txt(F.X(-4),F.Y(-4)+13,'ζ≈0.707 等阻尼线','bf','start',9,GOLD);
+  /* Kd 根轨迹（按 Kd 深浅） */
+  C.locus.forEach(function(o){
+    if(o[1]<-15||o[1]>3||Math.abs(o[2])>13)return;
+    s+=circ(F.X(o[1]),F.Y(o[2]),1.05,BLUE,'',0);
+  });
+  /* 当前闭环极点 */
+  C.poles.forEach(function(p){
+    var x=F.X(p[0]),y=F.Y(p[1]);
+    if(x<F.L||x>F.R||y<F.T||y>F.B)return;
+    s+=line(x-4,y-4,x+4,y+4,RED,2)+line(x-4,y+4,x+4,y-4,RED,2);
+  });
+  /* 主导极点标注 */
+  if(C.dPole){
+    var dp=C.dPole;
+    s+=txt(F.X(dp.re)+6,F.Y(dp.im)-6,'主导 '+f(dp.re,2)+'±'+f(dp.im,2)+'j','bf','start',9.5,RED);
+  }
+  s+=legend(F.L+8,F.T+10,[['Kd 根轨迹 (0→1.2)',BLUE],['当前闭环极点',RED]],9.5);
+  s+=txt(F.R-4,F.B-6,'Kd,crit = '+f(C.rt.kdCrit,3),'bf','end',9.5,RED);
+  document.getElementById('svgPole').innerHTML=svg(W,H,s);
+  document.getElementById('subPole').textContent=C.poly.length-1+' 阶闭环 · max Re(p) = '+f(maxRe(C.poly),4);
+  document.getElementById('capPole').innerHTML=
+    '浅蓝点是固定 Kp / Ki、把 <code>Kd</code> 从 0 扫到 1.2 时全部闭环极点的走向；红叉是当前工作点。'+
+    (C.rt.kdCrit>1e-9?'Kd 小于 <code>Ts·Kp = '+f(C.rt.kdCrit,3)+'</code> 时共轭极点穿过虚轴到右侧 —— 就是实车上「微分不够、车开始画龙直到冲出赛道」。':
+      '当前已忽略舵机惯性（Ts=0），闭环降为二阶 / 三阶，Kd&gt;0 即稳定，不再有虚轴穿越边界。')+
+    '金色虚线是 ζ≈0.707 等阻尼射线，整定目标就是让主导极点落在这两条线附近。';
+}
+
+/* ================= 对照条 / 理论表 / 讲义卡 ================= */
+function renderCmp(){
+  var c=C,s=c.sim,t=c.th,r=c.ref;
+  var items=[
+    ['超调量 σ（中心线阶跃）','理想二阶 '+f(c.idealM.sigma,2)+'%','当前闭环 '+f(c.respM.sigma,2)+'%'],
+    ['峰值时间 tp',f(t.tp,3)+' s',f(c.respM.tp,3)+' s'],
+    ['IAE · 无前馈 → 当前（'+(c.tr.kind==='S'?'S':'8字')+'）',f(r.iae,3)+' m·s',f(s.iae,3)+' m·s'],
+    ['max|e| · 无前馈 → 当前',f(r.maxe,3)+' m',f(s.maxe,3)+' m']
+  ];
+  document.getElementById('cmpbar').innerHTML=items.map(function(o){
+    return '<div class="cmp"><i>'+o[0]+'</i><div class="row"><span class="old">'+o[1]+'</span>'+
+      '<span class="ar">→</span><span class="new">'+o[2]+'</span></div></div>';}).join('');
+}
+function renderTheory(){
+  var c=C,t=c.th,r=c.rt,m=c.respM,s=c.sim;
+  document.getElementById('theory').innerHTML=
+    '<h3>模型与推导式</h3>'+
+    '<div class="dev">'+
+      '① ẋ=v cosψ, ẏ=v sinψ, ψ̇=(v/L)tanδ≈(v/L)δ, δ̇=(δ_cmd−δ)/Ts, v̇=(u−v)/Tm<br>'+
+      '② e=r−y, ÿ=(v²/L)δ ⇒ ë=−(v²/L)δ ; δ_cmd=Kp·e+Ki∫e dt+Kd·ė+atan(Lκ)·k_ff<br>'+
+      '③ Ts→0, Ki=0：ë+(v²Kd/L)ė+(v²Kp/L)e=0 ⇔ s²+(v²Kd/L)s+v²Kp/L=0<br>'+
+      '④ ωn=v√(Kp/L), ζ=v·Kd/(2√(L·Kp)), σ=100e^(−πζ/√(1−ζ²)), tp=π/(ωn√(1−ζ²))<br>'+
+      '⑤ Ts≠0：Ts s³+s²+(v²Kd/L)s+v²Kp/L=0 ; PID：Ts s⁴+s³+(v²Kd/L)s²+(v²Kp/L)s+v²Ki/L=0<br>'+
+      '⑥ Routh：Kd&gt;Ts·Kp ; Ki&lt;(v²/L)Kp(Kd−Ts·Kp)<br>'+
+      '⑦ 速度环：u=v_cmd+Kpv·ev+Kiv∫ev−Kdv·v̇ ; V/Vcmd=[(1+Kpv)s+Kiv]/[Tm s²+(1+Kpv)s+Kiv]'+
+    '</div>'+
+    '<h3>理论值 / 实测值对照（当前参数）</h3>'+
+    '<table><tr><th>量</th><th>课本公式</th><th>理论值</th><th>数值实测</th><th>说明</th></tr>'+
+    '<tr><td>自然频率 ωn</td><td class="num">v√(Kp/L)</td><td class="num">'+f(t.wn,4)+'</td><td class="num">'+f(c.dPole?c.dPole.wn:NaN,4)+'</td><td>实测取三/四阶主导共轭极点模</td></tr>'+
+    '<tr><td>阻尼比 ζ</td><td class="num">vKd/(2√(LKp))</td><td class="num">'+f(t.z,4)+'</td><td class="num">'+f(c.dPole?c.dPole.z:NaN,4)+'</td><td>高阶极点会拉低实际阻尼</td></tr>'+
+    '<tr><td>超调量 σ</td><td class="num">100e^(−πζ/√(1−ζ²))</td><td class="num">'+f(t.sigma,3)+'%</td><td class="num">'+f(c.idealM.sigma,3)+'%</td><td>Ts=0, Ki=0 时误差 &lt;0.0001%</td></tr>'+
+    '<tr><td>峰值时间 tp</td><td class="num">π/(ωn√(1−ζ²))</td><td class="num">'+f(t.tp,4)+' s</td><td class="num">'+f(c.idealM.tp,4)+' s</td><td>同上，逐一吻合</td></tr>'+
+    '<tr><td>调节时间 ts</td><td class="num">3/(ζωn)</td><td class="num">'+f(t.ts,4)+' s</td><td class="num">'+f(c.idealM.ts,4)+' s</td><td>包络估算，与 5% 带有正常偏差</td></tr>'+
+    '<tr><td>当前闭环 σ</td><td class="num">—</td><td class="num">'+f(t.sigma,3)+'%</td><td class="num">'+f(m.sigma,3)+'%</td><td>Ts / Ki 引入的高阶极点和零点</td></tr>'+
+    '<tr><td>Kd 稳定边界</td><td class="num">Ts·Kp</td><td class="num">'+f(r.kdCrit,4)+'</td><td class="num">0.070 / 0.080</td><td>数值根扫描：+0.0126 / −0.0507</td></tr>'+
+    '<tr><td>Ki 稳定边界</td><td class="num">qKp(Kd−TsKp)</td><td class="num">'+f(r.kiMax,4)+'</td><td class="num">≈'+f(r.kiMax,3)+'</td><td>该点 max Re(p)≈0</td></tr>'+
+    '<tr><td>速度环 ωn / ζ</td><td class="num">√(Kiv/Tm) ; (1+Kpv)/(2√(Tm·Kiv))</td><td class="num">'+f(c.spd.wn,3)+' / '+f(c.spd.z,3)+'</td><td class="num">σ '+f(c.spdM.sigma,2)+'%</td><td>闭环含零点，σ 不满足课本公式</td></tr>'+
+    '</table>'+
+    '<h3>参数与工况</h3>'+
+    '<table><tr><th>符号</th><th>值</th><th>含义</th><th>符号</th><th>值</th><th>含义</th></tr>'+
+    '<tr><td class="num">L</td><td class="num">0.30 m</td><td>轴距</td><td class="num">Ts</td><td class="num">'+(st.noTs?'0 (忽略)':'0.06 s')+'</td><td>舵机时间常数</td></tr>'+
+    '<tr><td class="num">Tm</td><td class="num">0.12 s</td><td>电机时间常数</td><td class="num">δmax</td><td class="num">0.52 rad</td><td>前轮转角限幅</td></tr>'+
+    '<tr><td class="num">赛道宽</td><td class="num">0.62 m</td><td>边界半宽 0.31 m</td><td class="num">vₙ</td><td class="num">'+f(st.vNom,2)+' m/s</td><td>理论标称速度</td></tr>'+
+    '<tr><td class="num">v_fast / v_slow</td><td class="num">'+f(st.vFast,2)+' / '+f(st.vSlow,2)+'</td><td>直道 / 弯道给定</td><td class="num">κ 阈值</td><td class="num">'+f(DEF.kBend,2)+' m⁻¹</td><td>入弯判定</td></tr>'+
+    '</table>'+
+    '<div class="warn">口径说明：①「超调量」只在<b>中心线阶跃响应</b>上定义（理想二阶 Ts=0、Ki=0 时严格等于课本公式）；'+
+    '② 赛道跟踪用 IAE / RMSE / 最大横向误差评价，是持续曲率输入下的跟踪问题，不存在阶跃超调量的定义，两套指标不混用；'+
+    '③ 速度环闭环分子有零点，极点位置是标准二阶，但阶跃超调不满足 σ 公式，页面如实分开标注；'+
+    '④ 曲率前馈 atan(Lκ) 只改变稳态跟踪精度，不改变闭环特征多项式与稳定边界。</div>';
+}
+function renderNotes(){
+  var N=[
+    ['二自由度模型为什么不会振荡','把四轮车等效成自行车后，状态方程是一串<b>积分环节</b>：ψ̇=(v/L)δ、ẏ≈vψ、δ̇=(δ_cmd−δ)/Ts。开环没有共轭极点，给一个舵角车只会匀速转圈。<b>振荡来自闭环</b>：PD 把横向误差反馈回舵角，才凑出 s²+2ζωn s+ωn²。实车上「P 大了来回摆、D 能压住」就是这个二阶闭环。'],
+    ['Kp / Kd 怎么对应手感','ωn=v√(Kp/L)：<b>Kp 越大回正越猛</b>，但也让 ζ=vKd/(2√(LKp)) 变小、超调变大。Kd 只动 ζ 不动 ωn，是实车里最直接的「阻尼旋钮」。整定到 ζ≈0.707 时 σ≈4.3%；本页默认 Kp=1.2、Kd=0.424 正好给出 ζ=0.7067、ωn=4.0 rad/s。注意车速 v 进入两个公式：<b>同一套参数，车快了就更冲</b>，这也是比赛中分速度档调参的原因。'],
+    ['舵机惯性带来的硬边界','考虑 Ts=0.06 s 后闭环升为三阶 <code>Ts s³+s²+qKd s+qKp=0</code>，Routh 直接给出 <code>Kd &gt; Ts·Kp</code>。默认 Kp=1.2 时 Kd,crit=0.072；数值扫根在 0.070 处 maxRe=+0.0126、0.080 处 −0.0507，与解析边界吻合。再加积分后升为四阶，多出 <code>Ki &lt; qKp(Kd−TsKp)=5.632</code>。这两条就是实车上「画龙」和「低频摆」的理论解释。'],
+    ['为什么前馈能立竿见影','纯反馈 PD 跟踪持续曲率时，需要靠稳态误差来「换」出恒定舵角，所以弯道总有一条偏置。加 <code>δ_ff=atan(Lκ)</code> 后，稳态舵角由几何直接给出，PID 只校正残余：默认参数下 S 赛道 IAE 从约 1.13 降到 0.075、max|e| 从 0.19 m 降到 0.024 m。<b>前馈不改变闭环极点</b>，所以稳定性、超调量、根轨迹全都不变——这正是课堂里「前馈补偿不影响特征方程」的直观例子。'],
+    ['速度环为什么单独看','速度环用前馈+PI：<code>ωn=√(Kiv/Tm)</code>、<code>ζ=(1+Kpv)/(2√(Tm·Kiv))</code>，极点是标准二阶。但闭环传函分子有 <code>(1+Kpv)s+Kiv</code> 这个零点，实测超调明显大于课本 σ 公式（默认 17.7% vs 1.2%）。因此本页把速度环的调参效果放在<b>独立的速度阶跃响应</b>和赛道车速曲线上，而超调量只取自转向环。速度环带宽远高于路径变化，对横向误差影响很小，这与实车「先调转向、再调速度」的经验一致。'],
+    ['指标口径与验证方法','<b>中心线阶跃</b>：Δr=0.30 m，测 σ / tp / tr / ts(5%)；<b>赛道跟踪</b>：IAE=∫|e|dt、RMSE、max|e|、meanE、完成时间、平均车速；两者不混用。验证链条是：把 Ki 拖到 0、打开「忽略舵机惯性」，实测曲线与理论二阶曲线重合，9 个 Kd 点的 σ 误差 &lt;0.0001%、tp 逐一吻合；再逐个加回 Ts / Ki / 前馈，观察偏离来源。<code>ts≈3/(ζωn)</code> 是指数包络估算，本来就不等于 5% 带实测值。']
+  ];
+  document.getElementById('notes').innerHTML=N.map(function(o,i){
+    return '<div class="note"><h3><i>'+(i+1)+'</i>'+o[0]+'</h3><p>'+o[1]+'</p></div>';}).join('');
+}
+/* ================= 刷新 / 事件 / 动画 ================= */
+var pending=false,needStatic=false;
+function requestRefresh(staticToo){
+  needStatic=needStatic||!!staticToo;
+  if(pending)return;pending=true;
+  requestAnimationFrame(function(){pending=false;refresh(needStatic);needStatic=false;});
+}
+function updateButtons(){
+  var a=document.getElementById('btnFF'),b=document.getElementById('btnNoTs');
+  a.textContent='曲率前馈：'+(st.ff?'开':'关');a.className='btn blue'+(st.ff?' on':'');
+  b.textContent='忽略舵机惯性：'+(st.noTs?'开':'关');b.className='btn'+(st.noTs?' on':'');
+  var bs=document.querySelectorAll('#segTrack button');
+  for(var i=0;i<bs.length;i++)bs[i].className=(bs[i].getAttribute('data-v')===st.track?'on':'');
+  document.getElementById('btnPlay').textContent=st.play?'❚❚ 暂停':'▶ 播放';
+  PARAMS.forEach(function(g){g.items.forEach(function(p){
+    var el=document.getElementById('pv_'+p.k);
+    if(el)el.textContent=f(st[p.k],p.step<.01?3:2)+(p.unit?' '+p.unit:'');
+  });});
+}
+function refresh(staticToo){
+  compute();
+  if(staticToo)renderTrackStatic();
+  st.playT=Math.max(0,Math.min(st.playT,Math.max(0,C.sim.time-.01)));
+  renderStage();renderSpecs();renderTheory();renderCmp();renderTele();
+  plotStep();plotErr();plotSpd();plotVel();plotZS();plotPole();
+  renderTrackFrame();updateButtons();
+  if(PROBE)dumpProbe();
+}
+function dumpProbe(){
+  var c=C,sn=snapshot();
+  document.getElementById('probe').textContent=JSON.stringify(sn);
+}
+function snapshot(){
+  var c=C,s=c.sim,t=c.th,r=c.rt;
+  return {
+    track:st.track,params:{Kps:st.Kps,Kis:st.Kis,Kds:st.Kds,Kpv:st.Kpv,Kiv:st.Kiv,Kdv:st.Kdv,
+      vNom:st.vNom,vFast:st.vFast,ff:st.ff,noTs:st.noTs},
+    theory:{wn:t.wn,z:t.z,sigma:t.sigma,tp:t.tp,ts:t.ts,wd:t.wd},
+    routh:{kdCrit:r.kdCrit,kiMax:r.kiMax,stable:r.stable,maxRe:maxRe(c.poly),poly:c.poly.slice()},
+    step:{sigma:c.respM.sigma,tp:c.respM.tp,tr:c.respM.tr,ts:c.respM.ts,ess:c.respM.ess,
+      idealSigma:c.idealM.sigma,idealTp:c.idealM.tp,idealTs:c.idealM.ts},
+    speed:{wn:c.spd.wn,z:c.spd.z,sigmaPole:c.spd.sigma,sigmaMeas:c.spdM.sigma,tp:c.spdM.tp,ts:c.spdM.ts},
+    sim:{kind:c.tr.kind,time:s.time,iae:s.iae,rmse:s.rmse,maxe:s.maxe,meanE:s.meanE,
+      vmean:s.vmean,endIdx:s.endIdx,M:c.tr.M,done:s.done,diverged:s.diverged,
+      refIae:c.ref.iae,refMaxe:c.ref.maxe},
+    poles:c.poles.slice(),dominant:c.dPole,stage:st.stage,playT:st.playT,
+    svgCounts:{step:document.getElementById('svgStep').innerHTML.length,
+      err:document.getElementById('svgErr').innerHTML.length,
+      track:document.getElementById('svgTrack').innerHTML.length},
+    errors:[]
+  };
+}
+function setParams(o){
+  var staticToo=false;
+  Object.keys(o||{}).forEach(function(k){
+    if(k==='track'){if(TRACKS[o[k]]){st.track=o[k];staticToo=true;st.playT=0;}}
+    else if(k==='stage')st.stage=Math.max(0,Math.min(STAGES.length-1,Number(o[k])|0));
+    else if(k==='playT')st.playT=Math.max(0,Number(o[k])||0);
+    else if(k in st&&k!=='play')st[k]=o[k];
+  });
+  /* 同步滑块 DOM */
+  var ins=document.querySelectorAll('#paramGrid input[type=range]');
+  for(var i=0;i<ins.length;i++){var k=ins[i].getAttribute('data-k');ins[i].value=st[k];}
+  refresh(staticToo);
+  return snapshot();
+}
+function applyDesign(zeta){
+  zeta=zeta||.707;
+  st.Kds=2*zeta*SQ(E.L*st.Kps)/st.vNom;
+  st.Kis=0;
+  return setParams({Kds:st.Kds,Kis:0});
+}
+function table(list){
+  var out=[];
+  (list||[]).forEach(function(o){out.push(setParams(o));});
+  return out;
+}
+window.__CAR__={
+  state:function(){return {track:st.track,Kps:st.Kps,Kis:st.Kis,Kds:st.Kds,Kpv:st.Kpv,Kiv:st.Kiv,Kdv:st.Kdv,
+    vNom:st.vNom,vFast:st.vFast,ff:st.ff,noTs:st.noTs,stage:st.stage,play:st.play,playT:st.playT};},
+  snapshot:snapshot,set:setParams,design:applyDesign,table:table,
+  track:function(kind){return setParams({track:kind});},
+  step:function(){var c=C;return {t:c.resp.map(function(o){return o.t;}),y:c.resp.map(function(o){return o.y;}),
+    ideal:c.ideal.map(function(o){return o.y;})};},
+  sim:function(){var s=C.sim;return {t:s.ts.slice(),e:s.es.slice(),v:s.vs.slice(),vcmd:s.vcs.slice(),
+    traj:s.traj.map(function(o){return [o[0],o[1],o[2]];}),iae:s.iae,rmse:s.rmse,maxe:s.maxe,time:s.time};},
+  locus:function(){return C.locus.slice();},
+  model:function(){return {E:{L:E.L,Ts:E.Ts,Tm:E.Tm,dmax:E.dmax,W:E.W},DEF:DEF,
+    trackLength:{S:TRACKS.S.total,'8':TRACKS['8'].total}};}
+};
+
+/* ---------- 事件 ---------- */
+document.getElementById('segTrack').addEventListener('click',function(ev){
+  var b=ev.target.closest('button');if(!b)return;
+  setParams({track:b.getAttribute('data-v')});
+});
+document.getElementById('stageTabs').addEventListener('click',function(ev){
+  var b=ev.target.closest('button');if(!b)return;
+  st.stage=Number(b.getAttribute('data-i'))|0;renderStage();
+});
+document.getElementById('paramGrid').addEventListener('input',function(ev){
+  var el=ev.target;if(el.type!=='range')return;
+  var k=el.getAttribute('data-k'),v=parseFloat(el.value);
+  st[k]=v;
+  var p=null;PARAMS.forEach(function(g){g.items.forEach(function(o){if(o.k===k)p=o;});});
+  var pv=document.getElementById('pv_'+k);
+  if(pv)pv.textContent=f(v,p.step<.01?3:2)+(p.unit?' '+p.unit:'');
+  requestRefresh(false);
+});
+document.getElementById('btnFF').addEventListener('click',function(){st.ff=!st.ff;refresh(false);});
+document.getElementById('btnNoTs').addEventListener('click',function(){st.noTs=!st.noTs;refresh(false);});
+document.getElementById('btnDesign').addEventListener('click',function(){applyDesign(.707);});
+document.getElementById('btnReset').addEventListener('click',function(){
+  st.playT=0;setParams({Kps:DEF.Kps,Kis:DEF.Kis,Kds:DEF.Kds,Kpv:DEF.Kpv,Kiv:DEF.Kiv,Kdv:DEF.Kdv,
+    vNom:DEF.vNom,vFast:DEF.vFast,ff:DEF.ff,noTs:DEF.noTs,track:'S'});
+});
+document.getElementById('btnPlay').addEventListener('click',function(){
+  if(st.playT>=C.sim.time-.02)st.playT=0;
+  st.play=!st.play;updateButtons();
+});
+document.getElementById('rngT').addEventListener('input',function(ev){
+  st.play=false;st.playT=Number(ev.target.value)/1000*C.sim.time;
+  renderTrackFrame();updateButtons();
+});
+document.addEventListener('keydown',function(ev){
+  if(ev.target&&/INPUT|SELECT|TEXTAREA/.test(ev.target.tagName))return;
+  if(ev.key===' '){ev.preventDefault();if(st.playT>=C.sim.time-.02)st.playT=0;st.play=!st.play;updateButtons();}
+  if(ev.key==='ArrowRight'){st.stage=(st.stage+1)%STAGES.length;renderStage();}
+  if(ev.key==='ArrowLeft'){st.stage=(st.stage+STAGES.length-1)%STAGES.length;renderStage();}
+});
+
+/* ---------- 动画主循环 ---------- */
+var last=0;
+function loop(ts){
+  var dt=last?Math.min(.05,(ts-last)/1000):0;last=ts;
+  if(st.play&&!STILL){
+    st.playT+=dt;
+    if(st.playT>=C.sim.time){st.playT=0;}
+    renderTrackFrame();
+    document.getElementById('rngT').value=Math.round(st.playT/Math.max(.01,C.sim.time)*1000);
+  }
+  requestAnimationFrame(loop);
+}
+
+/* ---------- 初始化 ---------- */
+buildParams();
+renderNotes();
+refresh(true);
+if(!STILL)st.play=true;
+updateButtons();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
