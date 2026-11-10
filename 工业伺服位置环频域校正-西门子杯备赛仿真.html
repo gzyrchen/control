@@ -1,0 +1,1586 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>工业伺服位置环频域校正与相角裕度 | 西门子杯运动控制赛项备赛仿真</title>
+<style>
+:root{
+  --ink:#2C2C2A; --ink2:#5F5E5A; --ink3:#8A8880;
+  --panel:#F1EFE8; --panel2:#FAF9F5; --line:rgba(0,0,0,.12);
+  --blue:#185FA5; --blue-l:#E6F1FB; --orange:#D85A30; --orange-l:#FBEEE8;
+  --green:#3F8F5B; --green-l:#E8F3EC; --red:#A32D2D; --purple:#6B4FA8;
+  --gold:#C9973F; --grid:#E4E2DB; --magenta:#BE1E8A;
+  --mono:ui-monospace,Consolas,"Courier New",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:22px 24px 40px;background:#fff;color:var(--ink);font-family:var(--sans)}
+.wrap{max-width:1232px;margin:0 auto;font-size:13px}
+h1{font-size:16.5px;font-weight:600;margin:0 0 7px;letter-spacing:.1px}
+h1 .h1sub{display:inline-block;font-size:12px;font-weight:400;color:var(--ink2);letter-spacing:0;margin-left:4px;white-space:normal}
+.lead{font-size:13px;line-height:1.7;color:var(--ink2);margin:0 0 10px;max-width:1080px}
+.lead b{color:var(--ink);font-weight:600}
+.lead code,.note code,.stage-note code,.theory code,.cap code,.hmi-note code,.clarify code{font-family:var(--mono);font-size:11.5px;background:var(--panel);padding:1px 5px;border-radius:4px;color:var(--blue);overflow-wrap:anywhere}
+.clarify{background:#FBF6E8;border-left:3px solid var(--gold);border-radius:0 8px 8px 0;padding:8px 12px;font-size:11.5px;line-height:1.7;color:#7A5B22;margin:0 0 12px}
+.clarify b{color:#5C4314}
+
+.bar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:var(--panel);border-radius:10px;padding:9px 12px;margin-bottom:12px}
+.seg{display:inline-flex;background:#fff;border:.5px solid var(--line);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:transparent;font:inherit;font-size:12px;padding:6px 10px;cursor:pointer;color:var(--ink2);white-space:nowrap}
+.seg button+button{border-left:.5px solid var(--line)}
+.seg button.on{background:var(--blue);color:#fff}
+.sp{flex:1}
+.btn{font:inherit;font-size:12px;padding:6px 11px;border:.5px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;color:var(--ink);white-space:nowrap}
+.btn:hover{background:var(--panel2)}
+.btn.on{background:var(--orange);border-color:var(--orange);color:#fff}
+.btn.blue.on{background:var(--blue);border-color:var(--blue)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+.card{background:var(--panel2);border:.5px solid var(--line);border-radius:12px;padding:9px 10px 6px;min-width:0}
+.chd{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 2px 5px;flex-wrap:wrap}
+.chd h2{font-size:11.5px;font-weight:600;margin:0;color:var(--ink);letter-spacing:.15px}
+.chd .sub{font-size:10.5px;color:var(--ink3);font-family:var(--mono);line-height:1.5}
+svg{width:100%;height:auto;display:block;overflow:visible}
+svg text{font-family:var(--sans)}
+.kl{font-size:10.5px;fill:var(--ink3)}
+.lb{font-size:12px;fill:var(--ink2)}
+.tt{font-size:12px;font-weight:600;fill:var(--ink)}
+.bf{font-family:var(--mono);font-size:10.5px;fill:var(--ink2)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+.stage-card{background:var(--panel2);border:.5px solid var(--line);border-radius:12px;padding:10px 11px 8px;margin-bottom:12px}
+.stage-tabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px}
+.stage-tabs button{font:inherit;font-size:11px;padding:5px 9px;border:.5px solid var(--line);background:#fff;border-radius:7px;cursor:pointer;color:var(--ink2)}
+.stage-tabs button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.stage-grid{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(265px,1fr);gap:14px;align-items:start}
+.stage-scroll{overflow-x:auto;background:#fff;border:.5px solid var(--line);border-radius:9px}
+#svgStage{width:100%;min-width:640px}
+.stage-note{background:#fff;border:.5px solid var(--line);border-radius:9px;padding:10px 12px;font-size:11.5px;line-height:1.72;color:var(--ink2)}
+.stage-note h3{font-size:12px;color:var(--ink);margin:0 0 6px;font-weight:600}
+.stage-note p{margin:0 0 6px}
+.stage-note p:last-child{margin-bottom:0}
+.stage-note b{color:var(--ink)}
+.stage-note .live{margin-top:8px;padding-top:7px;border-top:.5px dashed var(--line);font-family:var(--mono);font-size:10.5px;color:var(--ink3);line-height:1.6}
+
+.designbar{background:var(--panel);border-radius:10px;padding:10px 12px;margin-bottom:12px}
+.design-step{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:9px;font-size:11.5px;color:var(--ink2)}
+.param-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 16px}
+.param{display:flex;flex-direction:column;gap:4px;min-width:0}
+.phead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:11.5px;color:var(--ink2)}
+.phead span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pval{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:3px;background:#D8D5CC;border-radius:2px;outline:0;margin:7px 0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--blue);border:2px solid #fff;box-shadow:0 0 0 .5px var(--line);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--blue);border:2px solid #fff;cursor:pointer}
+.param.v input[type=range]::-webkit-slider-thumb{background:var(--orange)}
+.param.v input[type=range]::-moz-range-thumb{background:var(--orange)}
+.param.ro input[type=range]::-webkit-slider-thumb{background:#B9B6AD}
+.pgroup{grid-column:1/-1;display:flex;align-items:center;gap:7px;font-size:10.5px;color:var(--ink3);margin-top:3px;border-top:.5px dashed var(--line);padding-top:7px}
+.pgroup:first-child{border-top:0;margin-top:0;padding-top:0}
+.pgroup i{font-style:normal;width:7px;height:7px;border-radius:2px;background:var(--blue);display:inline-block}
+.pgroup i.v{background:var(--orange)}
+.pgroup i.g{background:var(--ink3)}
+.badge{display:inline-block;padding:1px 6px;border-radius:5px;font-size:10px;font-weight:600;white-space:nowrap}
+.badge.ok{background:var(--green-l);color:var(--green)}
+.badge.off{background:#FBF3E4;color:#7A5B22}
+.badge.bad{background:#FBE9E9;color:var(--red)}
+.status{font-size:10.8px;color:var(--ink3);margin-top:9px;line-height:1.65}
+
+.specs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;padding:2px 0 4px;margin-bottom:12px}
+.spec{background:var(--panel);border-radius:7px;padding:5px 8px 6px;min-width:0}
+.spec i{display:block;font-style:normal;font-size:9.5px;color:var(--ink3);letter-spacing:.2px;white-space:nowrap}
+.spec b{display:block;font-family:var(--mono);font-size:12.5px;font-weight:600;margin-top:1px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.spec em{display:block;font-style:normal;font-size:9.5px;color:var(--ink3);margin-top:1px;line-height:1.35;overflow-wrap:anywhere}
+.spec.bad b{color:var(--red)}
+.spec.hl b{color:var(--blue)}
+
+/* 工业 HMI 圆盘面板 */
+.hmi-grid{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(265px,1fr);gap:14px;align-items:start;margin-bottom:12px}
+.hmi{background:#1F2937;border-radius:12px;padding:10px 12px 9px;min-width:0;border:.5px solid rgba(0,0,0,.25)}
+.hmi-title{display:flex;align-items:center;gap:8px;color:#93C5FD;font-size:12.5px;font-weight:600;margin:0 0 8px 1px}
+.hmi-title:before{content:"";display:block;width:3px;height:14px;border-radius:2px;background:#3B82F6}
+.hmi-title .tag{margin-left:auto;font-family:var(--mono);font-size:10px;color:#9CA3AF;font-weight:400}
+.hmi-canvas{background:#111827;border-radius:9px;overflow:hidden;border:.5px solid rgba(255,255,255,.10)}
+#svgHmi{width:100%;display:block}
+.hmi-hud{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-family:var(--mono);font-size:10.5px;color:#D1D5DB}
+.hmi-hud span{white-space:nowrap}
+.hmi-hud b{color:#F9FAFB;font-weight:600}
+.hmi-hud .er{color:#FCA5A5}
+.hmi-ctl{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.hmi-ctl input[type=range]{flex:1;min-width:110px;background:#4B5563;height:4px;margin:0}
+.hmi-ctl input[type=range]::-webkit-slider-thumb{background:#60A5FA;border-color:#1F2937}
+.hmi-ctl .t{font-family:var(--mono);font-size:10.5px;color:#D1D5DB;white-space:nowrap}
+.hmi-ctl button{font:inherit;font-size:11px;color:#E5E7EB;background:#4B5563;border:.5px solid rgba(255,255,255,.16);border-radius:6px;padding:4px 9px;cursor:pointer}
+.hmi-ctl button:hover{background:#5B6575}
+.hmi-legend{display:flex;gap:11px;flex-wrap:wrap;margin-top:8px;font-size:10px;color:#9CA3AF}
+.hmi-legend i{display:inline-block;width:12px;height:3px;border-radius:2px;vertical-align:middle;margin-right:4px}
+.tele{background:var(--panel2);border:.5px solid var(--line);border-radius:12px;padding:10px 11px 7px;min-width:0}
+.tele-big{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:8px}
+.tele-cell{background:#fff;border:.5px solid var(--line);border-radius:8px;padding:6px 9px}
+.tele-cell i{display:block;font-style:normal;font-size:10px;color:var(--ink3)}
+.tele-cell b{display:block;font-family:var(--mono);font-size:17px;font-weight:600;margin-top:1px;font-variant-numeric:tabular-nums}
+.tele-cell b small{font-size:10px;color:var(--ink3);font-weight:400;margin-left:2px}
+#svgGauge{width:100%;display:block}
+.tele-table{width:100%;border-collapse:collapse;font-size:10.5px;margin-top:5px}
+.tele-table td{border-bottom:.5px solid var(--line);padding:3px 2px;color:var(--ink2)}
+.tele-table td:last-child{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink)}
+.hmi-note{font-size:10.5px;line-height:1.6;color:var(--ink3);margin-top:7px;padding-top:6px;border-top:.5px dashed var(--line)}
+
+/* 工程设计步骤 */
+.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.step{background:#fff;border:.5px solid var(--line);border-radius:9px;padding:7px 9px;min-width:0;position:relative}
+.step .n{font-family:var(--mono);font-size:9.5px;color:#fff;background:var(--ink3);border-radius:4px;padding:1px 5px;display:inline-block;margin-bottom:4px}
+.step.pass .n{background:var(--green)}
+.step.fail .n{background:var(--red)}
+.step b{display:block;font-size:10.5px;font-weight:600;margin-bottom:2px}
+.step span{display:block;font-size:10px;line-height:1.5;color:var(--ink3);font-family:var(--mono);overflow-wrap:anywhere}
+.hwcard{background:#E6F1FB;border:.5px solid #BBD7F0;border-radius:9px;padding:8px 11px;margin-bottom:12px;font-size:11px;line-height:1.7;color:var(--ink2)}
+.hwcard b{color:var(--blue)}
+.hwcard .row{display:flex;gap:16px;flex-wrap:wrap;margin-top:4px;font-family:var(--mono);font-size:10.5px;color:var(--ink)}
+
+.main,.main2{display:grid;gap:14px;align-items:start;margin-bottom:12px}
+.main,.main2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.bode-full{margin-bottom:12px}
+.plot-scroll,.bode-scroll{overflow-x:auto}
+#svgBode{width:100%;min-width:760px}
+#svgStep,#svgGS,#svgPole,#svgH{width:100%;min-width:430px}
+.cap{font-size:10px;color:#A8A59C;line-height:1.6;padding:5px 2px 1px}
+.scroll-hint{display:none;font-size:10px;color:var(--ink3);text-align:right;padding:3px 4px 0}
+
+.cmpbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.cmp{background:#fff;border:.5px solid var(--line);border-radius:9px;padding:7px 10px;min-width:0}
+.cmp i{display:block;font-style:normal;font-size:10px;color:var(--ink3);margin-bottom:3px}
+.cmp .row{display:flex;align-items:baseline;gap:6px;font-family:var(--mono);font-size:11.5px;white-space:nowrap}
+.cmp .row .old{color:var(--ink3)}
+.cmp .row .ar{color:var(--gold)}
+.cmp .row .new{color:var(--green);font-weight:600}
+.theory{font-size:11px;line-height:1.6;color:var(--ink2);overflow-x:auto}
+.theory h3{font-size:11.5px;color:var(--ink);margin:9px 0 5px;font-weight:600}
+.theory h3:first-child{margin-top:0}
+.theory table{width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:7px}
+.theory th,.theory td{border-bottom:.5px solid var(--line);padding:4px 5px;text-align:left;vertical-align:top}
+.theory th{color:var(--ink3);font-weight:500;background:var(--panel)}
+.theory td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.theory .dev{background:#fff;border:.5px solid var(--line);border-radius:7px;padding:7px 9px;font-family:var(--mono);font-size:10px;line-height:1.7;margin-bottom:8px;overflow-wrap:anywhere}
+.theory .warn{background:#FBF3E4;border-left:2px solid var(--gold);border-radius:0 5px 5px 0;padding:6px 8px;font-size:10.5px;color:#7A5B22;line-height:1.6;margin-top:6px}
+.notes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+.note{background:var(--panel2);border:.5px solid var(--line);border-radius:10px;padding:11px 13px;min-width:0}
+.note h3{font-size:12px;font-weight:600;margin:0 0 5px;color:var(--ink);display:flex;gap:6px;align-items:baseline}
+.note h3 i{font-style:normal;font-family:var(--mono);font-size:10.5px;color:#fff;background:var(--ink3);width:15px;height:15px;line-height:15px;text-align:center;border-radius:4px;flex:none}
+.note p{font-size:11.5px;line-height:1.72;color:var(--ink2);margin:0 0 5px}
+.note p:last-child{margin-bottom:0}
+.note b{color:var(--ink);font-weight:600}
+.note ul,.note ol{margin:4px 0;padding-left:20px}
+.note li{font-size:11.5px;line-height:1.7;color:var(--ink2);margin-bottom:3px}
+.note code{font-size:10.5px}
+.note .warn{display:block;margin-top:6px;padding:6px 8px;background:#FBF3E4;border-left:2px solid var(--gold);border-radius:0 5px 5px 0;font-size:11px;color:#7A5B22;line-height:1.65}
+#probe{display:none}
+@media (max-width:1000px){
+  .main,.main2,.stage-grid,.hmi-grid{grid-template-columns:1fr}
+  .notes{grid-template-columns:1fr 1fr}
+  .param-grid{grid-template-columns:1fr 1fr}
+  .specs{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .cmpbar,.steps{grid-template-columns:1fr 1fr}
+  .stage-scroll,.bode-scroll{max-width:100%}
+  .scroll-hint{display:block}
+}
+@media (max-width:680px){
+  body{padding:16px 12px 32px}
+  .notes{grid-template-columns:1fr}
+  .param-grid{grid-template-columns:1fr}
+  .specs{grid-template-columns:1fr 1fr}
+  .cmpbar,.steps{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>工业伺服位置环频域校正 · PI 补偿与相角裕度 <span class="h1sub">| 西门子杯运动控制赛项备赛仿真</span></h1>
+<p class="lead">以<b>工业伺服位置环串联校正</b>为主线：从对象传递函数出发，用 <code>PI + 一阶低通滤波</code> 补偿网络整形开环伯德图，拖动<b>零点 f<sub>z</sub></b> 与<b>滤波极点 f<sub>p</sub></b>，实时看相角裕度 γ、幅值裕度 h 的变化，同步输出伺服轴位置阶跃响应，直观验证「裕度 ↔ 超调/振荡」的对应关系。设计流程按教材<b>典型 II 型系统工程设计法（中频宽 h）</b> 组织，可直接用来复核自己队伍的整定结果。</p>
+<div class="clarify" id="clarify"></div>
+
+<div class="bar">
+  <div class="seg" id="segMode">
+    <button data-v="lock" class="on">增益：锁定 f<sub>c</sub></button>
+    <button data-v="free">增益：固定 K<sub>c</sub></button>
+  </div>
+  <button class="btn blue" id="btnFilter">低通滤波：开</button>
+  <button class="btn" id="btnByH">按中频宽 h 工程设计法整定</button>
+  <button class="btn" id="btnByPM">按 γ=45° 整定</button>
+  <button class="btn" id="btnReset">恢复默认</button>
+  <span class="sp"></span>
+  <span id="badgeStab" class="badge ok">闭环稳定</span>
+</div>
+
+<!-- 建模推导 -->
+<div class="stage-card">
+  <div class="stage-tabs" id="stageTabs"></div>
+  <div class="stage-grid">
+    <div class="stage-scroll" id="stageScroll"><div id="svgStage"></div></div>
+    <div class="stage-note" id="stageNote"></div>
+  </div>
+  <div class="scroll-hint">← 左右滑动查看完整框图 →</div>
+</div>
+
+<!-- 参数 -->
+<div class="designbar">
+  <div class="design-step">
+    <b>控制器 / 对象参数</b>
+    <span>拖动任一滑块，伯德图、裕度、阶跃响应、圆盘动画与全部指标同步重算</span>
+    <span class="sp"></span>
+    <span id="stabilityText" class="mono"></span>
+  </div>
+  <div class="param-grid" id="paramGrid"></div>
+  <div class="status" id="statusText"></div>
+</div>
+
+<div class="specs" id="specs"></div>
+
+<!-- 工程设计步骤 -->
+<div class="steps" id="steps"></div>
+<div class="hwcard" id="hwcard"></div>
+
+<!-- 圆盘同步对象 HMI + 遥测 -->
+<div class="hmi-grid">
+  <div class="hmi">
+    <div class="hmi-title">圆盘同步对象 · 位置阶跃实时仿真 <span class="tag" id="hmiTag">—</span></div>
+    <div class="hmi-canvas"><div id="svgHmi"></div></div>
+    <div class="hmi-hud">
+      <span>t <b id="hudT">0.00 ms</b></span>
+      <span>θ <b id="hudY">— pu</b></span>
+      <span>e <b class="er" id="hudE">— pu</b></span>
+      <span>γ <b id="hudG">— °</b></span>
+      <span>σ <b id="hudS">— %</b></span>
+    </div>
+    <div class="hmi-ctl">
+      <button id="btnPlay">▶ 播放</button>
+      <input type="range" id="rngT" min="0" max="1000" value="0" step="1">
+      <span class="t" id="ctlT">0.00 / 0.00 ms</span>
+    </div>
+    <div class="hmi-legend">
+      <span><i style="background:#EF4444"></i>给定位置</span>
+      <span><i style="background:#60A5FA"></i>伺服轴实际位置</span>
+      <span><i style="background:#F2B926"></i>超调轨迹</span>
+      <span><i style="background:#4B5563"></i>同步带</span>
+    </div>
+  </div>
+  <div class="tele card">
+    <div class="chd"><h2>频域 / 时域实时遥测</h2><span class="sub" id="teleSub">—</span></div>
+    <div class="tele-big">
+      <div class="tele-cell"><i>相角裕度 γ</i><b id="teleG">—<small>°</small></b></div>
+      <div class="tele-cell"><i>位置超调 σ</i><b id="teleS">—<small>%</small></b></div>
+    </div>
+    <div id="svgGauge"></div>
+    <table class="tele-table" id="teleTable"></table>
+    <div class="hmi-note" id="teleNote"></div>
+  </div>
+</div>
+
+<!-- 大伯德图 -->
+<div class="card bode-full">
+  <div class="chd"><h2>① 开环伯德图 · 对象 G<sub>p</sub> / 补偿器 C / 校正后 L</h2><span class="sub" id="subBode">—</span></div>
+  <div class="bode-scroll" id="scrollBode"><div id="svgBode"></div></div>
+  <div class="cap" id="capBode"></div><div class="scroll-hint">← 左右滑动查看完整伯德图 →</div>
+</div>
+
+<!-- 时域 + 分析图 -->
+<div class="main">
+  <div class="card"><div class="chd"><h2>② 伺服轴位置阶跃响应</h2><span class="sub" id="subStep">—</span></div>
+    <div class="plot-scroll"><div id="svgStep"></div></div><div class="cap" id="capStep"></div><div class="scroll-hint">← 左右滑动 →</div></div>
+  <div class="card"><div class="chd"><h2>③ 相角裕度 γ ↔ 超调量 σ</h2><span class="sub" id="subGS">—</span></div>
+    <div class="plot-scroll"><div id="svgGS"></div></div><div class="cap" id="capGS"></div><div class="scroll-hint">← 左右滑动 →</div></div>
+  <div class="card"><div class="chd"><h2>④ 典型 II 型：中频宽 h ↔ σ（教材表复现）</h2><span class="sub" id="subH">—</span></div>
+    <div class="plot-scroll"><div id="svgH"></div></div><div class="cap" id="capH"></div><div class="scroll-hint">← 左右滑动 →</div></div>
+  <div class="card"><div class="chd"><h2>⑤ s 平面闭环极点 · 零点扫描轨迹</h2><span class="sub" id="subPole">—</span></div>
+    <div class="plot-scroll"><div id="svgPole"></div></div><div class="cap" id="capPole"></div><div class="scroll-hint">← 左右滑动 →</div></div>
+</div>
+
+<div class="cmpbar" id="cmpbar"></div>
+
+<div class="card" style="margin-bottom:12px">
+  <div class="chd"><h2>推导式、工程设计步骤与理论 / 数值实测对照</h2><span class="sub">单文件离线 · 无外部依赖</span></div>
+  <div class="theory" id="theory"></div>
+</div>
+
+<div class="notes" id="notes"></div>
+<div id="probe"></div>
+</div>
+
+<script>
+'use strict';
+/* =======================================================================
+   工业伺服位置环 · PI 频域校正 / 典型 II 型工程设计法
+   全部数值在浏览器内实时计算，无外部库
+   ======================================================================= */
+var PI2=Math.PI,D2R=180/Math.PI,SQ=Math.sqrt;
+var QS=new URLSearchParams(location.search);
+var PROBE=QS.get('probe')==='1',STILL=QS.get('still')==='1';
+
+/* ---------- 复数 / 多项式 ---------- */
+function cadd(a,b){return [a[0]+b[0],a[1]+b[1]];}
+function cmul(a,b){return [a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0]];}
+function cdiv(a,b){var d=b[0]*b[0]+b[1]*b[1];return d<1e-300?[NaN,NaN]:[(a[0]*b[0]+a[1]*b[1])/d,(a[1]*b[0]-a[0]*b[1])/d];}
+function pval(c,z){var r=[0,0],i;for(i=0;i<c.length;i++)r=cadd(cmul(r,z),[c[i],0]);return r;}
+function pmul(a,b){var o=new Array(a.length+b.length-1).fill(0),i,j;
+  for(i=0;i<a.length;i++)for(j=0;j<b.length;j++)o[i+j]+=a[i]*b[j];return o;}
+function padd(a,b){var n=Math.max(a.length,b.length),o=new Array(n).fill(0),i;
+  for(i=0;i<n;i++)o[i]=(a[a.length-n+i]||0)+(b[b.length-n+i]||0);return o;}
+function pscale(a,k){return a.map(function(x){return x*k;});}
+function cabs(z){return Math.hypot(z[0],z[1]);}
+function tfval(n,d,w){return cdiv(pval(n,[0,w]),pval(d,[0,w]));}
+function polyRoots(coef){
+  var c=coef.slice(),i,j,k,it;while(c.length>1&&Math.abs(c[0])<1e-300)c.shift();
+  var n=c.length-1;if(n<1)return [];
+  var a=c.map(function(v){return v/c[0];}),R=1;
+  for(k=1;k<=n;k++)R=Math.max(R,Math.pow(Math.abs(a[k]),1/k));
+  R*=2;if(!isFinite(R)||R<1)R=1;
+  var z=[];for(i=0;i<n;i++){var th=2*PI2*(i+.23)/n;z.push([.8*R*Math.cos(th),.8*R*Math.sin(th)]);}
+  for(it=0;it<500;it++){
+    var mx=0;
+    for(i=0;i<n;i++){
+      var nu=pval(a,z[i]),de=[1,0];
+      for(j=0;j<n;j++)if(j!==i)de=cmul(de,[z[i][0]-z[j][0],z[i][1]-z[j][1]]);
+      var dz=cdiv(nu,de);
+      if(isFinite(dz[0])&&isFinite(dz[1])){z[i][0]-=dz[0];z[i][1]-=dz[1];mx=Math.max(mx,Math.hypot(dz[0],dz[1]));}
+    }
+    if(mx<1e-12*Math.max(1,R))break;
+  }
+  return z;
+}
+function maxRe(c){var r=polyRoots(c),m=-Infinity;r.forEach(function(p){if(p[0]>m)m=p[0];});return m;}
+function domComplex(c){
+  var r=polyRoots(c),best=null;
+  r.forEach(function(p){if(Math.abs(p[1])<1e-7)return;if(best===null||p[0]>best[0])best=p;});
+  if(!best)return null;
+  var mag=Math.hypot(best[0],best[1]),z=-best[0]/mag;
+  return {re:best[0],im:Math.abs(best[1]),wn:mag,z:z};
+}
+
+/* ---------- 默认参数 ---------- */
+var DEF={Tsum:.002,Ks:1,h:5,fz:15.9,fp:4000,filter:true,lockFc:true,fc:44.3,Kc:300,amp:1,targetPM:45};
+var st={};for(var _k in DEF)st[_k]=DEF[_k];
+st.play=false;st.playT=0;st.stage=0;
+var PARAMS=[
+  {g:'① 补偿网络 · 零点 / 极点（本页主交互；h 与 f_z 是同一物理量的两种表述）',cls:'',items:[
+    {k:'fz',n:'f_z  PI 零点',min:3,max:120,step:.1,unit:'Hz',cls:''},
+    {k:'fp',n:'f_p  滤波极点',min:80,max:8000,step:20,unit:'Hz',cls:''},
+    {k:'h',n:'h  中频宽 τ_z/T_Σ',min:3,max:10,step:.1,unit:'',cls:''},
+    {k:'amp',n:'位置阶跃幅值',min:.2,max:2,step:.1,unit:'pu',cls:''}]},
+  {g:'② 频域指标 / 增益（随增益模式切换生效）',cls:'v',items:[
+    {k:'fc',n:'f_c  目标截止频率',min:10,max:150,step:.5,unit:'Hz',cls:'v'},
+    {k:'Kc',n:'K_c  控制器增益（对数）',log:[5,6000],step:1,unit:'',cls:'v'},
+    {k:'targetPM',n:'γ 目标裕度',min:25,max:70,step:1,unit:'°',cls:'v'},
+    {k:'KcAuto',n:'K_c 当前值（只读）',ro:true,unit:'',cls:'ro'}]},
+  {g:'③ 被控对象 · 按自己赛题的辨识结果替换',cls:'g',items:[
+    {k:'Tsum',n:'T_Σ  小时间常数',min:.5,max:6,step:.1,unit:'ms',div:1000,cls:''},
+    {k:'Ks',n:'K_s  位置环增益',min:.4,max:2,step:.05,unit:'',cls:''},
+    {k:'fSum',n:'f_Σ = 1/(2πT_Σ)（只读）',ro:true,unit:'Hz',cls:'ro'},
+    {k:'hEq',n:'h_eq = τ_z/T_Σ（只读）',ro:true,unit:'',cls:'ro'}]}
+];
+
+/* ---------- 模型 ---------- */
+/* 对象 Gp = Ks/[s(TΣ s+1)]
+   PI + 一阶低通  C = Kc(τz s+1)/[τz s·(τf s+1)]
+   开环 L = K(τz s+1)/[s²(TΣ s+1)(τf s+1)]，K = Kc·Ks/τz
+   闭环 Φ = L/(1+L) */
+function buildModel(s){
+  var m={Tsum:s.Tsum,Ks:s.Ks,h:s.h,fz:s.fz,fp:s.fp,filter:s.filter,
+    lockFc:s.lockFc,fc:s.fc,Kc:s.Kc,amp:s.amp};
+  m.tz=1/(2*PI2*m.fz);
+  m.tf=m.filter?1/(2*PI2*m.fp):0;
+  m.fSum=1/(2*PI2*m.Tsum);
+  m.Ld=m.tf>0?pmul(pmul([1,0,0],[m.Tsum,1]),[m.tf,1]):pmul([1,0,0],[m.Tsum,1]);
+  var Ln0=[m.tz,1];
+  /* 工程设计法（渐近线）：τz=hTΣ，K=(h+1)/(2h²TΣ²)，ωc=(h+1)/(2hTΣ) */
+  m.Kdesign=(m.h+1)/(2*m.h*m.h*m.Tsum*m.Tsum);
+  m.wcAsym=(m.h+1)/(2*m.h*m.Tsum);
+  m.gammaAsym=(Math.atan((m.h+1)/2)-Math.atan((m.h+1)/(2*m.h)))*D2R;
+  m.KcDesign=m.Kdesign*m.h*m.Tsum/m.Ks;
+  m.fzDesign=1/(2*PI2*m.h*m.Tsum);
+  /* 增益模式 */
+  var wct=2*PI2*m.fc,z0=tfval(Ln0,m.Ld,wct);
+  m.Kauto=1/Math.max(cabs(z0),1e-300);
+  m.K=m.lockFc?m.Kauto:(m.Kc*m.Ks/m.tz);
+  m.Kc=m.K*m.tz/m.Ks;
+  m.Ln=pscale(Ln0,m.K);
+  m.LnPad=new Array(m.Ld.length-m.Ln.length).fill(0).concat(m.Ln);
+  m.T_n=m.LnPad.slice();m.T_d=padd(m.Ld,m.LnPad);
+  m.poles=polyRoots(m.T_d);
+  m.Gp_n=[m.Ks];m.Gp_d=pmul([1,0],[m.Tsum,1]);
+  m.C_n=[m.Kc*m.tz,m.Kc];m.C_d=m.tf>0?[m.tz*m.tf,m.tz,0]:[m.tz,0];
+  return m;
+}
+/* 频率扫描：Gp / C / L 三条幅频 + L 相频（连续展开） */
+function bodeScan(m,wlo,whi,N){
+  wlo=wlo||.5;whi=whi||2e6;N=N||900;
+  var ws=[],lg=[],lc=[],ll=[],raw=[],i,w;
+  for(i=0;i<=N;i++){
+    w=wlo*Math.pow(whi/wlo,i/N);
+    var gp=tfval(m.Gp_n,m.Gp_d,w),cc=tfval(m.C_n,m.C_d,w),zz=tfval(m.Ln,m.Ld,w);
+    ws.push(w);
+    lg.push(20*Math.log10(Math.max(cabs(gp),1e-300)));
+    lc.push(20*Math.log10(Math.max(cabs(cc),1e-300)));
+    ll.push(20*Math.log10(Math.max(cabs(zz),1e-300)));
+    raw.push(Math.atan2(zz[1],zz[0])*D2R);
+  }
+  var ph=[raw[0]],d;
+  for(i=1;i<=N;i++){d=raw[i]-raw[i-1];while(d>180)d-=360;while(d<-180)d+=360;ph.push(ph[i-1]+d);}
+  var k=Math.round((ph[0]+180)/360);
+  var B=[];
+  for(i=0;i<=N;i++)B.push({w:ws[i],f:ws[i]/(2*PI2),gp:lg[i],cc:lc[i],ll:ll[i],ph:ph[i]-k*360});
+  return B;
+}
+function margins(B){
+  var wc=null,gam=null,wg=null,gm=null,i;
+  for(i=1;i<B.length;i++)if(B[i-1].ll>=0&&B[i].ll<0){
+    var t=B[i-1].ll/(B[i-1].ll-B[i].ll);
+    wc=Math.exp(Math.log(B[i-1].w)+t*(Math.log(B[i].w)-Math.log(B[i-1].w)));
+    gam=180+B[i-1].ph+t*(B[i].ph-B[i-1].ph);break;
+  }
+  /* 只有相角在高频真正跌破 −180°（即存在滤波极点）才算有效 −180° 穿越；
+     理想 PI 时相角只从 −180° 渐近靠近，数值抖动不应被误判成穿越 */
+  var endsLow=B[B.length-1].ph<-180.5;
+  if(endsLow)for(i=1;i<B.length;i++)if(B[i-1].ph>-180&&B[i].ph<=-180&&B[i].ll<0){
+    var u=(B[i-1].ph+180)/(B[i-1].ph-B[i].ph);
+    wg=Math.exp(Math.log(B[i-1].w)+u*(Math.log(B[i].w)-Math.log(B[i-1].w)));
+    gm=-(B[i-1].ll+u*(B[i].ll-B[i-1].ll));break;
+  }
+  return {wc:wc,fc:wc?wc/(2*PI2):null,gamma:gam,wg:wg,fg:wg?wg/(2*PI2):null,gm:gm,
+    hInf:(gm===null)};
+}
+/* 闭环阶跃响应：可控标准型 RK4 */
+function stepResponse(m,Tend,M,amp){
+  amp=amp===undefined?1:amp;Tend=Tend||.12;M=M||6000;
+  var d=m.T_d.slice(),n=m.T_n.slice(),a0=d[0];
+  var a=d.map(function(v){return v/a0;}),b=n.map(function(v){return v/a0;});
+  var p=a.length-1,A,BB,C;
+  if(p===3){A=[[0,1,0],[0,0,1],[-a[3],-a[2],-a[1]]];BB=[0,0,1];C=[b[3],b[2],b[1]];}
+  else if(p===4){A=[[0,1,0,0],[0,0,1,0],[0,0,0,1],[-a[4],-a[3],-a[2],-a[1]]];BB=[0,0,0,1];C=[b[4],b[3],b[2],b[1]];}
+  else{A=[[0,1],[-a[2],-a[1]]];BB=[0,1];C=[b[2],b[1]];}
+  var dt=Tend/M,x=A.map(function(){return 0;}),out=[],k,i;
+  function rhs(s){
+    var o=s.map(function(v,ii){return ii<s.length-1?s[ii+1]:0;});
+    o[o.length-1]=0;
+    for(var j=0;j<s.length;j++)o[o.length-1]+=A[A.length-1][j]*s[j];
+    o[o.length-1]+=amp;return o;
+  }
+  function ax(s,h,kk){return s.map(function(v,ii){return v+h*kk[ii];});}
+  for(k=0;k<=M;k++){
+    var y=0;for(i=0;i<x.length;i++)y+=C[i]*x[i];
+    out.push({t:k*dt,y:y});
+    if(k===M)break;
+    var k1=rhs(x),k2=rhs(ax(x,dt/2,k1)),k3=rhs(ax(x,dt/2,k2)),k4=rhs(ax(x,dt,k3));
+    x=x.map(function(v,ii){return v+dt/6*(k1[ii]+2*k2[ii]+2*k3[ii]+k4[ii]);});
+    if(!isFinite(x[0]))break;
+  }
+  return out;
+}
+function metrics(o,amp,band){
+  band=band||.05;
+  var pk=-Infinity,tp=null,tr=null,ts=0,iae=0,i,dt=o.length>1?o[1].t:1;
+  for(i=0;i<o.length;i++){
+    var y=o[i].y;if(!isFinite(y))return {unstable:true,sigma:NaN,tp:null,tr:null,ts:NaN,ess:NaN,iae:NaN,peak:NaN};
+    if(y>pk){pk=y;tp=o[i].t;}iae+=Math.abs(amp-y)*dt;
+  }
+  for(i=1;i<o.length;i++)if(tr===null&&o[i-1].y<amp&&o[i].y>=amp)
+    tr=o[i-1].t+(amp-o[i-1].y)/(o[i].y-o[i-1].y)*(o[i].t-o[i-1].t);
+  for(i=0;i<o.length;i++)if(o[i].y<amp*(1-band)||o[i].y>amp*(1+band))ts=o[i].t;
+  return {sigma:Math.max(0,(pk-amp)/amp*100),tp:tp,tr:tr,ts:ts,iae:iae,
+    ess:o[o.length-1].y-amp,peak:pk,unstable:false};
+}
+/* 二阶理论：γ ↔ ζ ↔ σ */
+function pmFromZeta(z){return Math.atan(2*z/SQ(SQ(1+4*Math.pow(z,4))-2*z*z))*D2R;}
+function sigmaFromZeta(z){return z<1?100*Math.exp(-PI2*z/SQ(1-z*z)):0;}
+function zetaFromPM(pm){
+  if(pm===null||!isFinite(pm))return NaN;
+  if(pm>=pmFromZeta(.999))return 1;
+  if(pm<=0)return 0;
+  var lo=0,hi=.999,z,i;
+  for(i=0;i<70;i++){z=(lo+hi)/2;if(pmFromZeta(z)>pm)hi=z;else lo=z;}
+  return (lo+hi)/2;
+}
+/* 教材典型 II 型阶跃跟随性能表（按 Mr 最小准则） */
+var BOOK_H=[{h:3,s:52.6,ts:12.15},{h:4,s:43.6,ts:11.65},{h:5,s:37.6,ts:9.55},
+  {h:6,s:33.2,ts:10.45},{h:7,s:29.8,ts:11.30},{h:8,s:27.2,ts:12.25},
+  {h:9,s:25.0,ts:13.25},{h:10,s:23.3,ts:14.20}];
+/* 按教材 h 表复现：固定 TΣ、关闭滤波、τz=hTΣ、K=(h+1)/(2h²TΣ²) */
+function bookPoint(h,Tsum){
+  var tz=h*Tsum,K=(h+1)/(2*h*h*Tsum*Tsum);
+  var Ld=pmul([1,0,0],[Tsum,1]),Ln0=[tz,1],Ln=pscale(Ln0,K);
+  var pad=new Array(Ld.length-Ln.length).fill(0).concat(Ln);
+  var m={T_d:padd(Ld,pad),T_n:pad,Ln:Ln,Ld:Ld,Gp_n:[1],Gp_d:pmul([1,0],[Tsum,1]),
+    C_n:[K*tz,K],C_d:[tz,0],tz:tz,tf:0,Tsum:Tsum};
+  var o=stepResponse(m,.16,16000,1),mt=metrics(o,1,.05);
+  var B=bodeScan(m),mg=margins(B);
+  return {h:h,fz:1/(2*PI2*tz),Kc:K*tz,sigma:mt.sigma,ts:mt.ts/Tsum,tp:mt.tp,
+    gamma:mg.gamma,wc:mg.wc,gammaAsym:(Math.atan((h+1)/2)-Math.atan((h+1)/(2*h)))*D2R};
+}
+/* γ↔σ 扫描：固定 fc，扫 fz */
+function gammaSigmaSweep(base){
+  var out=[],fzs=[8,10,12,16,20,25,32,45,60,80],i;
+  for(i=0;i<fzs.length;i++){
+    var s={};for(var k in base)s[k]=base[k];
+    s.fz=fzs[i];s.filter=false;s.lockFc=true;
+    var m=buildModel(s),B=bodeScan(m,1,2e6,600),mg=margins(B);
+    var mt=metrics(stepResponse(m,.16,12000,1),1,.05);
+    if(mg.gamma!==null&&isFinite(mt.sigma))out.push({fz:fzs[i],gamma:mg.gamma,sigma:mt.sigma,maxRe:maxRe(m.T_d)});
+  }
+  return out;
+}
+
+/* ---------- 计算缓存 ----------
+   教材 σ–h 表只依赖 TΣ；γ↔σ 扫描只依赖 TΣ/Ks/fc；极点扫描不依赖 fz；
+   二阶理论曲线是常量。拖滑块时只重算当前工作点，避免每帧几十万步 RK4。 */
+var C={},CACHE={};
+function compute(){
+  var m=buildModel(st),B=bodeScan(m),mg=margins(B);
+  var Tend=Math.max(.08,Math.min(.30,8*st.Tsum+4/(2*PI2*Math.max(st.fc,8))));
+  var o=stepResponse(m,Tend,6000,st.amp),mt=metrics(o,st.amp,.05);
+  /* 理想 PI 对照（关滤波、同 fz/增益模式） */
+  var sf={};for(var k in st)sf[k]=st[k];sf.filter=false;
+  var mi=buildModel(sf),Bi=bodeScan(mi),mgi=margins(Bi);
+  var oi=stepResponse(mi,Tend,6000,st.amp),mti=metrics(oi,st.amp,.05);
+  /* 教材 h 表复现（只依赖 TΣ） */
+  var kb=st.Tsum.toFixed(7);
+  if(CACHE.bookKey!==kb){
+    CACHE.book=BOOK_H.map(function(b){
+      var p=bookPoint(b.h,st.Tsum);p.bookSigma=b.s;p.bookTs=b.ts;return p;
+    });
+    CACHE.bookKey=kb;
+  }
+  var book=CACHE.book;
+  /* γ↔σ 扫描（只依赖 TΣ / Ks / fc） */
+  var kg=[st.Tsum.toFixed(7),st.Ks.toFixed(4),st.fc.toFixed(3)].join('|');
+  if(CACHE.gsKey!==kg){
+    CACHE.gs=gammaSigmaSweep({Tsum:st.Tsum,Ks:st.Ks,h:st.h,fp:st.fp,fc:st.fc,Kc:st.Kc});
+    CACHE.gsKey=kg;
+  }
+  var gs=CACHE.gs;
+  /* 二阶理论曲线（常量） */
+  if(!CACHE.th){
+    var th=[];for(var z=.02;z<.995;z+=.012)th.push({gamma:pmFromZeta(z),sigma:sigmaFromZeta(z)});
+    CACHE.th=th;
+  }
+  /* 零点根轨迹：扫 fz，其他固定 */
+  var kl=[st.Tsum.toFixed(7),st.Ks.toFixed(4),st.fp.toFixed(2),(st.filter?1:0),
+    st.fc.toFixed(3),st.Kc.toFixed(3),(st.lockFc?1:0),st.h.toFixed(3)].join('|');
+  if(CACHE.locusKey!==kl){
+    var locus=[];
+    for(var fz=3;fz<=120;fz+=3){
+      var sl={};for(var q in st)sl[q]=st[q];sl.fz=fz;
+      var ml=buildModel(sl);
+      polyRoots(ml.T_d).forEach(function(p){locus.push([fz,p[0],p[1]]);});
+    }
+    CACHE.locus=locus;CACHE.locusKey=kl;
+  }
+  C={m:m,B:B,mg:mg,resp:o,mt:mt,Tend:Tend,amp:st.amp,
+    mi:mi,Bi:Bi,mgi:mgi,respi:oi,mti:mti,
+    book:book,gs:gs,th:CACHE.th,locus:CACHE.locus,
+    stable:maxRe(m.T_d)<0&&mg.gamma>0};
+  return C;
+}
+
+/* ---------- 绘图工具 ---------- */
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function f(x,n){if(x===null||x===undefined||!isFinite(x))return '—';return Number(x).toFixed(n===undefined?2:n);}
+function svg(w,h,inner){return '<svg viewBox="0 0 '+w+' '+h+'" xmlns="http://www.w3.org/2000/svg">'+inner+'</svg>';}
+function txt(x,y,s,cls,anchor,size,fill,extra){
+  return '<text x="'+f(x,1)+'" y="'+f(y,1)+'"'+(cls?' class="'+cls+'"':'')+
+    (anchor?' text-anchor="'+anchor+'"':'')+(size?' font-size="'+size+'"':'')+
+    (fill?' fill="'+fill+'"':'')+(extra||'')+'>'+s+'</text>';
+}
+function line(x1,y1,x2,y2,col,w,dash,op){
+  return '<line x1="'+f(x1,1)+'" y1="'+f(y1,1)+'" x2="'+f(x2,1)+'" y2="'+f(y2,1)+
+    '" stroke="'+col+'" stroke-width="'+(w||1)+'"'+(dash?' stroke-dasharray="'+dash+'"':'')+
+    (op!==undefined?' opacity="'+op+'"':'')+'/>';
+}
+function rect(x,y,w,h,fill,stroke,sw,rx,op){
+  return '<rect x="'+f(x,1)+'" y="'+f(y,1)+'" width="'+f(Math.max(0,w),1)+'" height="'+f(Math.max(0,h),1)+
+    '" rx="'+(rx||0)+'" fill="'+fill+'"'+(stroke?' stroke="'+stroke+'" stroke-width="'+(sw||1)+'"':'')+
+    (op!==undefined?' opacity="'+op+'"':'')+'/>';
+}
+function circ(x,y,r,fill,stroke,sw){
+  return '<circle cx="'+f(x,1)+'" cy="'+f(y,1)+'" r="'+f(r,1)+'" fill="'+fill+'"'+
+    (stroke?' stroke="'+stroke+'" stroke-width="'+(sw||1)+'"':'')+'/>';
+}
+function path(d,col,w,dash,fill,op){
+  return '<path d="'+d+'" fill="'+(fill||'none')+'" stroke="'+col+'" stroke-width="'+(w||1)+'"'+
+    (dash?' stroke-dasharray="'+dash+'"':'')+(op!==undefined?' opacity="'+op+'"':'')+' stroke-linejoin="round" stroke-linecap="round"/>';
+}
+function polyPath(arr,X,Y,close){
+  if(!arr.length)return '';var d='',i;
+  for(i=0;i<arr.length;i++)d+=(i?'L':'M')+f(X(arr[i][0]),1)+' '+f(Y(arr[i][1]),1);
+  return d+(close?'Z':'');
+}
+function frame(W,H,pad,xmin,xmax,ymin,ymax){
+  var L=pad.l,R=W-pad.r,T=pad.t,B=H-pad.b;
+  return {W:W,H:H,L:L,R:R,T:T,B:B,X:function(v){return L+(v-xmin)/(xmax-xmin)*(R-L);},
+    Y:function(v){return B-(v-ymin)/(ymax-ymin)*(B-T);},xmin:xmin,xmax:xmax,ymin:ymin,ymax:ymax};
+}
+function axes(F,xt,yt,xlab,ylab,fmtX,fmtY){
+  var s='',i,col='#E4E2DB';
+  for(i=0;i<xt.length;i++)s+=line(F.X(xt[i]),F.T,F.X(xt[i]),F.B,col,1)
+    +txt(F.X(xt[i]),F.B+13,fmtX?fmtX(xt[i]):f(xt[i],0),'kl','middle',9.5,'#8A8880');
+  for(i=0;i<yt.length;i++)s+=line(F.L,F.Y(yt[i]),F.R,F.Y(yt[i]),col,1)
+    +txt(F.L-6,F.Y(yt[i])+3.5,fmtY?fmtY(yt[i]):f(yt[i],0),'kl','end',9.5,'#8A8880');
+  s+=line(F.L,F.T,F.L,F.B,'#B9B6AD',1)+line(F.L,F.B,F.R,F.B,'#B9B6AD',1);
+  if(xlab)s+=txt((F.L+F.R)/2,F.H-2,xlab,'kl','middle',9.5,'#8A8880');
+  if(ylab)s+=txt(F.L,F.T-4,ylab,'kl','start',9.5,'#8A8880');
+  return s;
+}
+function legend(x,y,items,size){
+  var s='',xx=x;size=size||10;
+  items.forEach(function(o){
+    s+=line(xx,y-3,xx+15,y-3,o[1],2.2,o[2]||null);
+    s+=txt(xx+19,y,o[0],'kl','start',size,'#5F5E5A');
+    xx+=19+o[0].length*(size*.9)+15;
+  });
+  return s;
+}
+/* ================= 建模推导六步 ================= */
+var STAGES=[
+ {t:'① 赛项被控对象',h:'圆盘同步对象 → 位置环等效',
+  p:'赛项对象是<b>圆盘同步</b>：两台带减速箱的伺服电机经同步带驱动刻度圆盘。从控制器看向对象，链路是「驱动给定 → 电流环/速度环 → 机械传动 → 编码器位置」。',
+  f:'G_p(s) = θ(s)/U(s) = K_s / [s(T_Σ s + 1)]',
+  w:'对应赛项「对象特性与控制需求分析」环节：把圆盘同步对象的电流环、采样与机械传动等效成一个小时间常数 T_Σ，位置积分单独保留；<code>T_Σ / K_s</code> 按现场阶跃响应辨识结果填入即可用于后续整定。'},
+ {t:'② 小时间常数合并',h:'为什么只有一个 T_Σ',
+  p:'电流环带宽远高于位置环，采样、零阶保持、反馈滤波都是小惯性。按课程「小时间常数合并」处理，把它们等效成<b>一个一阶惯性</b>；速度积分成位置，天然带一个 <code>1/s</code>。',
+  f:'T_Σ ≈ T_电流环 + T_采样 + T_滤波 ；  1/s 来自 θ = ∫ω dt',
+  w:'本页默认 T_Σ = 2 ms（对应 f_Σ ≈ 79.6 Hz）。工业伺服里位置环带宽通常取到 f_Σ 的 1/3 左右，再高就要把延迟单独建模。'},
+ {t:'③ 为什么要加 PI',h:'从典型 I 型到典型 II 型',
+  p:'只用比例 P 时开环是<b>典型 I 型</b> <code>K/[s(TΣs+1)]</code>：裕度充足，但带宽上不去、低频刚度低、抗负载扰动有静差。要提高刚度必须再加一个积分，可双积分让低频相角直接落在 <b>−180°</b> 上，系统濒临临界稳定。',
+  f:'P：L=K/[s(T_Σs+1)]    PI：L=K(τ_z s+1)/[s²(T_Σ s+1)]',
+  w:'PI 的那个<b>零点</b>正是用来把 −180° 抬起来的相位补偿：零点频率越低、在 ω_c 处抬得越多，γ 越大。这就是频域校正章节的串联校正思路。'},
+ {t:'④ 补偿网络零极点',h:'f_z 与 f_p 各管什么',
+  p:'工业伺服不会用「理想 PI」：编码器噪声、机械谐振都要靠<b>一阶低通</b>压住。完整补偿网络是 <code>PI × 低通</code>，含一个可设计零点、一个固定在原点的积分极点、一个滤波极点。',
+  f:'C(s) = K_c·(τ_z s+1)/(τ_z s)·1/(τ_f s+1)   f_z=1/(2πτ_z), f_p=1/(2πτ_f)',
+  w:'<b>术语澄清</b>：PI 本身只有零点和一个原点极点，本页可拖的「极点」是滤波器极点。关掉滤波就退回课本理想 PI（严格典型 II 型），可用来验证教材 σ–h 表。'},
+ {t:'⑤ 工程设计法',h:'中频宽 h 的整定公式',
+  p:'教材典型 II 型系统按「Mr 最小准则」给出成套设计式：先定中频宽 <code>h=τ_z/T_Σ</code>（通常 3~10，工程常用 5），再定增益，最后校核裕度与超调。',
+  f:'τ_z = h·T_Σ ； K = (h+1)/(2h²T_Σ²) ； ω_c(渐近) = (h+1)/(2hT_Σ)',
+  w:'γ(渐近) = arctan((h+1)/2) − arctan((h+1)/(2h))。教材用渐近线设计，精确伯德图的 ω_c 会略低、γ 略高约 0.1~1.2°，页面两种值都给出。'},
+ {t:'⑥ 频域↔时域',h:'γ 决定振荡，σ 是证据',
+  p:'二阶理论给出 <code>γ ↔ ζ ↔ σ</code> 的解析链；本页闭环含零点且是三/四阶，实测 σ 会系统性高于纯二阶公式，但<b>趋势严格一致</b>：γ 越小、极点越贴近虚轴、超调与振荡越剧烈。',
+  f:'γ = arctan[2ζ/√(√(1+4ζ⁴)−2ζ²)] , σ = 100e^(−πζ/√(1−ζ²))',
+  w:'工程校核口径：γ ≥ 40°、幅值裕度 ≥ 6 dB；γ &lt; 30° 时超调通常超过 50%，圆盘会出现肉眼可见的来回摆动。'}
+];
+function box(x,y,w,h,label,col,fill,sub){
+  return rect(x,y,w,h,fill||'#fff',col,1.2,7)+
+    txt(x+w/2,y+h/2+(sub?-4:4),label,'tt','middle',11.5,col)+
+    (sub?txt(x+w/2,y+h/2+12,sub,'bf','middle',9.5,'#8A8880'):'');
+}
+function arrow(x1,y1,x2,y2,col){
+  var s=line(x1,y1,x2,y2,col,1.4),a=Math.atan2(y2-y1,x2-x1),L=6;
+  return s+'<path d="M'+f(x2,1)+' '+f(y2,1)+'L'+f(x2-L*Math.cos(a-.42),1)+' '+f(y2-L*Math.sin(a-.42),1)+
+    'L'+f(x2-L*Math.cos(a+.42),1)+' '+f(y2-L*Math.sin(a+.42),1)+'Z" fill="'+col+'"/>';
+}
+function stageSVG(n){
+  var W=760,H=250,s='',B='#185FA5',O='#D85A30',G='#3F8F5B',PU='#6B4FA8',GY='#8A8880';
+  s+=rect(0,0,W,H,'#fff');
+  if(n===0){
+    /* 圆盘同步对象示意 */
+    s+=txt(30,28,'圆盘同步对象 · 控制链路','tt','start',12,'#2C2C2A');
+    s+=box(30,48,104,40,'位置给定 θ*','#fff',G);
+    s+=arrow(136,68,178,68,G);
+    s+=box(180,48,110,40,'运动控制器','#E6F1FB',B,'PLC / 伺服驱动');
+    s+=arrow(292,68,334,68,B);
+    s+=box(336,48,104,40,'电流/速度环','#fff',PU,'1/(TΣs+1)');
+    s+=arrow(442,68,484,68,PU);
+    s+=box(486,48,104,40,'机械积分','#FBEEE8',O,'1/s');
+    s+=arrow(592,68,634,68,O);
+    s+=box(636,48,96,40,'θ 编码器','#fff',G);
+    s+=line(684,90,684,132,GY,1.1);s+=line(684,132,82,132,GY,1.1);s+=arrow(82,132,82,90,GY);
+    s+=txt(382,127,'单位负反馈（位置闭环）','kl','middle',10,GY);
+    /* 硬件示意 */
+    s+=rect(30,150,330,80,'#FAF9F5','#E4E2DB',1,8);
+    s+=circ(92,190,26,'#E6F1FB',B,1.6)+circ(92,190,5,'#374151');
+    s+=circ(268,190,26,'#E6F1FB',B,1.6)+circ(268,190,5,'#374151');
+    s+=line(92,164,268,164,'#4B5563',5)+line(92,216,268,216,'#4B5563',5);
+    s+=txt(180,157,'同步带','kl','middle',9.5,GY);
+    s+=txt(92,228,'减速箱 50:1','kl','middle',9.5,GY);
+    s+=txt(268,228,'刻度圆盘','kl','middle',9.5,GY);
+    s+=rect(380,150,350,80,'#FAF9F5','#E4E2DB',1,8);
+    s+=txt(396,173,'等效标准模型','tt','start',11,'#2C2C2A');
+    s+=txt(396,197,'G_p(s) = K_s / [s(T_Σ s + 1)]','bf','start',12,B);
+    s+=txt(396,218,'T_Σ：小时间常数之和　K_s：位置环等效增益','kl','start',9.5,GY);
+  }else if(n===1){
+    s+=txt(30,28,'小时间常数合并','tt','start',12,'#2C2C2A');
+    s+=box(30,56,110,40,'电流环','#fff',B,'T_i 很小');
+    s+=arrow(142,76,176,76,B);
+    s+=box(178,56,110,40,'采样/ZOH','#fff',B,'T_s 很小');
+    s+=arrow(290,76,324,76,B);
+    s+=box(326,56,110,40,'反馈滤波','#fff',B,'T_f 很小');
+    s+=arrow(438,76,474,76,B);
+    s+=box(476,56,130,40,'Σ → 1/(T_Σs+1)','#E6F1FB',PU);
+    s+=arrow(608,76,640,76,PU);
+    s+=box(642,56,92,40,'× 1/s','#FBEEE8',O);
+    s+=rect(30,118,704,42,'#E6F1FB','#185FA5',1,8);
+    s+=txt(46,145,'T_Σ ≈ T_i + T_s + T_f　　G_p(s) = K_s/[s(T_Σ s+1)]　　f_Σ = 1/(2πT_Σ)','bf','start',11.5,B);
+    s+=txt(30,190,'为什么位置环天然带一个积分','tt','start',11.5,'#2C2C2A');
+    s+=txt(30,212,'速度 ω 积分成位置 θ，所以从「速度/转矩给定」到「位置」必有一个 1/s；这决定了只用 P 是典型 I 型。','lb','start',10.5,'#5F5E5A');
+  }else if(n===2){
+    s+=txt(30,26,'P 控制 vs PI 控制：开环低频斜率与相角','tt','start',12,'#2C2C2A');
+    s+=rect(30,38,340,92,'#FAF9F5','#E4E2DB',1,8);
+    s+=txt(46,60,'纯 P（典型 I 型）','tt','start',11.5,G);
+    s+=txt(46,83,'L(s) = K / [s(T_Σ s+1)]','bf','start',11.5,G);
+    s+=txt(46,104,'低频斜率 −20 dB/dec，低频相角 −90°','kl','start',10,'#5F5E5A');
+    s+=txt(46,122,'γ 充足，但带宽与抗扰刚度上不去','kl','start',10,GY);
+    s+=rect(386,38,344,92,'#FBEEE8','#D85A30',1,8);
+    s+=txt(402,60,'PI（典型 II 型）','tt','start',11.5,O);
+    s+=txt(402,83,'L(s) = K(τ_z s+1)/[s²(T_Σ s+1)]','bf','start',11.5,O);
+    s+=txt(402,104,'低频斜率 −40 dB/dec，低频相角 −180°','kl','start',10,'#5F5E5A');
+    s+=txt(402,122,'刚度高，但必须靠零点把相位抬回来','kl','start',10,GY);
+    s+=rect(30,142,704,44,'#E6F1FB','#185FA5',1,8);
+    s+=txt(46,169,'γ = arctan(ω_c τ_z) − arctan(ω_c T_Σ) − arctan(ω_c τ_f)　→　零点越靠前，ω_c 处相位抬得越多','bf','start',11,B);
+    s+=txt(30,214,'频域校正的本质：用补偿网络的零点在截止频率附近「买」回相角，同时保持 0 dB 穿越频率不变。','lb','start',10.5,'#5F5E5A');
+  }else if(n===3){
+    s+=txt(30,26,'补偿网络：零点、积分极点、滤波极点','tt','start',12,'#2C2C2A');
+    s+=box(30,54,116,44,'零点 (τ_z s+1)','#E6F1FB',B,'f_z = 1/(2πτ_z)');
+    s+=arrow(148,76,182,76,B);
+    s+=box(184,54,116,44,'积分 1/(τ_z s)','#F3EDFA',PU,'原点极点 · 固定');
+    s+=arrow(302,76,336,76,PU);
+    s+=box(338,54,116,44,'低通 1/(τ_f s+1)','#FBEEE8',O,'f_p = 1/(2πτ_f)');
+    s+=arrow(456,76,490,76,O);
+    s+=box(492,54,90,44,'× K_c','#fff',G);
+    s+=rect(30,116,704,42,'#FAF9F5','#E4E2DB',1,8);
+    s+=txt(46,143,'C(s) = K_c (τ_z s+1) / [τ_z s (τ_f s+1)]　　L(s) = K(τ_z s+1)/[s²(T_Σs+1)(τ_f s+1)]','bf','start',11,B);
+    s+=txt(30,184,'零点：+arctan(ω/ω_z) 相位超前　|　原点极点：−90°　|　滤波极点：−arctan(ω/ω_p) 相位滞后','lb','start',10.5,'#5F5E5A');
+    s+=txt(30,208,'把 f_p 往低频拖，会在 ω_c 附近吃掉相角裕度；这就是为什么「加了滤波反而开始振荡」。','lb','start',10.5,O);
+    s+=txt(30,232,'关闭滤波 → τ_f=0 → 严格典型 II 型，可直接复现教材 σ–h 表。','kl','start',10,GY);
+  }else if(n===4){
+    s+=txt(30,26,'典型 II 型系统工程设计法（按 Mr 最小准则）','tt','start',12,'#2C2C2A');
+    s+=rect(30,38,704,54,'#E6F1FB','#185FA5',1,8);
+    s+=txt(46,62,'h = τ_z / T_Σ = ω_2/ω_1　（中频宽，工程常取 3~10，推荐 5）','bf','start',12,B);
+    s+=txt(46,82,'τ_z = h·T_Σ　　K = (h+1)/(2h²T_Σ²)　　ω_c(渐近) = (h+1)/(2hT_Σ)','bf','start',11,B);
+    s+=rect(30,100,340,60,'#FAF9F5','#E4E2DB',1,8);
+    s+=txt(46,124,'渐近线相位裕度','tt','start',11,'#2C2C2A');
+    s+=txt(46,147,'γ = arctan((h+1)/2) − arctan((h+1)/(2h))','bf','start',10.5,PU);
+    s+=rect(386,100,348,60,'#FBEEE8','#D85A30',1,8);
+    s+=txt(402,124,'教材阶跃跟随超调（h=3~10）','tt','start',11,'#2C2C2A');
+    s+=txt(402,147,'52.6% → 23.3%，ts/T_Σ 先降后升','bf','start',10.5,O);
+    s+=txt(30,186,'工程设计步骤：对象辨识 → 定带宽 → 选 h → 算 τ_z 与 K → 加滤波并校核 γ / 幅值裕度 → 时域验证。','lb','start',10.5,'#5F5E5A');
+    s+=txt(30,210,'注意：教材 K 与 ω_c 取自<b>渐近线</b>近似；精确伯德图的 ω_c 略低、γ 略高，页面两种值并列给出。','lb','start',10.5,'#5F5E5A');
+    s+=txt(30,234,'按「h 整定」按钮会同时关闭滤波，回到严格典型 II 型，以便逐格验证教材表。','kl','start',10,GY);
+  }else{
+    s+=txt(30,26,'频域指标 → 时域响应','tt','start',12,'#2C2C2A');
+    s+=rect(30,38,340,92,'#E6F1FB','#185FA5',1,8);
+    s+=txt(46,60,'二阶理论链','tt','start',11.5,B);
+    s+=txt(46,84,'γ = arctan[2ζ/√(√(1+4ζ⁴)−2ζ²)]','bf','start',10.5,B);
+    s+=txt(46,106,'σ = 100·e^(−πζ/√(1−ζ²))','bf','start',10.5,B);
+    s+=txt(46,124,'tp = π/(ω_n√(1−ζ²))','bf','start',10.5,'#5F5E5A');
+    s+=rect(386,38,344,92,'#FBEEE8','#D85A30',1,8);
+    s+=txt(402,60,'本页闭环的实际结构','tt','start',11.5,O);
+    s+=txt(402,84,'三阶（理想 PI）/ 四阶（带滤波）','bf','start',10.5,O);
+    s+=txt(402,106,'且有闭环零点 (τ_z s+1)','bf','start',10.5,O);
+    s+=txt(402,124,'→ σ 实测系统性高于二阶公式','bf','start',10.5,'#5F5E5A');
+    s+=rect(30,142,704,44,'#FAF9F5','#E4E2DB',1,8);
+    s+=txt(46,169,'工程判据：γ ≥ 40°、幅值裕度 ≥ 6 dB；γ &lt; 30° → σ 常 &gt; 50%，圆盘出现明显来回摆动','bf','start',11,'#2C2C2A');
+    s+=txt(30,214,'所以页面把「超调量」严格定义在位置阶跃响应上，裕度从开环伯德图量取，两套口径分别标注、不混用。','lb','start',10.5,'#5F5E5A');
+  }
+  return svg(W,H,s);
+}
+function renderStage(){
+  document.getElementById('stageTabs').innerHTML=STAGES.map(function(o,i){
+    return '<button data-i="'+i+'" class="'+(i===st.stage?'on':'')+'">'+o.t+'</button>';}).join('');
+  document.getElementById('svgStage').innerHTML=stageSVG(st.stage);
+  var o=STAGES[st.stage],c=C,m=c.m,mg=c.mg;
+  document.getElementById('stageNote').innerHTML=
+    '<h3>'+o.h+'</h3><p>'+o.p+'</p>'+
+    '<div class="theory"><div class="dev">'+esc(o.f)+'</div></div><p>'+o.w+'</p>'+
+    '<div class="live">当前：f_z='+f(st.fz,1)+' Hz　f_p='+f(st.fp,0)+' Hz　T_Σ='+f(st.Tsum*1000,1)+' ms　K_s='+f(st.Ks,2)+
+    '<br>f_c='+f(st.fc,1)+' Hz（'+(st.lockFc?'锁定':'固定 K_c')+'）　K_c='+f(m.Kc,1)+
+    '<br>γ='+f(mg.gamma,2)+'°　ω_c='+f(mg.wc,1)+' rad/s　h_dB='+(mg.hInf?'∞':f(mg.gm,2)+' dB')+
+    '<br>σ='+f(c.mt.sigma,2)+'%　max Re(p)='+f(maxRe(m.T_d),1)+'</div>';
+}
+function renderClarify(){
+  document.getElementById('clarify').innerHTML=
+    '<b>与赛项能力要求的对应</b>：赛项围绕「对象特性与控制需求分析 → 控制算法设计与优化 → 控制系统调试与参数整定 → 动态性能验证」组织，本页逐段对应：'+
+    '<br>① <b>对象分析</b>：圆盘同步对象等效为位置环 <code>G_p(s)=K_s/[s(T_Σs+1)]</code>，<code>T_Σ / K_s</code> 由阶跃响应辨识填入，下方给出样题圆盘硬件参数换算；'+
+    '<br>② <b>算法设计</b>：PI + 低通补偿网络的伯德图串联校正，按相角裕度 γ、幅值裕度与典型 II 型中频宽 h 整定；'+
+    '<br>③ <b>参数调试</b>：零点 f<sub>z</sub>、滤波极点 f<sub>p</sub> 实时拖动，八步工程校核清单逐条判定，并支持 T_Σ / K_s 参数摄动；'+
+    '<br>④ <b>性能验证</b>：圆盘同步位置阶跃动画与超调量、调节时间、稳态误差、闭环极点实测，整定结果可直接复核。';
+}
+/* ================= 参数面板 / 指标卡 / 设计步骤 ================= */
+function buildParams(){
+  var h='';
+  PARAMS.forEach(function(g){
+    h+='<div class="pgroup"><i class="'+(g.cls||'')+'"></i>'+esc(g.g)+'</div>';
+    g.items.forEach(function(p){
+      h+='<div class="param '+(p.cls||'')+'"><div class="phead"><span>'+p.n+'</span>'+
+        '<span class="pval" id="pv_'+p.k+'">—</span></div>';
+      if(p.ro)h+='<div style="height:3px;background:#E4E2DB;border-radius:2px;margin:7px 0"></div>';
+      else h+='<input type="range" data-k="'+p.k+'" min="'+(p.log?0:p.min)+'" max="'+(p.log?1000:p.max)+
+        '" step="'+(p.log?1:p.step)+'" value="'+toSlider(p,st[p.k])+'">';
+      h+='</div>';
+    });
+  });
+  document.getElementById('paramGrid').innerHTML=h;
+}
+function updatePv(){
+  PARAMS.forEach(function(g){g.items.forEach(function(p){
+    var el=document.getElementById('pv_'+p.k);if(!el)return;
+    var v=(p.div?st[p.k]*p.div:st[p.k]),unit=p.unit||'';
+    if(p.k==='KcAuto'){v=C.m.Kc;unit='';}
+    if(p.k==='fSum'){v=C.m.fSum;unit='Hz';}
+    if(p.k==='hEq'){v=1/(2*PI2*st.fz*st.Tsum);unit='';}
+    var n=p.ro?2:(p.step<.1?1:(p.step<1?1:0));
+    if(p.k==='fSum')n=1;
+    if(p.k==='KcAuto')n=1;
+    el.textContent=f(v,n)+(unit?' '+unit:'');
+  });});
+}
+function renderSpecs(){
+  var c=C,m=c.m,mg=c.mg,mt=c.mt,mi=c.mi,mgi=c.mgi,mti=c.mti;
+  var hEq=1/(2*PI2*st.fz*st.Tsum);
+  var items=[
+    ['γ · 相角裕度',f(mg.gamma,2)+' °','要求 ≥ 40°',mg.gamma<30?'bad':(mg.gamma<40?'':'hl')],
+    ['f_c · 0 dB 穿越',f(mg.fc,2)+' Hz','ωc = '+f(mg.wc,1)+' rad/s',''],
+    ['h · 幅值裕度',mg.hInf?'∞':f(mg.gm,2)+' dB',mg.hInf?'无 −180° 穿越':'ωg = '+f(mg.fg,0)+' Hz',(mg.hInf||mg.gm>=6)?'':'bad'],
+    ['σ · 位置超调',f(mt.sigma,2)+' %','位置阶跃 '+f(st.amp,1)+' pu',mt.sigma>60?'bad':'hl'],
+    ['t_p · 峰值时间',f(mt.tp*1000,2)+' ms','measured',''],
+    ['t_s · 调节时间(5%)',f(mt.ts*1000,2)+' ms',f(mt.ts/st.Tsum,2)+' × T_Σ',''],
+    ['t_r · 上升时间',f(mt.tr*1000,2)+' ms','0 → 100% 首次',''],
+    ['e_ss · 稳态误差',f(mt.ess,6)+' pu','积分环节消静差',Math.abs(mt.ess)>1e-3?'bad':''],
+    ['K_c · 控制器增益',f(m.Kc,1),st.lockFc?'自动归一（锁定 f_c）':'手动固定',''],
+    ['K · 开环系数',f(m.K,0),'K = K_c·K_s/τ_z',''],
+    ['h_eq · 中频宽',f(hEq,3),'τ_z/T_Σ = 1/(2πf_zT_Σ)',hEq<3||hEq>10?'bad':''],
+    ['f_z / f_c',f(st.fz/Math.max(mg.fc,1e-9),3),f(st.fz,1)+' / '+f(mg.fc,1)+' Hz',st.fz>mg.fc?'bad':''],
+    ['f_p / f_c',st.filter?f(st.fp/Math.max(mg.fc,1e-9),1):'—',st.filter?'建议 ≥ 5':'滤波已关闭',''],
+    ['γ 损失（滤波）',st.filter?f(mgi.gamma-mg.gamma,2)+' °':'0.00 °','相对理想 PI',''],
+    ['max Re(p)',f(maxRe(m.T_d),1),'闭环 '+(m.T_d.length-1)+' 阶',maxRe(m.T_d)>0?'bad':'']
+  ];
+  document.getElementById('specs').innerHTML=items.map(function(o){
+    return '<div class="spec '+(o[3]||'')+'"><i>'+o[0]+'</i><b>'+o[1]+'</b><em>'+o[2]+'</em></div>';}).join('');
+  document.getElementById('statusText').innerHTML=
+    '当前开环：<b>L(s) = '+f(m.K,0)+'·('+f(m.tz,5)+'s+1) / [s²('+f(m.Tsum,4)+'s+1)'+
+    (m.tf>0?'('+f(m.tf,6)+'s+1)':'')+']</b>；'+
+    '闭环特征式 '+esc(polyText(m.T_d))+'，max Re(p) = <b>'+f(maxRe(m.T_d),1)+'</b>。<br>'+
+    '增益模式：'+(st.lockFc?'<b>锁定 f_c</b>，K_c 由 |L(j2πf_c)|=1 自动反解 —— 拖 f_z / f_p 主要改变相位与 γ，带宽基本不动，最适合观察频域校正。':
+      '<b>固定 K_c</b>，ω_c 会随零点/极点/对象参数漂移 —— 更接近现场旋钮调参。')+
+    '　T_Σ 由滑块以 ms 输入，内部换算为 '+f(st.Tsum,4)+' s。';
+  var bg=document.getElementById('badgeStab');
+  bg.className='badge '+(c.stable?(mg.gamma>=40?'ok':'off'):'bad');
+  bg.textContent=!c.stable?'闭环不稳定':(mg.gamma>=40?'裕度合格 · γ≥40°':(mg.gamma>=30?'裕度偏低 · γ<40°':'裕度不足 · 强振荡'));
+  document.getElementById('stabilityText').textContent='γ = '+f(mg.gamma,2)+'° / max Re(p) = '+f(maxRe(m.T_d),1);
+}
+function polyText(p){
+  var n=p.length-1,out=[],i;
+  for(i=0;i<p.length;i++){
+    var e=n-i,c=p[i];if(Math.abs(c)<1e-9)continue;
+    var sg=c<0?'−':(out.length?' + ':''),a=Math.abs(c);
+    out.push(sg+(Math.abs(a-1)<1e-9&&e>0?'':f(a,3).replace(/\.?0+$/,'')+'·')+(e===0?'1':e===1?'s':'s^'+e));
+  }
+  return out.join('')+' = 0';
+}
+function renderSteps(){
+  var c=C,m=c.m,mg=c.mg,mt=c.mt,hEq=1/(2*PI2*st.fz*st.Tsum);
+  var fSum=m.fSum,fs=Math.max(1,mg.fc||st.fc);
+  var S=[
+    ['对象辨识 / 手册参数','T_Σ = '+f(st.Tsum*1000,1)+' ms，K_s = '+f(st.Ks,2)+'；f_Σ = '+f(fSum,1)+' Hz',true],
+    ['确定带宽 f_c',f(st.fc,1)+' Hz；f_c/f_Σ = '+f(st.fc/fSum,2)+'（推荐 0.2~0.8）',(st.fc/fSum>=.2&&st.fc/fSum<=.8)],
+    ['选中频宽 h','h_eq = '+f(hEq,2)+'（推荐 3~10，工程常用 5）',(hEq>=3&&hEq<=10)],
+    ['配置 PI 零点','f_z = '+f(st.fz,1)+' Hz；f_z/f_c = '+f(st.fz/fs,2)+'（需 f_z < f_c）',(st.fz<fs)],
+    ['配置滤波极点',st.filter?('f_p = '+f(st.fp,0)+' Hz；f_p/f_c = '+f(st.fp/fs,1)+'（需 ≥ 5）'):'滤波关闭 · 理想 PI',(!st.filter||st.fp/fs>=5)],
+    ['裕度校核','γ = '+f(mg.gamma,1)+'°（≥40°）；幅值裕度 '+(mg.hInf?'∞':f(mg.gm,1)+' dB')+'（≥6 dB）',(mg.gamma>=40&&(mg.hInf||mg.gm>=6))],
+    ['时域验证','σ = '+f(mt.sigma,1)+'%，t_s = '+f(mt.ts*1000,1)+' ms，e_ss = '+f(mt.ess,4),(Math.abs(mt.ess)<1e-3&&!mt.unstable)],
+    ['采样频率建议','f_s ≥ 10 f_c = '+f(10*fs,0)+' Hz（T_s ≤ '+f(1000/(10*fs),2)+' ms）',true]
+  ];
+  document.getElementById('steps').innerHTML=S.map(function(o,i){
+    return '<div class="step '+(o[2]?'pass':'fail')+'"><span class="n">'+(i+1)+'</span><b>'+o[0]+'</b><span>'+esc(o[1])+'</span></div>';}).join('');
+}
+function renderHW(){
+  var i=50,n=6000/i,om=n/60*2*PI2;
+  document.getElementById('hwcard').innerHTML=
+    '<b>赛题设备参数（官方 2026 初赛样题公开值）</b>：减速比 50:1、伺服电机额定转速 6000 RPM、小刻度圆盘 Ø118 mm、大刻度圆盘 Ø180 mm。'+
+    '由此外推负载侧运动范围，用于把本页的归一化位置 <code>pu</code> 换算成实际角度 / 线速度：'+
+    '<div class="row">'+
+      '<span>负载侧 n = 6000/50 = '+f(n,0)+' RPM</span>'+
+      '<span>ω_max = '+f(om,3)+' rad/s</span>'+
+      '<span>小盘 v_max = '+f(om*.059,3)+' m/s</span>'+
+      '<span>大盘 v_max = '+f(om*.090,3)+' m/s</span>'+
+    '</div>'+
+    '<div style="margin-top:4px"><code>T_Σ / K_s</code> 按现场阶跃响应辨识或驱动器手册填入，再点「按中频宽 h 整定 / 按 γ 整定」重算，即可作为备赛阶段的仿真校核工具。</div>';
+}
+function renderCmp(){
+  var c=C,mg=c.mg,mgi=c.mgi,mt=c.mt,mti=c.mti;
+  var items=[
+    ['相角裕度 γ','理想 PI '+f(mgi.gamma,2)+'°','加滤波 '+f(mg.gamma,2)+'°'],
+    ['位置超调 σ','理想 PI '+f(mti.sigma,2)+'%','加滤波 '+f(mt.sigma,2)+'%'],
+    ['幅值裕度',mgi.hInf?'理想 PI ∞':f(mgi.gm,1)+' dB',mg.hInf?'∞':f(mg.gm,1)+' dB'],
+    ['峰值时间 t_p',f(mti.tp*1000,2)+' ms',f(mt.tp*1000,2)+' ms']
+  ];
+  document.getElementById('cmpbar').innerHTML=items.map(function(o){
+    return '<div class="cmp"><i>'+o[0]+'</i><div class="row"><span class="old">'+o[1]+'</span>'+
+      '<span class="ar">→</span><span class="new">'+o[2]+'</span></div></div>';}).join('');
+}
+/* ================= 圆盘同步对象 HMI ================= */
+var HW=1000,HH=430,HM={};
+var C1={x:255,y:212,r:116},C2={x:735,y:212,r:116},TH_TARGET=120;
+function pp(cx,cy,r,deg){var a=deg/180*PI2;return [cx+r*Math.sin(a),cy-r*Math.cos(a)];}
+function arcD(cx,cy,r,a0,a1){
+  var p0=pp(cx,cy,r,a0),p1=pp(cx,cy,r,a1);
+  var large=Math.abs(a1-a0)>180?1:0,sweep=a1>a0?1:0;
+  return 'M'+f(p0[0],1)+' '+f(p0[1],1)+'A'+f(r,1)+' '+f(r,1)+' 0 '+large+' '+sweep+' '+f(p1[0],1)+' '+f(p1[1],1);
+}
+function dial(c,name,sub){
+  var s='',i;
+  s+=circ(c.x,c.y,c.r+9,'#111827','#4B5563',9);
+  s+=circ(c.x,c.y,c.r,'#1F2937','#6B7280',2);
+  s+=circ(c.x,c.y,c.r-13,'none','#374151',1);
+  for(i=0;i<72;i++){
+    var a=i*5,big=(i%6===0),p0=pp(c.x,c.y,c.r-(big?16:8),a),p1=pp(c.x,c.y,c.r-2,a);
+    s+=line(p0[0],p0[1],p1[0],p1[1],big?'#9CA3AF':'#4B5563',big?1.8:.8);
+  }
+  for(i=0;i<=12;i++){
+    var a2=i*30,pl=pp(c.x,c.y,c.r-29,a2);
+    s+=txt(pl[0],pl[1]+3,String(i*30),'kl','middle',8.5,'#6B7280');
+  }
+  /* 目标位置红色扇形 */
+  if(name==='从动盘'){
+    var q0=pp(c.x,c.y,c.r-20,0),q1=pp(c.x,c.y,c.r-20,TH_TARGET);
+    s+=path('M'+f(c.x,1)+' '+f(c.y,1)+'L'+f(q0[0],1)+' '+f(q0[1],1)+
+      'A'+f(c.r-20,1)+' '+f(c.r-20,1)+' 0 0 1 '+f(q1[0],1)+' '+f(q1[1],1)+'Z','none',0,null,'#EF4444',.11);
+    var t0=pp(c.x,c.y,c.r-2,TH_TARGET),t1=pp(c.x,c.y,c.r+9,TH_TARGET);
+    s+=line(t0[0],t0[1],t1[0],t1[1],'#EF4444',5);
+  }
+  s+=circ(c.x,c.y,13,'#374151','#9CA3AF',2);
+  s+=circ(c.x,c.y,4,'#9CA3AF');
+  s+=txt(c.x,c.y+c.r+31,name,'tt','middle',12,'#93C5FD');
+  s+=txt(c.x,c.y+c.r+47,sub,'kl','middle',9.5,'#6B7280');
+  return s;
+}
+function hmiStatic(){
+  var s='',i;
+  s+=rect(0,0,HW,HH,'#111827');
+  for(i=0;i<=10;i++)s+=line(HW*i/10,0,HW*i/10,HH,'#FFFFFF',.5,'',.035);
+  for(i=0;i<=5;i++)s+=line(0,HH*i/5,HW,HH*i/5,'#FFFFFF',.5,'',.035);
+  /* 同步带 */
+  var yT=C1.y-C1.r-9,yB=C1.y+C1.r+9;
+  s+=line(C1.x,yT,C2.x,yT,'#4B5563',12);
+  s+=line(C1.x,yB,C2.x,yB,'#4B5563',12);
+  s+=line(C1.x,yT,C2.x,yT,'#6B7280',1,'7 7');
+  s+=line(C1.x,yB,C2.x,yB,'#6B7280',1,'7 7');
+  s+=txt((C1.x+C2.x)/2,yT-11,'同步带 / 机械耦合','kl','middle',10,'#6B7280');
+  s+=dial(C1,'主动盘','位置给定 θ*（阶跃）');
+  s+=dial(C2,'从动盘','伺服轴实际位置 θ');
+  s+=arrow(C1.x+145,C1.y,C2.x-145,C1.y,'#4B5563');
+  s+=txt((C1.x+C2.x)/2,C1.y-9,'位置跟随','kl','middle',10,'#9CA3AF');
+  s+=txt(HW-14,22,'圆盘同步对象 · 减速比 50:1','kl','end',10,'#6B7280');
+  s+=txt(HW-14,HH-12,'红：给定刻度　蓝：实际指针　金：超调轨迹','kl','end',9.5,'#6B7280');
+  return s;
+}
+function renderHMIStatic(){
+  document.getElementById('svgHmi').innerHTML=
+    '<svg viewBox="0 0 '+HW+' '+HH+'" xmlns="http://www.w3.org/2000/svg" id="hmiSvg">'+
+    '<g id="hmiStatic">'+hmiStatic()+'</g><g id="hmiDyn"></g></svg>';
+  document.getElementById('hmiTag').textContent='θ* = '+TH_TARGET+'° · 闭环 '+(C.m.T_d.length-1)+' 阶 · '+(st.filter?'带滤波':'理想 PI');
+  document.getElementById('ctlT').textContent='0.00 / '+f(C.Tend*1000,2)+' ms';
+}
+function renderHMIFrame(){
+  var o=C.resp,n=o.length,dt=C.Tend/6000;
+  var i=Math.max(0,Math.min(n-1,Math.round(st.playT/dt)));
+  var y=o[i].y,e=st.amp-y,ang=TH_TARGET*y/st.amp,s='';
+  /* 主动盘：阶跃后固定指向目标 */
+  var pa=pp(C1.x,C1.y,C1.r-18,TH_TARGET);
+  s+=line(C1.x,C1.y,pa[0],pa[1],'#EF4444',6);
+  s+=circ(pa[0],pa[1],7,'#EF4444','#FCA5A5',1.5);
+  /* 从动盘：实际指针 */
+  var pb=pp(C2.x,C2.y,C2.r-18,ang);
+  s+=line(C2.x,C2.y,pb[0],pb[1],'#60A5FA',6);
+  s+=circ(pb[0],pb[1],7,'#3B82F6','#BFDBFE',1.5);
+  /* 超调轨迹弧：从目标角到峰值角 */
+  if(C.mt.sigma>0.5){
+    var aMax=TH_TARGET*(1+C.mt.sigma/100);
+    if(aMax<358)s+=path(arcD(C2.x,C2.y,C2.r-30,TH_TARGET,aMax),'#F2B926',4);
+    var pm=pp(C2.x,C2.y,C2.r-30,aMax);
+    s+=circ(pm[0],pm[1],4,'#F2B926');
+    var lm=pp(C2.x,C2.y,C2.r-46,Math.min(aMax,350));
+    s+=txt(lm[0],lm[1],'σ '+f(C.mt.sigma,1)+'%','bf','middle',10,'#F2B926');
+  }
+  /* 两盘误差扇形 */
+  if(Math.abs(ang-TH_TARGET)>1){
+    var lo=Math.min(ang,TH_TARGET),hi=Math.max(ang,TH_TARGET);
+    var e0=pp(C2.x,C2.y,C2.r-6,lo),e1=pp(C2.x,C2.y,C2.r-6,hi);
+    s+=path('M'+f(e0[0],1)+' '+f(e0[1],1)+'A'+f(C2.r-6,1)+' '+f(C2.r-6,1)+' 0 0 1 '+
+      f(e1[0],1)+' '+f(e1[1],1),Math.abs(e)>st.amp*.05?'#EF4444':'#3F8F5B',3,'4 3');
+  }
+  var dyn=document.getElementById('hmiDyn');if(dyn)dyn.innerHTML=s;
+  document.getElementById('hudT').textContent=f(o[i].t*1000,2)+' ms';
+  document.getElementById('hudY').textContent=f(y,4)+' pu';
+  document.getElementById('hudE').textContent=(e>=0?'+':'')+f(e,4)+' pu';
+  document.getElementById('hudG').textContent=f(C.mg.gamma,1)+' °';
+  document.getElementById('hudS').textContent=f(C.mt.sigma,1)+' %';
+  document.getElementById('ctlT').textContent=f(o[i].t*1000,2)+' / '+f(C.Tend*1000,2)+' ms';
+  document.getElementById('teleG').innerHTML=f(C.mg.gamma,1)+'<small>°</small>';
+  document.getElementById('teleS').innerHTML=f(C.mt.sigma,1)+'<small>%</small>';
+  document.getElementById('teleSub').textContent='t = '+f(o[i].t*1000,2)+' ms · 帧 '+i+'/'+n;
+  renderGauge();
+}
+function renderGauge(){
+  var W=300,H=92,s='',mg=C.mg,mt=C.mt;
+  s+=rect(0,0,W,H,'#fff');
+  s+=txt(6,13,'相角裕度 γ（0 — 70°，阈值 40°）','kl','start',9.5,'#8A8880');
+  s+=rect(10,19,W-20,12,'#F1EFE8','#E4E2DB',1,6);
+  var g=Math.max(0,Math.min(70,isFinite(mg.gamma)?mg.gamma:0));
+  s+=rect(10,19,(W-20)*g/70,12,g<30?'#EF4444':(g<40?'#EAB308':'#3F8F5B'),'',0,5,.85);
+  var xt=10+(W-20)*40/70;
+  s+=line(xt,16,xt,34,'#A32D2D',1.4);
+  s+=txt(W-8,29,f(mg.gamma,1)+'°','bf','end',10,'#2C2C2A');
+  s+=txt(6,51,'位置超调 σ（0 — 100%，阈值 50%）','kl','start',9.5,'#8A8880');
+  s+=rect(10,57,W-20,12,'#F1EFE8','#E4E2DB',1,6);
+  var sg=Math.max(0,Math.min(100,isFinite(mt.sigma)?mt.sigma:100));
+  s+=rect(10,57,(W-20)*sg/100,12,sg>50?'#EF4444':'#D85A30','',0,5,.8);
+  s+=line(10+(W-20)*.5,54,10+(W-20)*.5,72,'#A32D2D',1.4);
+  s+=txt(W-8,67,f(mt.sigma,1)+'%','bf','end',10,'#2C2C2A');
+  s+=txt(6,86,'闭环 '+(C.m.T_d.length-1)+' 阶 · max Re(p) = '+f(maxRe(C.m.T_d),0)+
+    ' · '+(C.stable?'稳定':'不稳定'),'kl','start',9.5,'#8A8880');
+  document.getElementById('svgGauge').innerHTML=svg(W,H,s);
+}
+function renderTele(){
+  var c=C,m=c.m,mg=c.mg,mt=c.mt;
+  var rows=[
+    ['对象 / 小时间常数','K_s/[s(T_Σs+1)] · '+f(st.Tsum*1000,1)+' ms'],
+    ['0 dB 穿越 f_c / ω_c',f(mg.fc,2)+' Hz / '+f(mg.wc,1)+' rad/s'],
+    ['相角裕度 γ',f(mg.gamma,2)+' °'],
+    ['幅值裕度 h',mg.hInf?'∞（无 −180° 穿越）':f(mg.gm,2)+' dB @ '+f(mg.fg,0)+' Hz'],
+    ['峰值 / 调节时间',f(mt.tp*1000,2)+' / '+f(mt.ts*1000,2)+' ms'],
+    ['稳态误差 e_ss',f(mt.ess,6)+' pu'],
+    ['控制器增益 K_c',f(m.Kc,1)+(st.lockFc?'（自动归一）':'（手动）')],
+    ['补偿网络','f_z '+f(st.fz,1)+' Hz · '+(st.filter?'f_p '+f(st.fp,0)+' Hz':'滤波关闭')],
+    ['闭环阶次 / max Re(p)',(m.T_d.length-1)+' 阶 / '+f(maxRe(m.T_d),1)],
+    ['增益模式',st.lockFc?'锁定 f_c = '+f(st.fc,1)+' Hz':'固定 K_c = '+f(st.Kc,0)]
+  ];
+  document.getElementById('teleTable').innerHTML=rows.map(function(r){
+    return '<tr><td>'+r[0]+'</td><td>'+r[1]+'</td></tr>';}).join('');
+  document.getElementById('teleNote').innerHTML=
+    '把 <code>f_z</code> 往高拖 → 零点离开 ω_c、相位抬升不足 → γ 下降、圆盘摆动加剧；'+
+    '把 <code>f_p</code> 往低拖 → 滤波极点在 ω_c 处吃掉相位 → 同样降低 γ。'+
+    '关掉滤波可回到严格典型 II 型，用「按 h 整定」逐格复现教材 σ–h 表。'+
+    (c.stable?'':'<b style="color:var(--red)">当前闭环不稳定，请降低 f_z 或提高 f_p。</b>');
+}
+/* ================= 五张分析图 ================= */
+var BLUE='#185FA5',ORANGE='#D85A30',GREEN='#3F8F5B',RED='#A32D2D',PURPLE='#6B4FA8',GOLD='#C9973F',GREY='#8A8880';
+function vline(F,x,y1,y2,col,dash,w){
+  if(x<F.L||x>F.R)return '';
+  return line(x,y1,x,y2,col,w||1,dash||'3 3',.8);
+}
+function plotBode(){
+  var W=1000,H=560,s='',i;
+  var L=58,R=W-148,T1=20,B1=252,T2=300,B2=H-40;
+  var lx0=-1.1,lx1=5.5;
+  var X=function(lf){return L+(lf-lx0)/(lx1-lx0)*(R-L);};
+  var Y1=function(v){return B1-(v+140)/260*(B1-T1);};
+  var Y2=function(v){return B2-(v+300)/240*(B2-T2);};
+  var fmin=Math.pow(10,lx0),fmax=Math.pow(10,lx1);
+  s+=rect(0,0,W,H,'#fff');
+  /* 幅频网格 */
+  for(i=-1;i<=5;i++)s+=line(X(i),T1,X(i),B1,'#E4E2DB',1)+txt(X(i),B1+13,'10'+sup(i),'kl','middle',9.5,GREY);
+  [-120,-80,-40,0,40,80,120].forEach(function(v){
+    s+=line(L,Y1(v),R,Y1(v),'#E4E2DB',1)+txt(L-6,Y1(v)+3.5,String(v),'kl','end',9.5,GREY);
+  });
+  s+=line(L,T1,L,B1,'#B9B6AD',1)+line(L,B1,R,B1,'#B9B6AD',1);
+  s+=line(L,Y1(0),R,Y1(0),RED,1.2,'5 4',.7);
+  s+=txt(L,T1-5,'幅频 / dB','kl','start',9.5,GREY);
+  /* 相频网格 */
+  for(i=-1;i<=5;i++)s+=line(X(i),T2,X(i),B2,'#E4E2DB',1)+txt(X(i),B2+13,'10'+sup(i),'kl','middle',9.5,GREY);
+  [-270,-225,-180,-135,-90].forEach(function(v){
+    s+=line(L,Y2(v),R,Y2(v),'#E4E2DB',1)+txt(L-6,Y2(v)+3.5,String(v)+'°','kl','end',9.5,GREY);
+  });
+  s+=line(L,T2,L,B2,'#B9B6AD',1)+line(L,B2,R,B2,'#B9B6AD',1);
+  s+=line(L,Y2(-180),R,Y2(-180),RED,1.2,'5 4',.7);
+  s+=txt(L,T2-5,'相频 / °','kl','start',9.5,GREY);
+  s+=txt((L+R)/2,H-3,'频率 f / Hz（对数轴）','kl','middle',9.5,GREY);
+  /* 关键频率竖线 */
+  var lf=function(fq){return Math.log(Math.max(fmin,Math.min(fmax,fq)))/Math.LN10;};
+  var marks=[
+    [st.fz,BLUE,'f_z 零点'],
+    [st.filter?st.fp:null,ORANGE,'f_p 极点'],
+    [C.m.fSum,GREY,'f_Σ']
+  ];
+  marks.forEach(function(mk){
+    if(mk[0]===null)return;
+    var x=X(lf(mk[0]));
+    s+=vline({L:L,R:R},x,T1,B2,mk[1],'2 5',1);
+  });
+  /* 三条幅频曲线 */
+  var mg=C.mg,B=C.B;
+  var pG=[],pC=[],pL=[],pP=[];
+  for(i=0;i<B.length;i++){
+    var lfx=Math.log(B[i].f)/Math.LN10;
+    if(lfx<lx0||lfx>lx1)continue;
+    pG.push([lfx,B[i].gp]);pC.push([lfx,B[i].cc]);pL.push([lfx,B[i].ll]);pP.push([lfx,B[i].ph]);
+  }
+  var XX=function(v){return X(v);};
+  s+=path(polyPath(pG,XX,Y1),GREY,1.4,'5 4');
+  s+=path(polyPath(pC,XX,Y1),ORANGE,1.5,'6 3');
+  s+=path(polyPath(pL,XX,Y1),BLUE,2.4);
+  s+=path(polyPath(pP,XX,Y2),PURPLE,2.2);
+  /* ωc / γ */
+  if(mg.wc!==null){
+    var fc=mg.fc,xc=X(lf(fc)),phc=-180+mg.gamma;   /* φ(ω_c) = −180° + γ */
+    s+=vline({L:L,R:R},xc,T1,B2,GOLD,'4 3',1.4);
+    s+=circ(xc,Y1(0),4,GOLD);
+    s+=circ(xc,Y2(phc),4,GOLD);
+    /* γ 尺寸箭头 */
+    s+=line(xc,Y2(-180),xc,Y2(phc),GOLD,3);
+    s+=txt(xc+6,(Y2(-180)+Y2(phc))/2,'γ = '+f(mg.gamma,1)+'°','bf','start',11,GOLD,
+      ' stroke="#fff" stroke-width="3" paint-order="stroke"');
+    s+=txt(xc+6,Y1(0)-8,'f_c = '+f(fc,1)+' Hz','bf','start',10,GOLD);
+  }
+  /* ωg / 幅值裕度 */
+  if(mg.wg!==null){
+    var xg=X(lf(mg.fg)),val=interpAt(B,mg.wg,'ll'),yL=Y1(Math.max(-140,Math.min(120,val)));
+    s+=vline({L:L,R:R},xg,T1,B1,PURPLE,'4 3',1.2);
+    s+=line(xg,Y1(0),xg,yL,PURPLE,3);
+    s+=circ(xg,yL,3.5,PURPLE);
+    s+=txt(xg+6,yL+14,'h = '+f(mg.gm,1)+' dB','bf','start',10,PURPLE);
+    s+=txt(xg+6,Y2(-180)-7,'f_g = '+f(mg.fg,0)+' Hz','bf','start',9.5,PURPLE);
+  }else{
+    s+=txt(R-6,T2+16,'h = ∞（相角不穿越 −180°）','bf','end',10,PURPLE);
+  }
+  /* 标注标签放在右侧留白 */
+  var lx=R+10,ly=T1+16;
+  s+=txt(lx,ly,'关键频率','tt','start',11,'#2C2C2A');ly+=18;
+  [['f_z  PI 零点',f(st.fz,1)+' Hz',BLUE],
+   ['f_p  滤波极点',st.filter?f(st.fp,0)+' Hz':'已关闭',ORANGE],
+   ['f_Σ  对象转折',f(C.m.fSum,1)+' Hz',GREY],
+   ['f_c  0 dB 穿越',f(mg.fc,1)+' Hz',GOLD],
+   ['f_g  −180° 穿越',mg.wg?f(mg.fg,0)+' Hz':'∞',PURPLE]].forEach(function(o){
+    s+=line(lx,ly-3,lx+14,ly-3,o[2],2.4);
+    s+=txt(lx+18,ly,o[0],'kl','start',9.5,'#5F5E5A');
+    s+=txt(lx+18,ly+13,o[1],'bf','start',10,o[2]);ly+=34;
+  });
+  ly+=6;
+  s+=txt(lx,ly,'裕度校核','tt','start',11,'#2C2C2A');ly+=18;
+  s+=txt(lx,ly,'γ = '+f(mg.gamma,2)+'°','bf','start',11,mg.gamma>=40?GREEN:RED);ly+=17;
+  s+=txt(lx,ly,'要求 ≥ 40°','kl','start',9.5,GREY);ly+=20;
+  s+=txt(lx,ly,'h = '+(mg.hInf?'∞':f(mg.gm,2)+' dB'),'bf','start',11,(mg.hInf||mg.gm>=6)?GREEN:RED);ly+=17;
+  s+=txt(lx,ly,'要求 ≥ 6 dB','kl','start',9.5,GREY);ly+=24;
+  s+=txt(lx,ly,'增益模式','tt','start',11,'#2C2C2A');ly+=18;
+  s+=txt(lx,ly,st.lockFc?'锁定 f_c':'固定 K_c','kl','start',10,'#5F5E5A');ly+=16;
+  s+=txt(lx,ly,'K_c = '+f(C.m.Kc,1),'bf','start',10,BLUE);ly+=22;
+  s+=txt(lx,ly,'提示','tt','start',11,'#2C2C2A');ly+=17;
+  s+=txt(lx,ly,'拖 f_z / f_p 时','kl','start',9.5,GREY);ly+=14;
+  s+=txt(lx,ly,'f_c 保持不变，','kl','start',9.5,GREY);ly+=14;
+  s+=txt(lx,ly,'只看相位整形。','kl','start',9.5,GREY);
+  /* 图例 */
+  s+=legend(L+10,T1+14,[['G_p 对象',GREY,'5 4'],['C 补偿器',ORANGE,'6 3'],['L = C·G_p',BLUE],['∠L',PURPLE]],10);
+  document.getElementById('svgBode').innerHTML=svg(W,H,s);
+  document.getElementById('subBode').textContent='γ='+f(mg.gamma,2)+'° · f_c='+f(mg.fc,2)+' Hz · h='+(mg.hInf?'∞':f(mg.gm,2)+' dB');
+  document.getElementById('capBode').innerHTML=
+    '上：幅频（灰虚线对象 <code>G_p</code>、橙虚线补偿器 <code>C</code>、蓝实线校正后开环 <code>L=C·G_p</code>）；下：<code>L</code> 的相频。'+
+    '金色竖线是 0 dB 穿越 <code>f_c</code>，γ 从这里量到 −180°；紫色是 −180° 穿越 <code>f_g</code>，幅值裕度 h 从这里量到 0 dB。'+
+    '蓝 / 橙 / 灰三条竖虚线分别是可拖的零点 <code>f_z</code>、滤波极点 <code>f_p</code> 与对象转折 <code>f_Σ</code>。'+
+    '关闭滤波时相角只渐近到 −180°、不发生穿越，h = ∞；打开滤波后高频相角继续下探到 −270°，才出现有限的幅值裕度。';
+}
+function sup(n){return '<tspan baseline-shift="super" font-size="7">'+n+'</tspan>';}
+function interpAt(B,w,key){
+  var i;for(i=1;i<B.length;i++)if(B[i].w>=w){
+    var t=(Math.log(w)-Math.log(B[i-1].w))/(Math.log(B[i].w)-Math.log(B[i-1].w));
+    return B[i-1][key]+t*(B[i][key]-B[i-1][key]);
+  }
+  return B[B.length-1][key];
+}
+function plotStep(){
+  var pk=isFinite(C.mt.peak)?C.mt.peak:C.amp;
+  var W=520,H=252,T=C.Tend*1000,top=Math.min(6,Math.max(C.amp*1.9,pk*1.12,C.amp*2));
+  var F=frame(W,H,{l:48,r:16,t:16,b:32},0,T,0,top),s='';
+  var a=C.amp,lo=-.5,hi=top*1.02;
+  var seq=function(arr){return arr.map(function(o){
+    var y=isFinite(o.y)?o.y:hi;return [o.t*1000,Math.max(lo,Math.min(hi,y))];
+  });};
+  s+=rect(F.L,F.Y(a*1.05),F.R-F.L,F.Y(a*.95)-F.Y(a*1.05),'#E8F3EC');
+  s+=axes(F,[0,T*.25,T*.5,T*.75,T],[0,.25,.5,.75,1,1.25,1.5,1.75,2].filter(function(v){return v<=top;}).map(function(v){return v*a;}),'t / ms','θ / pu',
+    function(v){return f(v,0);},function(v){return f(v,2);});
+  s+=line(F.L,F.Y(a),F.R,F.Y(a),GREY,1,'5 4');
+  s+=path(polyPath(seq(C.respi),F.X,F.Y),ORANGE,1.7,'6 4');
+  s+=path(polyPath(seq(C.resp),F.X,F.Y),BLUE,2.3);
+  var mt=C.mt;
+  if(!mt.unstable&&mt.tp!==null&&mt.tp*1000<T){
+    s+=circ(F.X(mt.tp*1000),F.Y(mt.peak),3.2,GOLD);
+    s+=txt(F.X(mt.tp*1000)+5,F.Y(mt.peak)-6,'σ '+f(mt.sigma,1)+'%','bf','start',10,GOLD);
+  }
+  if(!mt.unstable&&mt.ts*1000<T){
+    s+=vline(F,F.X(mt.ts*1000),F.T+6,F.B,BLUE,'2 4',1);
+    s+=txt(F.X(mt.ts*1000)+4,F.B-16,'ts '+f(mt.ts*1000,1)+'ms','bf','start',9,BLUE);
+  }
+  s+=legend(F.L+8,F.T+10,[['当前闭环',BLUE],['理想 PI（关滤波）',ORANGE,'6 4']],9.5);
+  s+=txt(F.R-4,F.B-6,'γ='+f(C.mg.gamma,1)+'° → σ='+f(mt.sigma,1)+'%','bf','end',9.5,BLUE);
+  document.getElementById('svgStep').innerHTML=svg(W,H,s);
+  document.getElementById('subStep').textContent='γ='+f(C.mg.gamma,2)+'° · σ='+f(mt.sigma,2)+'% · t_s='+f(mt.ts*1000,2)+' ms';
+  document.getElementById('capStep').innerHTML=
+    '位置阶跃 '+f(a,1)+' pu 的闭环响应。橙虚线是同一组 f_z / 增益但<b>关掉低通滤波</b>的理想 PI（严格典型 II 型），'+
+    '两者之差就是滤波极点吃掉相角裕度带来的振荡代价。'+
+    '闭环含零点且为三/四阶，实测 σ 会高于纯二阶公式，但随 γ 单调变化——这正是频域校正要验证的对应关系。';
+}
+function plotGS(){
+  var W=520,H=252,F=frame(W,H,{l:46,r:16,t:16,b:32},0,65,0,100),s='';
+  s+=axes(F,[0,10,20,30,40,50,60],[0,20,40,60,80,100],'γ · 相角裕度 / °','σ / %');
+  s+=vline(F,F.X(40),F.T,F.B,GREEN,'4 3',1.2);
+  s+=txt(F.X(40)+4,F.T+11,'γ=40° 工程下限','bf','start',9,GREEN);
+  s+=path(polyPath(C.th.map(function(o){return [o.gamma,o.sigma];}),F.X,F.Y),BLUE,2.2);
+  C.gs.forEach(function(o){
+    if(o.gamma>0&&o.gamma<65&&o.sigma<100)s+=circ(F.X(o.gamma),F.Y(o.sigma),2.9,ORANGE,'#fff',1);
+  });
+  var g=C.mg.gamma,sg=C.mt.sigma;
+  if(g!==null&&isFinite(g)&&isFinite(sg)&&g>0&&g<65){
+    s+=vline(F,F.X(g),F.T,F.B,GOLD,'3 3',1);
+    s+=circ(F.X(g),F.Y(Math.min(sg,99)),5.2,RED,'#fff',1.5);
+    s+=txt(Math.min(F.X(g)+7,F.R-118),Math.max(F.T+30,F.Y(Math.min(sg,99))-9),
+      '当前 γ='+f(g,1)+'° → σ='+f(sg,1)+'%','bf','start',10,RED);
+  }
+  s+=legend(F.L+8,F.B-8,[['二阶理论 γ↔σ',BLUE],['本页闭环实测点',ORANGE]],9.5);
+  document.getElementById('svgGS').innerHTML=svg(W,H,s);
+  document.getElementById('subGS').textContent='当前 γ='+f(g,2)+'° · σ='+f(sg,2)+'% · 二阶理论 '+f(sigmaFromZeta(zetaFromPM(g)),2)+'%';
+  document.getElementById('capGS').innerHTML=
+    '蓝线是课本 <code>γ = arctan[2ζ/√(√(1+4ζ⁴)−2ζ²)]</code> 与 <code>σ = 100e^(−πζ/√(1−ζ²))</code> 联立的理论曲线；'+
+    '橙点是固定 f_c、扫 f_z 得到的本页闭环 RK4 实测（γ, σ）。'+
+    '实测系统性高于二阶理论，因为本页闭环含零点 <code>(τ_z s+1)</code> 且是三/四阶，但<b>单调趋势完全一致</b>：γ 从 50° 降到 10°，σ 从约 24% 升到 80% 以上。';
+}
+function plotH(){
+  var W=520,H=252,F=frame(W,H,{l:46,r:44,t:16,b:32},3,10,0,60),s='',i;
+  s+=axes(F,[3,4,5,6,7,8,9,10],[0,10,20,30,40,50,60],'h · 中频宽 τ_z/T_Σ','σ / %');
+  var YT=function(v){return F.B-(v/16)*(F.B-F.T);};
+  s+=path(polyPath(C.book.map(function(o){return [o.h,o.bookSigma];}),F.X,F.Y),ORANGE,2,'6 4');
+  s+=path(polyPath(C.book.map(function(o){return [o.h,o.sigma];}),F.X,F.Y),BLUE,2.2);
+  C.book.forEach(function(o){
+    s+=rect(F.X(o.h)-2.6,F.Y(o.bookSigma)-2.6,5.2,5.2,ORANGE);
+    s+=circ(F.X(o.h),F.Y(o.sigma),2.9,BLUE,'#fff',1);
+  });
+  s+=path(polyPath(C.book.map(function(o){return [o.h,o.ts];}),F.X,YT),GOLD,1.5,'4 3');
+  [0,4,8,12,16].forEach(function(v){s+=txt(F.R+5,YT(v)+3,String(v),'kl','start',9,GOLD);});
+  s+=txt(F.R+5,F.T-4,'t_s/T_Σ','kl','start',9,GOLD);
+  var hEq=1/(2*PI2*st.fz*st.Tsum);
+  if(hEq>=3&&hEq<=10){
+    s+=vline(F,F.X(hEq),F.T,F.B,GOLD,'3 3',1);
+    s+=txt(Math.min(F.X(hEq)+4,F.R-70),F.B-8,'h_eq='+f(hEq,2),'bf','start',9.5,GOLD);
+  }
+  s+=legend(F.L+8,F.T+10,[['教材表 σ',ORANGE,'6 4'],['本页实测 σ',BLUE],['t_s/T_Σ',GOLD,'4 3']],9);
+  document.getElementById('svgH').innerHTML=svg(W,H,s);
+  document.getElementById('subH').textContent='8 格教材表最大误差 '+f(Math.max.apply(null,C.book.map(function(o){return Math.abs(o.sigma-o.bookSigma);})),3)+'%';
+  document.getElementById('capH').innerHTML=
+    '橙方点是教材《运动控制系统》「典型 II 型系统阶跃跟随性能（按 Mr 最小准则）」给出的 σ 表，'+
+    '蓝圆点是本页按同一套 <code>τ_z=hT_Σ、K=(h+1)/(2h²T_Σ²)</code> 公式、关闭滤波后 RK4 仿真实测，8 格误差均 &lt; 0.04%；'+
+    '金色虚线是 t_s/T_Σ，在 h≈5 处取到最小，说明工程上推荐 h=5 不只是经验。'+
+    '点「按中频宽 h 整定」即可把页面切到这个严格典型 II 型状态（默认 h=5）。';
+}
+function plotPole(){
+  var W=520,H=252,F=frame(W,H,{l:46,r:16,t:16,b:32},-700,60,-620,620),s='';
+  s+=axes(F,[-600,-400,-200,0],[-600,-300,0,300,600],'Re(s) / (rad/s)','Im(s)');
+  s+=line(F.X(0),F.T,F.X(0),F.B,RED,1.4,'5 3',.75);
+  s+=line(F.L,F.Y(0),F.R,F.Y(0),'#B9B6AD',1.2);
+  C.locus.forEach(function(o){
+    var x=F.X(o[1]),y=F.Y(o[2]);
+    if(x<F.L||x>F.R||y<F.T||y>F.B)return;
+    s+=circ(x,y,1.05,BLUE,'',0);
+  });
+  C.m.poles.forEach(function(p){
+    var x=F.X(p[0]),y=F.Y(p[1]);
+    if(x<F.L||x>F.R||y<F.T||y>F.B)return;
+    s+=line(x-4,y-4,x+4,y+4,RED,2)+line(x-4,y+4,x+4,y-4,RED,2);
+  });
+  var dp=domComplex(C.m.T_d);
+  if(dp){
+    s+=txt(Math.min(F.X(dp.re)+7,F.R-110),Math.max(F.T+12,F.Y(dp.im)-7),
+      '主导 '+f(dp.re,0)+'±'+f(dp.im,0)+'j','bf','start',9.5,RED);
+  }
+  s+=legend(F.L+8,F.T+10,[['f_z 扫描 3→120 Hz',BLUE],['当前闭环极点',RED]],9.5);
+  s+=txt(F.R-4,F.B-6,'max Re(p) = '+f(maxRe(C.m.T_d),0),'bf','end',9.5,maxRe(C.m.T_d)>0?RED:GREEN);
+  document.getElementById('svgPole').innerHTML=svg(W,H,s);
+  document.getElementById('subPole').textContent=(C.m.T_d.length-1)+' 阶闭环 · '+C.m.poles.length+' 个极点 · max Re(p)='+f(maxRe(C.m.T_d),1);
+  document.getElementById('capPole').innerHTML=
+    '浅蓝点是固定其它参数、把 <code>f_z</code> 从 3 Hz 扫到 120 Hz 时全部闭环极点的走向；红叉是当前工作点。'+
+    '零点往高频移动时，主导共轭极点持续右移靠近虚轴，对应 γ 下降、σ 上升；越过虚轴即为闭环失稳。'+
+    '这条轨迹把「伯德图上的裕度」和「s 平面上的极点」直接对上了。';
+}
+/* ================= 理论对照表 / 讲义卡 ================= */
+function renderTheory(){
+  var c=C,m=c.m,mg=c.mg,mt=c.mt,hEq=1/(2*PI2*st.fz*st.Tsum);
+  var bookRows=C.book.map(function(o){
+    return '<tr'+(Math.abs(hEq-o.h)<.15?' style="background:#E6F1FB"':'')+'><td class="num">'+o.h+'</td>'+
+      '<td class="num">'+f(o.fz,2)+'</td><td class="num">'+f(o.gammaAsym,2)+'</td>'+
+      '<td class="num">'+f(o.gamma,2)+'</td><td class="num">'+f(o.bookSigma,1)+'</td>'+
+      '<td class="num">'+f(o.sigma,2)+'</td><td class="num">'+f(o.sigma-o.bookSigma,3)+'</td>'+
+      '<td class="num">'+f(o.bookTs,2)+'</td><td class="num">'+f(o.ts,2)+'</td></tr>';
+  }).join('');
+  document.getElementById('theory').innerHTML=
+    '<h3>模型与推导式</h3>'+
+    '<div class="dev">'+
+      '① 对象：G_p(s) = K_s/[s(T_Σ s+1)]　（1/s 来自 θ=∫ω dt，T_Σ 为电流环/采样/滤波小时间常数之和）<br>'+
+      '② 补偿：C(s) = K_c(τ_z s+1)/[τ_z s(τ_f s+1)]　f_z=1/(2πτ_z)，f_p=1/(2πτ_f)，τ_f=0 即理想 PI<br>'+
+      '③ 开环：L(s) = K(τ_z s+1)/[s²(T_Σ s+1)(τ_f s+1)]　K = K_c K_s/τ_z<br>'+
+      '④ 闭环：Φ(s) = K(τ_z s+1)/[s²(T_Σ s+1)(τ_f s+1) + K(τ_z s+1)]（含闭环零点）<br>'+
+      '⑤ 精确相角：φ(ω) = −180° + arctan(ωτ_z) − arctan(ωT_Σ) − arctan(ωτ_f)<br>'+
+      '⑥ γ = 180° + φ(ω_c)，|L(jω_c)|=1；h = −20lg|L(jω_g)|，φ(ω_g)=−180°<br>'+
+      '⑦ 工程设计法（渐近线）：h=τ_z/T_Σ，τ_z=hT_Σ，K=(h+1)/(2h²T_Σ²)，ω_c=(h+1)/(2hT_Σ)，'+
+      'γ=arctan((h+1)/2)−arctan((h+1)/(2h))<br>'+
+      '⑧ 二阶理论：γ=arctan[2ζ/√(√(1+4ζ⁴)−2ζ²)]，σ=100e^(−πζ/√(1−ζ²))'+
+    '</div>'+
+    '<h3>理论值 / 数值实测对照（当前参数）</h3>'+
+    '<table><tr><th>量</th><th>公式 / 来源</th><th>理论 / 设计值</th><th>数值实测</th><th>说明</th></tr>'+
+    '<tr><td>f_c 截止频率</td><td class="num">|L(jω_c)|=1</td><td class="num">'+(st.lockFc?f(st.fc,2)+' Hz（锁定）':'—')+'</td><td class="num">'+f(mg.fc,2)+' Hz</td><td>锁定模式下自动归一 K_c 使两者吻合</td></tr>'+
+    '<tr><td>γ 相角裕度（渐近线）</td><td class="num">arctan((h+1)/2)−arctan((h+1)/(2h))</td><td class="num">'+f(m.gammaAsym,2)+'°（h='+f(st.h,2)+'）</td><td class="num">'+f(mg.gamma,2)+'°</td><td>渐近线忽略转折点 ±3 dB 修正</td></tr>'+
+    '<tr><td>ω_c 渐近线</td><td class="num">(h+1)/(2hT_Σ)</td><td class="num">'+f(m.wcAsym,1)+' rad/s</td><td class="num">'+f(mg.wc,1)+' rad/s</td><td>精确值略低，见教材近似说明</td></tr>'+
+    '<tr><td>σ 超调（二阶公式）</td><td class="num">100e^(−πζ/√(1−ζ²))</td><td class="num">'+f(sigmaFromZeta(zetaFromPM(mg.gamma)),2)+'%</td><td class="num">'+f(mt.sigma,2)+'%</td><td>本页闭环含零点且三/四阶，实测偏高但趋势一致</td></tr>'+
+    '<tr><td>e_ss 稳态误差</td><td class="num">积分环节 → 0</td><td class="num">0</td><td class="num">'+f(mt.ess,6)+' pu</td><td>位置阶跃无静差</td></tr>'+
+    '<tr><td>h_eq 中频宽</td><td class="num">τ_z/T_Σ = 1/(2πf_zT_Σ)</td><td class="num">'+f(st.h,2)+'</td><td class="num">'+f(hEq,3)+'</td><td>推荐 3~10</td></tr>'+
+    '<tr><td>γ 损失（滤波极点）</td><td class="num">arctan(ω_c/ω_p)</td><td class="num">'+(st.filter?f(Math.atan(mg.wc/(2*PI2*st.fp))*D2R,2):'0.00')+'°</td><td class="num">'+f(c.mgi.gamma-mg.gamma,2)+'°</td><td>关滤波即回到理想 PI</td></tr>'+
+    '<tr><td>max Re(p)</td><td class="num">闭环特征式求根</td><td class="num">&lt; 0 稳定</td><td class="num">'+f(maxRe(m.T_d),1)+'</td><td>γ 与极点右移一一对应</td></tr>'+
+    '</table>'+
+    '<h3>教材「典型 II 型系统」σ–h 表复现（当前 T_Σ = '+f(st.Tsum*1000,1)+' ms，关闭滤波）</h3>'+
+    '<table><tr><th>h</th><th>f_z/Hz</th><th>γ渐近/°</th><th>γ精确/°</th><th>σ教材/%</th><th>σ实测/%</th><th>误差/%</th><th>t_s/TΣ 教材</th><th>t_s/TΣ 实测</th></tr>'+
+    bookRows+'</table>'+
+    '<h3>参数与工况</h3>'+
+    '<table><tr><th>符号</th><th>值</th><th>含义</th><th>符号</th><th>值</th><th>含义</th></tr>'+
+    '<tr><td class="num">T_Σ</td><td class="num">'+f(st.Tsum*1000,2)+' ms</td><td>小时间常数（可替换）</td><td class="num">K_s</td><td class="num">'+f(st.Ks,2)+'</td><td>位置环等效增益（可替换）</td></tr>'+
+    '<tr><td class="num">f_Σ</td><td class="num">'+f(m.fSum,1)+' Hz</td><td>对象转折频率</td><td class="num">f_z</td><td class="num">'+f(st.fz,1)+' Hz</td><td>PI 零点（主滑块）</td></tr>'+
+    '<tr><td class="num">f_p</td><td class="num">'+(st.filter?f(st.fp,0)+' Hz':'∞（关闭）')+'</td><td>滤波极点（主滑块）</td><td class="num">f_c</td><td class="num">'+f(st.fc,1)+' Hz</td><td>目标截止频率</td></tr>'+
+    '<tr><td class="num">τ_z</td><td class="num">'+f(m.tz*1000,3)+' ms</td><td>PI 积分时间</td><td class="num">τ_f</td><td class="num">'+(m.tf?f(m.tf*1000,4)+' ms':'0')+'</td><td>滤波时间常数</td></tr>'+
+    '<tr><td class="num">K_c</td><td class="num">'+f(m.Kc,1)+'</td><td>控制器增益</td><td class="num">K</td><td class="num">'+f(m.K,0)+'</td><td>开环系数 K_cK_s/τ_z</td></tr>'+
+    '</table>'+
+    '<div class="warn">计算口径：① PI 只有一个可设计零点和一个固定在原点的积分极点，本页可拖的「极点」是工业伺服给定/反馈低通滤波器极点；'+
+    '② 教材 σ–h 表在<b>关闭滤波、按渐近线 K 整定</b>时才能严格复现，打开滤波或锁定 f_c 是另一种整定口径，数值会偏离教材表，这是正确的而非错误；'+
+    '③ 超调量只定义在位置阶跃响应上，裕度只从开环伯德图量取，不混用；'+
+    '④ 对象参数 <code>T_Σ / K_s</code> 按现场辨识结果替换后，需重新校核 γ ≥ 40°、幅值裕度 ≥ 6 dB 与参数摄动下的裕度余量。</div>';
+}
+function renderNotes(){
+  var N=[
+    ['为什么是「典型 II 型」','伺服位置环对象 <code>G_p=K_s/[s(T_Σs+1)]</code> 自带一个积分，串上 PI 的积分后开环变 <code>K(τ_zs+1)/[s²(T_Σs+1)]</code>，正是教材典型 II 型。低频斜率 −40 dB/dec 带来高刚度与无静差，但低频相角落在 −180° 上——系统能稳住，全靠 PI 零点在 ω_c 附近把相位抬回来。这就是「频域校正」在工业伺服上最典型的落地。'],
+    ['f_z 到底调了什么','零点贡献 <code>+arctan(ω/ω_z)</code> 的相位超前。锁定 f_c 后把 f_z 从 8 Hz 拖到 90 Hz，零点离开 ω_c 越来越远，γ 从 50.4° 单调掉到 −2.9°，位置超调从 24% 涨到 270% 以上，闭环主导极点右移穿过虚轴。实车上「积分太强、低频晃」和这个现象是同一件事：本质都是零点位置不对、相位补偿不足。'],
+    ['f_p 是必要的代价，不是免费午餐','编码器噪声和机械谐振必须靠低通压住，但滤波器极点贡献 <code>−arctan(ω/ω_p)</code> 的相位滞后。固定 f_z≈16 Hz、f_c≈45 Hz 时，f_p=200 Hz 只剩 γ=28.3°、σ=57%；把 f_p 推到 2 kHz 以上，γ 回到约 40°、σ≈39%。工程建议 <code>f_p ≥ 5~10 f_c</code>，页面设计步骤里会自动校核这一条。'],
+    ['工程设计法为什么推荐 h=5','<code>h=τ_z/T_Σ</code> 是中频宽。按 Mr 最小准则 <code>K=(h+1)/(2h²T_Σ²)</code>，教材给出的 σ–h 表从 h=3 的 52.6% 降到 h=10 的 23.3%，但 <code>t_s/T_Σ</code> 在 h≈5 取到最小（9.55）。所以 h=5 是「超调不太大、调节最快」的折中，不是随便拍的经验值。本页 8 格表全部复现，最大误差 &lt;0.04%。'],
+    ['两种增益模式该用哪个','<b>锁定 f_c</b>（默认）：K_c 由 <code>|L(j2πf_c)|=1</code> 自动反解，拖 f_z/f_p 时带宽不动、只有相位在变，最适合单独观察「相角裕度 → 振荡」这条因果链。<b>固定 K_c</b>：更接近现场旋钮调参，ω_c 会随零点、极点和对象参数一起漂移。备赛时先用前者把机理看明白，再用后者做参数摄动与鲁棒性校核。'],
+    ['怎么把本页当备赛仿真工具用','① 用自己的赛题对象做阶跃响应辨识，得到 T_Σ、K_s，填进第三组滑块；② 按采样周期定 f_c（建议 f_s ≥ 10 f_c）；③ 按 h=5 或目标 γ（工业常用 40~50°）整定，页面会反解 f_z 与 K_c；④ 按噪声情况选 f_p 并校核 γ ≥ 40°、幅值裕度 ≥ 6 dB；⑤ 看位置阶跃响应与圆盘动画确认超调、调节时间；⑥ 换几组 T_Σ/K_s 做参数摄动，确认模型误差下裕度仍够。八步校核清单会逐条标绿/标红。']
+  ];
+  document.getElementById('notes').innerHTML=N.map(function(o,i){
+    return '<div class="note"><h3><i>'+(i+1)+'</i>'+o[0]+'</h3><p>'+o[1]+'</p></div>';}).join('');
+}
+/* =======================================================================
+   刷新 / 参数耦合 / 整定 / 动画 / 探针
+   ======================================================================= */
+var PMAP={};
+PARAMS.forEach(function(g){g.items.forEach(function(p){PMAP[p.k]=p;});});
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function copy(o){var r={},k;for(k in o)if(Object.prototype.hasOwnProperty.call(o,k))r[k]=o[k];return r;}
+/* 滑块值 ↔ 状态值：T_Σ 用 ms 输入，K_c 用对数滑块，h 与 f_z 双向耦合 */
+function fromSlider(p,v){
+  v=Number(v);
+  if(p.log)return p.log[0]*Math.pow(p.log[1]/p.log[0],v/1000);
+  if(p.div)return v/p.div;
+  return v;
+}
+function toSlider(p,v){
+  if(p.log)return 1000*Math.log(clamp(v,p.log[0],p.log[1])/p.log[0])/Math.log(p.log[1]/p.log[0]);
+  if(p.div)return v*p.div;
+  return v;
+}
+function hAt(fz){return 1/(2*PI2*fz*st.Tsum);}
+function syncInputs(skip){
+  var grid=document.getElementById('paramGrid');if(!grid)return;
+  PARAMS.forEach(function(g){g.items.forEach(function(p){
+    if(p.ro||p.k===skip)return;
+    var el=grid.querySelector('input[data-k="'+p.k+'"]');if(!el)return;
+    if(p.log){el.min=0;el.max=1000;el.step=1;}
+    if(p.k==='h'){el.min=hAt(120);el.max=hAt(3);el.step=.05;}
+    el.value=toSlider(p,p.k==='h'?st.h:st[p.k]);
+  });});
+  var fc=grid.querySelector('input[data-k="fc"]'),kc=grid.querySelector('input[data-k="Kc"]');
+  if(fc){fc.disabled=!st.lockFc;fc.style.opacity=st.lockFc?'1':'.42';}
+  if(kc){kc.disabled=st.lockFc;kc.style.opacity=st.lockFc?'.42':'1';}
+}
+function updateButtons(){
+  var seg=document.getElementById('segMode');
+  if(seg)Array.prototype.forEach.call(seg.querySelectorAll('button'),function(b){
+    b.classList.toggle('on',(b.getAttribute('data-v')==='lock')===st.lockFc);
+  });
+  var bf=document.getElementById('btnFilter');
+  if(bf){bf.textContent='低通滤波：'+(st.filter?'开':'关');bf.className='btn '+(st.filter?'blue':'');}
+  var bp=document.getElementById('btnPlay');
+  if(bp)bp.textContent=st.play?'❚❚ 暂停':'▶ 播放';
+}
+function refresh(opt){
+  opt=opt||{};
+  compute();
+  if(!opt.noSync)syncInputs(opt.skip);
+  if(st.playT>C.Tend)st.playT=C.Tend;
+  updateButtons();
+  updatePv();
+  renderStage();
+  renderSpecs();
+  renderSteps();
+  renderHW();
+  renderCmp();
+  renderHMIStatic();
+  renderHMIFrame();
+  renderTele();
+  plotBode();
+  plotStep();
+  plotGS();
+  plotH();
+  plotPole();
+  renderTheory();
+  if(PROBE)dumpProbe();
+}
+var RAF=0,PENDING_SKIP=null;
+/* 用定时器做一次性合并刷新：rAF 在后台标签页/预览面板里会被节流，定时器更可靠 */
+function requestRefresh(skip){
+  PENDING_SKIP=skip||null;
+  if(RAF)return;
+  RAF=setTimeout(function(){
+    RAF=0;var s=PENDING_SKIP;PENDING_SKIP=null;refresh({skip:s});
+  },16);
+}
+/* ---------- 状态快照 / 外部接口 ---------- */
+function snapshot(){
+  var c=C,m=c.m,mg=c.mg,mt=c.mt;
+  return {
+    state:copy(st),
+    gamma:mg.gamma,fc:mg.fc,wc:mg.wc,gm:mg.hInf?null:mg.gm,fg:mg.fg,hInf:mg.hInf,
+    sigma:mt.sigma,tp:mt.tp,tr:mt.tr,ts:mt.ts,ess:mt.ess,iae:mt.iae,
+    unstable:!!mt.unstable,peak:mt.peak,
+    Kc:m.Kc,K:m.K,tz:m.tz,tf:m.tf,fSum:m.fSum,hEq:hAt(st.fz),
+    order:m.T_d.length-1,maxRe:maxRe(m.T_d),stable:c.stable,
+    ideal:{gamma:c.mgi.gamma,sigma:c.mti.sigma},
+    Tend:c.Tend,amp:c.amp,
+    bookMaxErr:Math.max.apply(null,c.book.map(function(o){return Math.abs(o.sigma-o.bookSigma);}))
+  };
+}
+function setParams(o){
+  o=o||{};
+  var k;
+  for(k in o)if(Object.prototype.hasOwnProperty.call(o,k)&&k in st)st[k]=o[k];
+  /* h 与 f_z 是同一物理量：拖 h 反解 f_z，拖 f_z / T_Σ 反解 h */
+  if(Object.prototype.hasOwnProperty.call(o,'h')&&!Object.prototype.hasOwnProperty.call(o,'fz'))
+    st.fz=clamp(1/(2*PI2*st.h*st.Tsum),3,120);
+  st.h=hAt(st.fz);
+  st.play=false;
+  refresh({noSync:false});
+  return snapshot();
+}
+/* ---------- 两种整定 ---------- */
+/* 按教材 h 工程设计法：关滤波、τ_z=hT_Σ、K=(h+1)/(2h²T_Σ²)，固定 K_c 使开环严格等于教材式 */
+function applyDesignByH(){
+  var h=clamp(st.h,3,10),tz=h*st.Tsum;
+  var K=(h+1)/(2*h*h*st.Tsum*st.Tsum);
+  var Kc=K*tz/st.Ks,fc=(h+1)/(2*h*st.Tsum)/(2*PI2);
+  return setParams({filter:false,lockFc:false,h:h,fz:clamp(1/(2*PI2*tz),3,120),
+    Kc:clamp(Kc,5,6000),fc:clamp(fc,10,150)});
+}
+/* 按目标相角裕度整定：锁定 f_c，二分求 f_z 使 γ = targetPM（γ 随 f_z 单调下降） */
+function gammaAt(fz){
+  var s=copy(st);s.fz=fz;s.lockFc=true;
+  var m=buildModel(s),mg=margins(bodeScan(m,1,2e6,420));
+  return mg.gamma===null?-90:mg.gamma;
+}
+function applyDesignByPM(){
+  var target=clamp(st.targetPM,25,70),lo=3,hi=120,mid=lo,i;
+  var gLo=gammaAt(lo),gHi=gammaAt(hi);
+  if(target>=gLo)mid=lo;
+  else if(target<=gHi)mid=hi;
+  else for(i=0;i<22;i++){mid=(lo+hi)/2;if(gammaAt(mid)>target)lo=mid;else hi=mid;}
+  return setParams({lockFc:true,fz:mid});
+}
+/* ---------- 圆盘动画 ---------- */
+var LASTTS=0,TIMER=0;
+function nowMs(){return (typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();}
+function loop(){
+  var ts=nowMs();
+  if(!LASTTS)LASTTS=ts;
+  var dt=Math.min(.1,Math.max(0,(ts-LASTTS)/1000));LASTTS=ts;
+  if(st.play&&!STILL){
+    st.playT+=C.Tend*dt/6;              /* 6 秒走完整个阶跃过程 */
+    if(st.playT>=C.Tend)st.playT=0;
+    renderHMIFrame();
+    var rg=document.getElementById('rngT');
+    if(rg)rg.value=Math.round(st.playT/C.Tend*1000);
+  }
+}
+/* ---------- 探针 ---------- */
+function dumpProbe(){
+  var el=document.getElementById('probe');
+  if(el)el.textContent=JSON.stringify(snapshot());
+}
+window.__SERVO__={
+  state:function(){return copy(st);},
+  snapshot:snapshot,
+  set:setParams,
+  designH:applyDesignByH,
+  designPM:applyDesignByPM,
+  table:function(list){var out=[];list.forEach(function(o){out.push(setParams(o));});return out;},
+  step:function(){return {t:C.resp.map(function(o){return o.t;}),y:C.resp.map(function(o){return o.y;}),
+    ideal:C.respi.map(function(o){return o.y;}),Tend:C.Tend,amp:C.amp};},
+  bode:function(){var o=[],i;for(i=0;i<C.B.length;i+=6)o.push([C.B[i].f,C.B[i].gp,C.B[i].cc,C.B[i].ll,C.B[i].ph]);return o;},
+  book:function(){return C.book.map(function(o){return {h:o.h,fz:o.fz,gamma:o.gamma,gammaAsym:o.gammaAsym,
+    bookSigma:o.bookSigma,sigma:o.sigma,err:o.sigma-o.bookSigma,bookTs:o.bookTs,ts:o.ts};});},
+  gs:function(){return C.gs.slice();},
+  locus:function(){return C.locus.slice();},
+  model:function(){return {DEF:copy(DEF),BOOK_H:BOOK_H.slice(),
+    Gp:'K_s/[s(T_Σs+1)]',C:'K_c(τ_zs+1)/[τ_zs(τ_fs+1)]',
+    L:'K(τ_zs+1)/[s²(T_Σs+1)(τ_fs+1)]',Td:C.m.T_d.slice(),Tn:C.m.T_n.slice()};},
+  probe:function(){var el=document.getElementById('probe');return el?el.textContent:null;}
+};
+/* ---------- 事件绑定 / 初始化 ---------- */
+function bindEvents(){
+  var $=function(id){return document.getElementById(id);};
+  $('segMode').addEventListener('click',function(e){
+    var b=e.target.closest?e.target.closest('button'):null;if(!b)return;
+    var lock=b.getAttribute('data-v')==='lock';
+    if(lock!==st.lockFc){
+      if(!lock)st.Kc=clamp(C.m.Kc,5,6000);   /* 切到固定 K_c 时沿用当前自动增益，避免跳变 */
+      st.lockFc=lock;
+    }
+    refresh({});
+  });
+  $('btnFilter').addEventListener('click',function(){st.filter=!st.filter;refresh({});});
+  $('btnByH').addEventListener('click',function(){applyDesignByH();});
+  $('btnByPM').addEventListener('click',function(){applyDesignByPM();});
+  $('btnReset').addEventListener('click',function(){
+    st=copy(DEF);st.play=false;st.playT=0;st.stage=0;
+    st.fz=1/(2*PI2*DEF.h*DEF.Tsum);st.h=DEF.h;
+    CACHE={};
+    refresh({});
+  });
+  $('paramGrid').addEventListener('input',function(e){
+    var el=e.target;if(!el||el.tagName!=='INPUT')return;
+    var k=el.getAttribute('data-k'),p=PMAP[k];if(!p)return;
+    st[k]=fromSlider(p,el.value);
+    if(k==='h')st.fz=clamp(1/(2*PI2*st.h*st.Tsum),3,120);
+    st.h=hAt(st.fz);
+    st.play=false;
+    if(k==='targetPM'){applyDesignByPM();return;}
+    requestRefresh(k);
+  });
+  $('stageTabs').addEventListener('click',function(e){
+    var b=e.target.closest?e.target.closest('button'):null;if(!b)return;
+    st.stage=Number(b.getAttribute('data-i'))||0;renderStage();
+  });
+  $('btnPlay').addEventListener('click',function(){
+    st.play=!st.play;LASTTS=0;
+    if(st.play&&st.playT>=C.Tend-.0001)st.playT=0;
+    updateButtons();renderHMIFrame();
+  });
+  $('rngT').addEventListener('input',function(e){
+    st.play=false;st.playT=Number(e.target.value)/1000*C.Tend;
+    updateButtons();renderHMIFrame();
+  });
+}
+function init(){
+  st=copy(DEF);
+  st.fz=1/(2*PI2*DEF.h*DEF.Tsum);st.h=DEF.h;
+  st.play=false;st.playT=0;st.stage=0;
+  buildParams();
+  renderClarify();
+  renderNotes();
+  refresh({});
+  bindEvents();
+  if(!STILL)TIMER=setInterval(loop,33);   /* 约 30 fps，后台也不丢帧 */
+  if(PROBE)dumpProbe();
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
+else init();
+</script>
+</body>
+</html>
