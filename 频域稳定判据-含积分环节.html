@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>频域稳定判据（含积分环节）· 补画 v×90° 与 Z = P − 2N</title>
+<style>
+:root{
+  --ink:#2C2C2A; --ink2:#5F5E5A; --ink3:#8A8880;
+  --panel:#F1EFE8; --panel2:#FAF9F5; --line:rgba(0,0,0,.12);
+  --blue:#185FA5; --blue-l:#E6F1FB; --orange:#D85A30; --orange-l:#FBEEE8;
+  --green:#3F8F5B; --green-l:#E8F3EC; --red:#A32D2D; --purple:#6B4FA8;
+  --gold:#C9973F;
+  --mono:ui-monospace,Consolas,"Courier New",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:22px 24px 40px;background:#fff;color:var(--ink);font-family:var(--sans)}
+.wrap{max-width:1232px;margin:0 auto;font-size:13px}
+h1{font-size:16.5px;font-weight:600;margin:0 0 7px;letter-spacing:.1px}
+.lead{font-size:13px;line-height:1.7;color:var(--ink2);margin:0 0 15px;max-width:1010px}
+.lead b{color:var(--ink);font-weight:600}
+.lead code{font-family:var(--mono);font-size:12.5px;background:var(--panel);padding:1px 5px;border-radius:4px;color:var(--blue)}
+.objstrip{font-size:11.5px;line-height:1.65;color:var(--ink2);background:var(--blue-l);border-left:2px solid var(--blue);border-radius:0 6px 6px 0;padding:6px 11px;margin:0 0 12px}
+.objstrip b{color:var(--blue);font-weight:600}
+
+.bar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:var(--panel);border-radius:10px;padding:9px 12px;margin-bottom:12px}
+.seg{display:inline-flex;background:#fff;border:.5px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;font:inherit;font-size:12.5px;padding:6px 13px;cursor:pointer;color:var(--ink2);white-space:nowrap}
+.seg button+button{border-left:.5px solid var(--line)}
+.seg button.on{background:var(--blue);color:#fff}
+.bar .sp{flex:1}
+.btn{font:inherit;font-size:12.5px;padding:6px 12px;border:.5px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;color:var(--ink);white-space:nowrap}
+.btn:hover{background:var(--panel2)}
+.btn.on{background:var(--orange);border-color:var(--orange);color:#fff}
+.btn:disabled{opacity:.42;cursor:not-allowed;background:#fff}
+.tfslot{font-family:var(--mono);font-size:11.5px;color:var(--ink2);padding-left:4px}
+
+.kbar{display:flex;align-items:center;gap:14px;background:var(--panel);border-radius:10px;padding:10px 14px;margin-bottom:12px;flex-wrap:wrap}
+.kbar .kl{font-size:12px;color:var(--ink2);white-space:nowrap}
+.kbar input[type=range]{flex:1;min-width:200px}
+.kval{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--ink);min-width:74px;text-align:right}
+.ktag{font-size:11px;color:var(--ink3);font-family:var(--mono)}
+input[type=range]{-webkit-appearance:none;appearance:none;height:3px;background:#D8D5CC;border-radius:2px;outline:0;margin:7px 0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--blue);border:2px solid #fff;box-shadow:0 0 0 .5px var(--line);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--blue);border:2px solid #fff;cursor:pointer}
+
+.main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+.card{background:var(--panel2);border:.5px solid var(--line);border-radius:12px;padding:9px 10px 6px}
+.chd{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 2px 5px;flex-wrap:wrap}
+.chd h2{font-size:11.5px;font-weight:600;margin:0;color:var(--ink);letter-spacing:.15px}
+.chd .sub{font-size:10.5px;color:var(--ink3);font-family:var(--mono)}
+svg{width:100%;height:auto;display:block;overflow:visible}
+svg text{font-family:var(--sans)}
+
+/* 判定面板 */
+.verdict{grid-column:1/-1;display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-top:2px}
+.vt{background:var(--panel);border-radius:9px;padding:8px 11px;min-width:0}
+.vt .k{font-size:10px;color:var(--ink3);letter-spacing:.2px;white-space:nowrap}
+.vt .v{font-family:var(--mono);font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:3px;white-space:nowrap}
+.vt .s{font-size:10px;color:var(--ink3);margin-top:2px;line-height:1.4}
+.vt.wide{grid-column:span 2}
+/* 第一排 3 + Z(2) = 5，第二排 γ(2) + h(2) + 倍数(1) = 5：两排都填满，不留空洞 */
+#vtG,#vtH{grid-column:span 2}
+.vt.ok .v{color:var(--green)} .vt.bad .v{color:var(--red)} .vt.warn .v{color:var(--gold)}
+.chain{background:#fff;border:.5px solid var(--line);border-radius:9px;padding:9px 12px;grid-column:1/-1;display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;justify-content:center;flex-wrap:wrap}
+.chain b{font-weight:600}
+.chain .eq{color:var(--ink3)}
+
+/* 第二排：闭环极点 / 阶跃响应 */
+.main2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start;margin-top:14px}
+.specs{display:flex;gap:6px;flex-wrap:wrap;padding:8px 1px 2px}
+.specs span{flex:1 1 0;min-width:84px;background:var(--panel);border-radius:7px;padding:5px 8px 6px}
+.specs i{display:block;font-style:normal;font-size:9.5px;color:var(--ink3);letter-spacing:.2px;white-space:nowrap}
+.specs b{display:block;font-family:var(--mono);font-size:13px;font-weight:600;margin-top:1px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.specs b.na{color:#B0ADA4;font-weight:400}
+.specs span.bad b{color:var(--red)}
+.cap{font-size:10px;color:#A8A59C;line-height:1.6;padding:5px 2px 1px}
+
+/* 讲义 */
+.notes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+@media (max-width:1000px){ .notes{grid-template-columns:1fr 1fr} }
+@media (max-width:680px){ .notes{grid-template-columns:1fr} }
+.note{background:var(--panel2);border:.5px solid var(--line);border-radius:10px;padding:11px 13px}
+.note h3{font-size:12px;font-weight:600;margin:0 0 5px;color:var(--ink);display:flex;gap:6px;align-items:baseline}
+.note h3 i{font-style:normal;font-family:var(--mono);font-size:10.5px;color:#fff;background:var(--ink3);width:15px;height:15px;line-height:15px;text-align:center;border-radius:4px;flex:none}
+.note p{font-size:11.5px;line-height:1.72;color:var(--ink2);margin:0 0 5px}
+.note p:last-child{margin-bottom:0}
+.note b{color:var(--ink);font-weight:600}
+.note code{font-family:var(--mono);font-size:11px;background:var(--panel);padding:.5px 4px;border-radius:3px}
+.note .warn{display:block;margin-top:6px;padding:6px 8px;background:#FBF3E4;border-left:2px solid #C9973F;border-radius:0 5px 5px 0;font-size:11px;color:#7A5B22;line-height:1.65}
+
+/* 窄屏：两图上下排，且不让 SVG 被拉满屏（否则高度翻倍） */
+@media (max-width:1000px){
+  .main,.main2{grid-template-columns:1fr}
+  #svgNyq,#svgBode,#svgPole,#svgStep{max-width:540px;margin:0 auto}
+  .verdict{grid-template-columns:repeat(3,1fr)}
+  .vt.wide{grid-column:1/-1}
+  #vtG,#vtH{grid-column:auto}
+  .notes{grid-template-columns:1fr 1fr}
+}
+@media (max-width:680px){
+  .verdict{grid-template-columns:1fr 1fr}
+  #vtB,#vtG,#vtH,#vtM{grid-column:1/-1}
+  .notes{grid-template-columns:1fr}
+  .vt .v{font-size:15px}
+  .specs span{min-width:72px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>频域稳定判据 · 含积分环节的补画与统一规则</h1>
+  <p class="lead">
+    含 <code>v</code> 重积分环节时 <code>s = 0</code> 是虚轴上的极点，Nyquist 路径要在原点绕开；映射到 G 平面，正频段实线曲线在 <code>ω→0⁺</code> 处停在<b>无穷远</b>，方向是 <code>φ(0⁺)</code>。补画只有一句话：<b>从 <code>ω=0⁺</code> 的实线起点出发，逆时针补 <code>v×90°</code>，补到 <code>ω=0</code> 的方向</b>——最小相位对象大多补到<b>正实轴无穷远</b>。补完之后，扫描路径就是完整的 <code>ω: 0 → 0⁺ → ∞</code>。
+    <br><b>补画之后，剩下的判据与不含积分环节完全一样</b>：数整条曲线绕 <code>(−1, j0)</code> 的圈数 <code>N</code>，代入 <code>Z = P − 2N</code>；等价地，在 <code>L(ω)&gt;0</code> 频段数 <code>−180°</code> 线净穿越 <code>N⁺−N⁻</code>，稳定要求 <code>N = P/2</code>。补画段已计入 <code>N</code>，公式与稳定条件两页通用。
+    <br>四个对象：A、C 对任意 K 稳定，B 有临界 <code>Kc = 6</code>；新增的非最小相位 <b>D = K/[s(s−1)(s+2)]</b>（<code>P = 1</code>）从 <code>−270°</code> 无穷远逆时针补 90° 到<b>负实轴无穷远</b>，给出<b>半次负穿越</b>，<code>N = −½</code>、<code>Z = 2</code>——规则照旧，只是这笔半次要算清楚。右上「显示补画弧」只管画面；<b>拖 K</b> 看曲线怎么把 −1 圈进去。
+  </p>
+
+  <div class="objstrip" id="objStrip"></div>
+
+  <div class="bar">
+    <div class="seg" id="segObj">
+      <button data-obj="A">一阶 + 积分</button>
+      <button data-obj="B" class="on">三阶 + 积分</button>
+      <button data-obj="C">双积分 + 零点</button>
+      <button data-obj="D">非最小相位 + 积分</button>
+    </div>
+    <span class="tfslot" id="tfSlot"></span>
+    <span class="sp"></span>
+    <button class="btn" id="btnCursor">同步游标</button>
+    <button class="btn" id="btnCri">跳到临界 K</button>
+  </div>
+
+  <div class="kbar">
+    <span class="kl">开环增益 K</span>
+    <input type="range" id="sK" min="0" max="1000" value="300">
+    <span class="kval" id="vK">1.00</span>
+    <span class="ktag" id="vKc">临界 Kc = 6</span>
+    <span class="sp" style="flex:1"></span>
+    <label style="font-size:11.5px;color:var(--ink2);display:flex;align-items:center;gap:5px;cursor:pointer">
+      <input type="checkbox" id="cbArc" checked style="cursor:pointer"> 显示补画弧
+    </label>
+    <label style="font-size:11.5px;color:var(--ink2);display:flex;align-items:center;gap:5px;cursor:pointer">
+      <input type="checkbox" id="cbZoom" style="cursor:pointer"> 聚焦 −1 点
+    </label>
+  </div>
+
+  <div class="main">
+    <div class="card">
+      <div class="chd">
+        <h2>奈奎斯特图 · 绕 (−1, j0)</h2>
+        <span class="sub" id="nyqSub">ω: 0 → 0⁺ → ∞（含补画）</span>
+      </div>
+      <svg id="svgNyq" viewBox="0 0 600 500" role="img" aria-label="奈奎斯特图"></svg>
+    </div>
+
+    <div class="card">
+      <div class="chd">
+        <h2>伯德图 · 在 L&gt;0 频段里数穿越</h2>
+        <span class="sub" id="bodeSub">橙色区 = |G|&gt;1</span>
+      </div>
+      <svg id="svgBode" viewBox="0 0 600 500" role="img" aria-label="伯德图"></svg>
+    </div>
+
+    <div class="verdict">
+      <div class="vt" id="vtP">
+        <div class="k">P · 开环右半平面极点</div>
+        <div class="v">0</div>
+        <div class="s">由开环传函分母定</div>
+      </div>
+      <div class="vt" id="vtN">
+        <div class="k">N · 完整曲线绕 −1 的圈数</div>
+        <div class="v">0</div>
+        <div class="s">ω: 0 → 0⁺ → ∞ 整条，含补画</div>
+      </div>
+      <div class="vt" id="vtB">
+        <div class="k">N⁺ − N⁻ · 伯德净穿越</div>
+        <div class="v">0</div>
+        <div class="s">L&gt;0 频段，稳定要求 = P/2</div>
+      </div>
+      <div class="vt wide" id="vtZ" data-wide="1">
+        <div class="k">Z = P − 2N · 闭环右半平面极点</div>
+        <div class="v">0</div>
+        <div class="s">与不含积分环节同一式，Z = 0 才稳定</div>
+      </div>
+      <div class="vt" id="vtG" data-wide="1">
+        <div class="k">γ · 相位裕度（量在 ωc）</div>
+        <div class="v">—</div>
+        <div class="s">ωc = —　φ(ωc) = —</div>
+      </div>
+      <div class="vt" id="vtH" data-wide="1">
+        <div class="k">h · 幅值裕度（量在 ωg）</div>
+        <div class="v">—</div>
+        <div class="s">ωg = —　|G(ωg)| = —</div>
+      </div>
+      <div class="vt" id="vtM">
+        <div class="k">K 乘到几倍才临界</div>
+        <div class="v">—</div>
+        <div class="s">= 1/|G(ωg)|</div>
+      </div>
+      <div class="chain" id="chain"></div>
+    </div>
+  </div>
+
+  <div class="main2">
+    <div class="card">
+      <div class="chd">
+        <h2>闭环极点 · 复平面上的分布</h2>
+        <span class="sub" id="poleSub">虚轴 = 稳定边界</span>
+      </div>
+      <svg id="svgPole" viewBox="0 0 600 420" role="img" aria-label="闭环极点分布"></svg>
+    </div>
+
+    <div class="card">
+      <div class="chd">
+        <h2>闭环单位阶跃响应</h2>
+        <span class="sub" id="stepSub">r(t) = 1(t)</span>
+      </div>
+      <svg id="svgStep" viewBox="0 0 600 330" role="img" aria-label="闭环阶跃响应"></svg>
+      <div class="specs" id="specs"></div>
+      <div class="cap" id="stepCap">e_ss = 1 − y(∞)（单位反馈，r = 1）　·　σ%、tp、ts 只对稳定的闭环才有定义</div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <h3><i>1</i>补画：从 ω=0⁺ 逆时针补 v×90°</h3>
+      <p><code>s = 0</code> 是虚轴上的极点，Nyquist 路径在 s 平面要用半径 ε 的小半圆绕开原点。它的像不会变小：<code>G ≈ A·ε<sup>−v</sup>·e<sup>jψ</sup></code>，幅值发散而方向确定，在 G 平面上就是一段<b>半径无穷大的圆弧</b>。</p>
+      <p>落到正频段曲线上，规则是：<b>以 <code>ω=0⁺</code> 的实线起点为出发点，逆时针补 <code>v×90°</code></b>，终点是 <code>ω=0</code> 的方向。<code>v=1</code> 从 −90° 补到 0°，<code>v=2</code> 从 −180° 补到 0°，两者都补到<b>正实轴无穷远</b>。</p>
+      <span class="warn">显示口径：紫色弧按显示半径 <code>Rw</code> 示意，不是等比缩放；<code>|G|&gt;Rw</code> 的低频实线被取景截断，所以实线断口与补画弧的 <code>ω=0⁺</code> 端在图上不重合——两者同属 <code>ω=0⁺</code> 方向，中间是省略的无穷远段。</span>
+    </div>
+    <div class="note">
+      <h3><i>2</i>补完就完整：ω: 0 → 0⁺ → ∞</h3>
+      <p>补画把断在无穷远的两头接上，正频段成为一条<b>连续完整</b>的曲线：<code>ω=0</code>（补画终点）→ 补画段 → <code>ω=0⁺</code>（实线起点）→ 实线段 → <code>ω→∞</code>。</p>
+      <p>注意遍历次序：作图时从 <code>ω=0⁺</code> <b>逆时针</b>补画到 <code>ω=0</code>；按 <code>ω</code> 递增读完整曲线时，补画段是从 <code>ω=0</code> 走回 <code>ω=0⁺</code>，方向相反。这只是读法不同，绕数与穿越计数都按 <code>ω</code> 递增那一条序列算。</p>
+      <p>画面上紫色箭头标的是<b>作图方向</b>（逆时针），两端分别写 <code>ω=0⁺</code> 与 <code>ω=0</code>；按 <code>ω</code> 递增读图时方向相反，判据数值不受影响。</p>
+    </div>
+    <div class="note">
+      <h3><i>3</i>规则同前：Z = P − 2N</h3>
+      <p>补画之后，<b>判据与不含积分环节逐字相同</b>：数完整曲线绕 <code>(−1, j0)</code> 的圈数 <code>N</code>，代入 <code>Z = P − 2N</code>。<code>P</code> 只数<b>开环右半平面</b>极点，原点上的 <code>v</code> 重极点不计入 <code>P</code>。</p>
+      <p>稳定要求 <code>Z = 0</code>，即 <code>N = P/2</code>。伯德图那条路也照旧：在 <code>L(ω)&gt;0</code> 频段数 <code>−180°</code> 线净穿越 <code>N⁺−N⁻</code>，它应当等于 <code>N</code>。</p>
+      <span class="warn">补画段是完整曲线的一部分，<code>N</code> 已经计入它的贡献。<code>P</code>、<code>N</code>、<code>Z</code> 只用上面这一组关系，稳定条件始终是 <code>N = P/2</code>。</span>
+    </div>
+    <div class="note">
+      <h3><i>4</i>补画段在伯德图上怎么数</h3>
+      <p>补画段 <code>|G|→∞</code>，<b>整段都在 <code>L(ω)&gt;0</code></b>（0 dB 以上），不存在「因幅值小于 1 而不计」的情形。相位从 <code>φ(0⁺)</code> 连续变到 <code>φ(0)</code>，途中若跨过 <code>−180°</code> 线，按完整穿越计入净穿越。</p>
+      <p>端点恰好压在 <code>−180°</code> 线上时记<b>半次</b>：向上离开 <code>+½</code>、向下离开 <code>−½</code>。伯德图左边框那支紫色箭头就是补画段，半次穿越画成空心圈。</p>
+      <span class="warn">渐近贴线不算穿越：判据与 <code>γ / h</code> 只在 <code>0.02 ~ 500 rad/s</code> 频段内量取，避免把曲线两端「贴着 −180° 走」误读成穿越。</span>
+    </div>
+    <div class="note">
+      <h3><i>5</i>非最小相位例子 D</h3>
+      <p><code>G(s) = K/[s(s−1)(s+2)] = K/(s³+s²−2s)</code>，开环有 <b><code>P = 1</code></b> 个右半平面极点（<code>s = +1</code>），另有 <code>v = 1</code> 重积分。</p>
+      <p>按连续相位口径 <code>φ(0⁺) = −270°</code>，逆时针补 90° 到 <b><code>−180°</code>（负实轴无穷远）</b>。这个终点正压在 <code>−180°</code> 线上，构成<b>半次负穿越</b>：<code>N⁺−N⁻ = −½</code>，完整曲线绕数 <code>N = −½</code>。</p>
+      <p>代入同一式：<code>Z = P − 2N = 1 − 2×(−½) = 2</code>，闭环有 2 个右半平面极点，与 Routh 表一致。若要稳定，<code>P=1</code> 应要求 <code>N = +½</code>，而 D 给的是 <code>−½</code>。</p>
+      <span class="warn">D 的相位始终低于 −180°，没有有限的 <code>ω_g</code>；判稳依据 <code>Z = P − 2N</code> 与净穿越次数，幅值裕度 <code>h</code> 在该对象上无有限读数。</span>
+    </div>
+    <div class="note">
+      <h3><i>6</i>与上一页的接口 · 计算口径</h3>
+      <p>上一页的对象在虚轴上无极点，<code>ω: 0⁺ → ∞</code> 本身就是完整曲线；本页四个对象在原点有 <code>v</code> 重极点，要先补画才完整。<b>两页的公式、判据、稳定要求完全相同</b>，唯一差别是「补画」这一步手续。</p>
+      <p>计算口径：① <code>P</code> 只数开环右半平面极点；② <code>N</code> 是<b>正频段（含补画）曲线</b>相对 −1 的相角累积除以 2π，正负频率共轭故 <code>Z = P − 2N</code>；③ <code>γ / h</code> 是相对稳定性读数，对 <code>P&gt;0</code>、闭环不稳的对象不能替代 <code>Z</code> 结论；④ 闭环极点用 Routh 表与 Durand–Kerner 求根两条独立路径核对。</p>
+      <span class="warn">判据只查右半平面：极点正落在虚轴上时 <code>Z</code> 仍为 0。把 B 的 K 拖到 6 就看得到——判定卡还说 0，极点已经贴到虚轴上了。</span>
+    </div>
+  </div>
+
+  <div id="probe" style="display:none;font-family:var(--mono);font-size:10px;word-break:break-all;color:#8A8880"></div>
+
+</div>
+
+<script>
+(function(){
+'use strict';
+
+const $ = id => document.getElementById(id);
+const clamp=(v,a,b)=>v<a?a:(v>b?b:v);
+const F=(v,n)=>{ n=(n===undefined?2:n); if(Math.abs(v)<5e-12) v=0; return v.toFixed(n); };
+/* 负号统一成真正的减号（−），免得和图上的「−1」「−180°」一个减一个连字符 */
+const SM=s=>String(s).replace(/-/g,'\u2212');
+const R2D=180/Math.PI, D2R=Math.PI/180;
+
+/* ============ 四个含积分环节的开环对象 ============ */
+/* den 的常数项为 0 就是含 1/s：k 记积分环节重数。num/den 均按降幂写。
+   Kc 为临界增益（null 表示无临界）；phi0Show 指定教材展开口径下的 φ(0⁺)。
+   补画规则统一：从 ω=0⁺ 的实线起点逆时针补 k×90°，补到 ω=0 的方向。 */
+const OBJS = {
+  A:{ id:'A', name:'一阶 + 积分', num:[1], den:[1,1,0], k:1, P:0,
+      tf:'G(s) = K / [s(s+1)]',
+      Kmin:0.4, Kmax:8, Kc:null, Kdef:1.5,
+      kcTag:'任意 K > 0 均稳定 · 无临界',
+      note:'最小相位，φ(0⁺) = −90°；逆时针补 90° 到正实轴无穷远。相位只渐近 −180° 而永不到达，完整曲线 N = 0，Z = 0，任意 K 都稳。' },
+  B:{ id:'B', name:'三阶 + 积分', num:[1], den:[1,3,2,0], k:1, P:0,
+      tf:'G(s) = K / [s(s+1)(s+2)]',
+      Kmin:2, Kmax:24, Kc:6, Kdef:3,
+      kcTag:'临界 Kc = 6',
+      note:'φ(0⁺) = −90°，逆时针补 90° 到正实轴无穷远。K 一过 6，实线段把 −1 圈进去，完整曲线 N 由 0 变 −1，Z 由 0 变 2。' },
+  C:{ id:'C', name:'双积分 + 零点', num:[1,0.5], den:[1,1,0,0], k:2, P:0,
+      tf:'G(s) = K(s+0.5) / [s²(s+1)]',
+      Kmin:0.1, Kmax:20, Kc:null, Kdef:2,
+      kcTag:'任意 K > 0 均稳定 · 无临界',
+      note:'v = 2，φ(0⁺) = −180°；逆时针补 180° 到正实轴无穷远。零点把相位抬起来，完整曲线 N = 0，任意 K 都稳。' },
+  D:{ id:'D', name:'非最小相位 + 积分', num:[1], den:[1,1,-2,0], k:1, P:1,
+      tf:'G(s) = K / [s(s−1)(s+2)]',
+      Kmin:0.2, Kmax:8, Kc:null, Kdef:1, phi0Show:-270,
+      kcTag:'任意 K > 0 均不稳定 · 无临界',
+      note:'P = 1（s = +1），φ(0⁺) = −270°；逆时针补 90° 到负实轴无穷远，端点压 −180° 线 ⇒ 半次负穿越，N = −½，Z = 2。' }
+};
+
+/* 闭环右半平面极点数：Routh 表第一列变号次数（精确，不靠迭代） */
+function routhRHP(c0){
+  const n=c0.length-1;
+  if(n<1) return 0;
+  const m=Math.floor((n+2)/2)+1;
+  const pad=a=>{ while(a.length<m) a.push(0); return a; };
+  let r0=[],r1=[];
+  for(let i=0;i<=n;i+=2) r0.push(c0[i]);
+  for(let i=1;i<=n;i+=2) r1.push(c0[i]);
+  const rows=[pad(r0),pad(r1)];
+  for(let k=2;k<=n;k++){
+    const p1=rows[k-1], p2=rows[k-2];
+    let eps=p1[0];
+    if(Math.abs(eps)<1e-12) eps=1e-12;
+    const row=[];
+    for(let j=0;j<m-1;j++) row.push((eps*p2[j+1]-p2[0]*p1[j+1])/eps);
+    row.push(0);
+    rows.push(row);
+  }
+  let cnt=0, last=0;
+  for(let k=0;k<=n;k++){
+    let v=rows[k][0];
+    if(Math.abs(v)<1e-12) v=(last>=0?1:-1)*1e-12;
+    const sg=v>0?1:-1;
+    if(last!==0&&sg!==last) cnt++;
+    last=sg;
+  }
+  return cnt;
+}
+function closedPoly(o,K){
+  const d=o.den.slice(), n=o.num;
+  for(let i=0;i<n.length;i++) d[d.length-1-i]+= K*n[n.length-1-i];
+  return d;
+}
+
+/* ============ 复频求值 ============ */
+function gval(o,K,w){
+  // (a+j b)
+  const jr=0, ji=w;
+  let nr=0, ni=0;
+  for(let i=0;i<o.num.length;i++){
+    const t=nr*jr-ni*ji+o.num[i], u=nr*ji+ni*jr;
+    nr=t; ni=u;
+  }
+  let dr=0, di=0;
+  for(let i=0;i<o.den.length;i++){
+    const t=dr*jr-di*ji+o.den[i], u=dr*ji+di*jr;
+    dr=t; di=u;
+  }
+  const den=dr*dr+di*di;
+  const re=(nr*dr+ni*di)/den*K, im=(ni*dr-nr*di)/den*K;
+  return {re, im};
+}
+
+/* ============ 扫频 + 补画 + 统一判据：一次算完所有量 ============ */
+const W0=1e-4, W1=1e5, NPTS=9000;
+let DATA=null;
+
+function compute(o,K){
+  const W=new Float64Array(NPTS+1), RE=new Float64Array(NPTS+1), IM=new Float64Array(NPTS+1);
+  const DB=new Float64Array(NPTS+1), PH=new Float64Array(NPTS+1), CUM=new Float64Array(NPTS+1);
+  const PHd=new Float64Array(NPTS+1), PHx=new Float64Array(NPTS+1);
+  let lastPh=null, pu=0, prevA=null, acc=0, minD=1e9, minW=0;
+
+  for(let i=0;i<=NPTS;i++){
+    const w = W0*Math.pow(W1/W0, i/NPTS);
+    const g = gval(o,K,w);
+    const mg = Math.hypot(g.re,g.im);
+    W[i]=w; RE[i]=g.re; IM[i]=g.im;
+    DB[i]=20*Math.log10(mg+1e-300);
+
+    let ph = Math.atan2(g.im,g.re)*R2D;
+    if(lastPh===null) pu=ph;
+    else{
+      let d=ph-lastPh;
+      while(d>180) d-=360;
+      while(d<-180) d+=360;
+      pu+=d;
+    }
+    lastPh=ph; PH[i]=pu;
+
+    const d0=Math.hypot(g.re+1,g.im);
+    if(d0<minD){ minD=d0; minW=w; }
+    const a=Math.atan2(g.im,g.re+1);
+    if(prevA!==null){
+      let d=a-prevA;
+      while(d>Math.PI) d-=2*Math.PI;
+      while(d<-Math.PI) d+=2*Math.PI;
+      acc+=d;
+    }
+    prevA=a;
+    CUM[i]=acc/(2*Math.PI);
+  }
+
+  /* 连续相位的展开口径：整体平移 360° 的整数倍，让 φ(0⁺) 落在教材写法上。
+     D 这类非最小相位对象写作 −270° 而不是主值 +90°。平移不改绕数，
+     也不改 −180° 线整数穿越的次数与方向。 */
+  const phi0Show = (o.phi0Show===undefined) ? PH[0] : o.phi0Show;
+  const shift = phi0Show - PH[0];
+  for(let i=0;i<=NPTS;i++){ PHx[i]=PH[i]+shift; PHd[i]=PHx[i]; }
+
+  /* ---- 补画：从 ω=0⁺ 实线起点(φ(0⁺)) 逆时针补 v×90° 到 ω=0 方向 ----
+     补画段 |G|→∞，恒在 0 dB 以上；补完后 ω: 0 → 0⁺ → ∞ 完整。 */
+  const arcSweep  = o.k*90;
+  /* 低频端点由 W0=1e-4 数值取样得到，会带 0.01° 量级残差；
+     吸附到整度，避免图上出现「−0°」这类读数。 */
+  const snapAng = v => (Math.abs(v-Math.round(v))<0.05 ? Math.round(v) : v);
+  const arcPhi0   = snapAng(PHx[0]);
+  const arcPhiEnd = snapAng(arcPhi0 + arcSweep);
+  const arcR      = Math.hypot(RE[0],IM[0]);
+  const M         = 240;
+
+  /* 完整点列按 ω 递增排列：补画段(ω=0 端点 → ω=0⁺ 起点) + 实线段。
+     作图时补画箭头是逆时针；按 ω 递增遍历时补画段方向相反，次序不同、账一致。 */
+  const FR=[], FI=[], FPH=[];
+  for(let j=0;j<=M;j++){
+    const a=(arcPhiEnd+(arcPhi0-arcPhiEnd)*j/M)*D2R;
+    FR.push(arcR*Math.cos(a)); FI.push(arcR*Math.sin(a));
+    FPH.push(arcPhiEnd+(arcPhi0-arcPhiEnd)*j/M);
+  }
+  for(let i=1;i<=NPTS;i++){ FR.push(RE[i]); FI.push(IM[i]); FPH.push(PHx[i]); }
+
+  /* N：完整曲线相对 −1 的相角累积 / 2π。补画后规则与不含积分环节完全相同，
+     不再有任何附加修正项。 */
+  let accN=0, prevN=null;
+  for(let i=0;i<FR.length;i++){
+    const a=Math.atan2(FI[i], FR[i]+1);
+    if(prevN!==null){
+      let d=a-prevN;
+      while(d>Math.PI) d-=2*Math.PI;
+      while(d<-Math.PI) d+=2*Math.PI;
+      accN+=d;
+    }
+    prevN=a;
+  }
+  let N=accN/(2*Math.PI);
+  const Nsnap=Math.round(N*4)/4;
+  if(Math.abs(N-Nsnap)<6e-3) N=Nsnap;
+
+  /* 伯德净穿越：在完整相位序列上数 −180° 线的整数穿越。
+     补画段 |G|→∞ 恒 L>0 全部计入；端点压线按半次；渐近贴线由频段门排除。 */
+  const wLO=0.02, wHI=5e2, EPSD=0.6;
+  const kOf = p => (p+180)/360;
+  let npos=0, nneg=0, arcHalf=0;
+  const cross=[];
+  const k0=kOf(FPH[0]);
+  const onStart = Math.abs(k0-Math.round(k0)) < EPSD/360;
+  if(onStart){
+    const dir = (FPH[1]-FPH[0])>0 ? 1 : -1;
+    if(dir>0) npos+=0.5; else nneg+=0.5;
+    arcHalf = dir*0.5;
+    cross.push({seg:'arc', half:true, dir, w:W0, db:999, ph:FPH[0], phd:FPH[0], counted:true});
+  }
+  for(let i=1;i<FPH.length;i++){
+    const a=kOf(FPH[i-1]), b=kOf(FPH[i]);
+    if(a===b) continue;
+    const m = b>a ? Math.floor(a)+1 : Math.ceil(a)-1;
+    const prod=(b-m)*(a-m);
+    if(prod>0) continue;
+    if(i===1 && onStart && Math.abs(m-Math.round(k0))<1e-9) continue;
+    const seg = i<=M ? 'arc' : 'real';
+    if(seg==='arc' && prod>=0) continue;   // 补弧端点只是触及 −180°，不算穿越
+    let wx=W0, dbc=999, phc=FPH[i], cnt=true;
+    if(seg==='real'){
+      const t=(m-a)/(b-a);
+      const iA=Math.max(0,i-1-M), iB=Math.min(NPTS,i-M);
+      wx=Math.exp(Math.log(W[iA])+(Math.log(W[iB])-Math.log(W[iA]))*t);
+      if(wx<wLO||wx>wHI) continue;        // 频段门：渐近贴线不算穿越
+      dbc=DB[iA]+(DB[iB]-DB[iA])*t;
+      phc=FPH[i-1]+(FPH[i]-FPH[i-1])*t;
+      cnt=dbc>0;
+    }
+    const up=b>a;
+    if(cnt){ if(up) npos++; else nneg++; }
+    cross.push({seg, half:false, dir:up?1:-1, w:wx, db:dbc, ph:phc, phd:phc, counted:cnt});
+  }
+
+  /* 裕度：γ 在 |G|=1 的 ωc 处量、h 在 φ=−180° 的 ωg 处量（实线段、频段门内）。 */
+  let wc=null, gamma=null, wg=null, hdb=null;
+  for(let i=1;i<=NPTS;i++){
+    if(wc===null && DB[i-1]>0 && DB[i]<=0){
+      const t=DB[i-1]/(DB[i-1]-DB[i]);
+      const wx=W[i-1]+(W[i]-W[i-1])*t;
+      if(wx>=wLO && wx<=wHI){ wc=wx; gamma=180+(PHx[i-1]+(PHx[i]-PHx[i-1])*t); }
+    }
+    if(wg===null && PHx[i-1]>-180 && PHx[i]<=-180){
+      const t=(PHx[i-1]+180)/(PHx[i-1]-PHx[i]);
+      const wx=W[i-1]+(W[i]-W[i-1])*t;
+      if(wx>=wLO && wx<=wHI){ wg=wx; hdb=-(DB[i-1]+(DB[i]-DB[i-1])*t); }
+    }
+  }
+  const gc = wc===null?null:gval(o,K,wc);
+  const gg = wg===null?null:gval(o,K,wg);
+  const phdc = gamma===null?null:(gamma-180);
+  const hLin = hdb===null?null:Math.pow(10,hdb/20);
+  const Ztrue = routhRHP(closedPoly(o,K));
+
+  return { W,RE,IM,DB,PH,PHx,PHd,CUM,
+           N, arcSweep, arcPhi0, arcPhiEnd, arcR, arcHalf,
+           phi0:PHx[0], minD, minW, npos, nneg, cross, shift,
+           wc, gamma, wg, hdb, gc, gg, phdc, hLin, Ztrue, K, o };
+}
+
+/* ============ 布局 ============ */
+const NY={L:44,R:16,T:18,B:40,W:600,H:500};
+const BD={L:54,R:16,W:600,H:500,
+          M:{t:20,b:212,lo:-60,hi:40},
+          P:{t:252,b:432,lo:-380,hi:40},
+          wl:0.05, wh:200};
+
+const ST={obj:'B', K:3, zoom:false, cursor:false, curW:0.5, arc:true};
+const QS=new URLSearchParams(location.search);
+const STILL=QS.get('still')==='1', PROBE=QS.get('probe')==='1';
+
+/* ============ 绘图：奈奎斯特 ============ */
+function drawNyq(){
+  const d=DATA, o=OBJS[ST.obj];
+  const L=NY.L,R=NY.R,TP=NY.T,B=NY.B,W=NY.W,H=NY.H;
+  const PW=W-L-R, PH=H-TP-B;
+
+  /* 视野：含积分时 |G| 在 ω→0 处发散，按包络取景会把单位圆压成一个点。
+     所以固定一个显示半径 Rw：|G|>Rw 的部分不画，改由贴边的"补画弧"接手。
+     Rw 只在"ωg 那个穿轴点"快要出框时才放大 —— 那是本页必须看见的东西。 */
+  const Rg = (d.hLin!=null && isFinite(d.hLin) && d.hLin>1e-6) ? 1/d.hLin : 0;  // |G(ωg)|
+  const Rw = Math.min(5, Math.max(1.75, 1.18*Rg));
+  let i0=0;
+  while(i0<NPTS && Math.hypot(d.RE[i0],d.IM[i0])>Rw) i0++;
+
+  let cx,cy,half;
+  if(ST.zoom){
+    cx=-0.85; cy=0; half=1.25;
+  }else{
+    /* 固定以原点为中心：拖 K 时看到的是"曲线在动"，不是"画面在跟着缩放"。
+       1.16 留出的余量让补画弧离画框还有一点缝，不至于糊在边框上 */
+    cx=0; cy=0; half=Rw*1.16;
+  }
+  const sc=Math.min(PW,PH)/(2*half);
+  const X=r=>L+PW/2+(r-cx)*sc;
+  const Y=i=>TP+PH/2-(i-cy)*sc;
+  /* 视野小的时候单位圆半径只有几十像素，扇形和「−1」挤在一起：
+     这种情况下图里只画几何、数值交给图例；放大到 −1 附近才把 γ 的度数写进扇形。 */
+  const roomy = sc>=78;
+
+  let s='';
+  s+='<defs><clipPath id="nc"><rect x="'+L+'" y="'+TP+'" width="'+PW+'" height="'+PH+'" rx="3"/></clipPath></defs>';
+  s+='<rect x="'+L+'" y="'+TP+'" width="'+PW+'" height="'+PH+'" fill="#fff" rx="3"/>';
+  s+='<g clip-path="url(#nc)">';
+
+  // 网格
+  const gs = (half*2)>8 ? 1 : ((half*2)>3 ? 0.5 : 0.2);
+  const g0=Math.ceil((cx-half)/gs)*gs;
+  for(let v=g0; v<=cx+half; v+=gs){
+    const x=X(v);
+    s+='<line x1="'+F(x,1)+'" y1="'+TP+'" x2="'+F(x,1)+'" y2="'+(TP+PH)+'" stroke="#F2F0E9" stroke-width="0.7"/>';
+  }
+  const h0=Math.ceil((cy-half)/gs)*gs;
+  for(let v=h0; v<=cy+half; v+=gs){
+    const y=Y(v);
+    s+='<line x1="'+L+'" y1="'+F(y,1)+'" x2="'+(L+PW)+'" y2="'+F(y,1)+'" stroke="#F2F0E9" stroke-width="0.7"/>';
+  }
+
+  // 单位圆：整圆放得下才画，否则宁可不画（半截圆弧比没有更误导）
+  const cx0=X(0), cy0=Y(0);
+  const fits = (cx0-sc>=L-0.5)&&(cx0+sc<=L+PW+0.5)&&(cy0-sc>=TP-0.5)&&(cy0+sc<=TP+PH+0.5);
+  if(fits){
+    s+='<circle cx="'+F(cx0,1)+'" cy="'+F(cy0,1)+'" r="'+F(sc,1)+'" fill="none" stroke="#C9973F" stroke-width="1" stroke-dasharray="4 4" opacity="0.85"/>';
+  }
+  // 轴
+  s+='<line x1="'+L+'" y1="'+F(Y(0),1)+'" x2="'+(L+PW)+'" y2="'+F(Y(0),1)+'" stroke="#9A968C" stroke-width="1"/>';
+  s+='<line x1="'+F(X(0),1)+'" y1="'+TP+'" x2="'+F(X(0),1)+'" y2="'+(TP+PH)+'" stroke="#9A968C" stroke-width="1"/>';
+
+  /* --- 补画弧：从 ω=0⁺ 实线起点(方向 arcPhi0) 逆时针补 v×90° 到 ω=0 方向(arcPhiEnd) ---
+     半径是无穷远的替身 Rw；紫色虚线 + 弧中箭头标出「逆时针」这个作图方向。
+     聚焦 −1 时补画弧落在无穷远、视野之外，按定义不显示。 */
+  if(ST.arc && !ST.zoom){
+    const r=Rw*sc;
+    const a0=d.arcPhi0*D2R, a1=d.arcPhiEnd*D2R;
+    const p0x=cx0+r*Math.cos(a0), p0y=cy0-r*Math.sin(a0);
+    const p1x=cx0+r*Math.cos(a1), p1y=cy0-r*Math.sin(a1);
+    const large=d.arcSweep>180.001?1:0;
+    /* 数学角增大 = SVG 屏幕逆时针 = sweep-flag 0 */
+    s+='<path d="M'+F(p0x,1)+' '+F(p0y,1)+'A'+F(r,1)+' '+F(r,1)+' 0 '+large+' 0 '+F(p1x,1)+' '+F(p1y,1)
+      +'" fill="none" stroke="#8B72B8" stroke-width="1.9" stroke-dasharray="5 3" opacity="0.95"/>';
+    /* 弧中点箭头：沿逆时针方向指向 ω=0 端 */
+    const am=(a0+a1)/2, at=am+0.06;
+    const bx=cx0+r*Math.cos(am), by=cy0-r*Math.sin(am);
+    const tx=cx0+r*Math.cos(at), ty=cy0-r*Math.sin(at);
+    let ux=tx-bx, uy=ty-by; const ul=Math.hypot(ux,uy)||1; ux/=ul; uy/=ul;
+    const ah=8, side=0.5*ah;
+    s+='<path d="M'+F(tx-ux*ah+uy*side,1)+' '+F(ty-uy*ah-ux*side,1)
+      +'L'+F(tx,1)+' '+F(ty,1)
+      +'L'+F(tx-ux*ah-uy*side,1)+' '+F(ty-uy*ah+ux*side,1)
+      +'" fill="none" stroke="#8B72B8" stroke-width="1.9" stroke-linejoin="round"/>';
+    /* 两端点标签：紫色弧从 ω=0⁺ 出发、补到 ω=0 */
+    const lr=r*0.90;
+    s+=txt(cx0+lr*Math.cos(a0), cy0-lr*Math.sin(a0)+3, 'ω=0⁺',
+           {a:'middle', fill:'#8B72B8', size:9, w:600, anchor:true, halo:true});
+    s+=txt(cx0+lr*Math.cos(a1), cy0-lr*Math.sin(a1)+3, 'ω=0',
+           {a:'middle', fill:'#8B72B8', size:9, w:600, anchor:true, halo:true});
+    /* 补画角度放在弧外中部 */
+    const lm=(a0+a1)/2, lrx=r*1.10;
+    s+=txt(cx0+lrx*Math.cos(lm), cy0-lrx*Math.sin(lm)+3,
+           '逆时针补 '+o.k+'×90°', {a:'middle', fill:'#8B72B8', size:8.5, w:600, anchor:true, halo:true});
+  }
+
+  // 曲线：|G|<1 蓝细，|G|>=1 橙粗 —— 与伯德图的 L>0 高亮是同一批 ω
+  let segA='', segB='', outA=false, outB=false;
+  for(let i=i0;i<=NPTS;i+=1){
+    const re=d.RE[i], im=d.IM[i];
+    if(!isFinite(re)||!isFinite(im)) continue;
+    const x=X(re), y=Y(im);
+    if(Math.hypot(re,im)>=1){
+      segB += (outB?'L':'M')+F(x,1)+' '+F(y,1); outB=true; outA=false;
+    }else{
+      segA += (outA?'L':'M')+F(x,1)+' '+F(y,1); outA=true; outB=false;
+    }
+  }
+  s+='<path fill="none" stroke="#185FA5" stroke-width="1.5" stroke-linejoin="round" opacity="0.85" d="'+segA+'"/>';
+  s+='<path fill="none" stroke="#D85A30" stroke-width="2.6" stroke-linejoin="round" d="'+segB+'"/>';
+
+  /* 实线断口箭头：|G|>Rw 的部分被截断，断口方向就是 ω=0⁺ 实线起点的方向，
+     也就是紫色补画弧的出发端。k=1 从 −90° 方向、k=2 从 −180° 方向、D 从 −270° 方向。 */
+  if(i0>0 && i0<NPTS){
+    const p0x=X(d.RE[i0]), p0y=Y(d.IM[i0]);
+    let dx=p0x-X(d.RE[i0+1]), dy=p0y-Y(d.IM[i0+1]);
+    const l2=Math.hypot(dx,dy)||1; dx/=l2; dy/=l2;
+    const ah=7, side=0.55*ah;
+    s+='<path d="M'+F(p0x-dx*ah+dy*side,1)+' '+F(p0y-dy*ah-dx*side,1)
+      +'L'+F(p0x,1)+' '+F(p0y,1)
+      +'L'+F(p0x-dx*ah-dy*side,1)+' '+F(p0y-dy*ah+dx*side,1)
+      +'" fill="none" stroke="#D85A30" stroke-width="2" stroke-linejoin="round"/>';
+    /* 标签放到断口外侧（那边没有曲线），字带白边，不与紫色补画弧的端点标签打架。 */
+    const lx2 = clamp(p0x+dx*22, L+24, L+PW-24);
+    const ly2 = clamp(p0y+dy*22+3, TP+12, TP+PH-6);
+    s+=txt(lx2, ly2, '实线 · |G|&gt;Rw 截断', {a:'middle', anchor:true, fill:'#D85A30', size:9, w:600, halo:true});
+  }
+
+  /* --- 裕度的两个几何量（先量好、先画：−1 的十字要压在它们上面） ---
+     γ：原点到 |G|=1 那点的射线 与 负实轴 的夹角
+     h：真正被量的是 |G(ωg)| 本身 —— 把「原点 → 负实轴穿轴点」这一段加粗，
+        长度就是 |G(ωg)|，拿它跟单位圆（半径 1）比长短即可：没到 −1 就还有余量，越过去就是已经不稳。 */
+  const COLG='#6B4FA8', COLM='#BE1E8A';
+  const hasGm = d.wc!==null && d.gc && d.gamma!==null && isFinite(d.gamma) && Math.abs(d.gamma)>0.3 && Math.abs(d.gamma)<179;
+  const hasHm = d.wg!==null && d.gg && Math.abs(d.gg.im)<0.08 && d.gg.re<-0.02 && Math.abs(d.hdb)>0.12;
+  let mgLab=null;
+  const y0=Y(0);
+  if(hasHm){
+    /* 实心加粗，不画虚线/尺寸箭头：这一根是「量到的长度」，不是「还差的间距」。
+       |G|>1 时量尺会越过 −1，在 −1 两侧各留 5px 缺口，别把十字的横臂压没。 */
+    const x0=X(0), x1=X(d.gg.re), xc=X(-1), gap=5;
+    const spans = x1 < xc ? [[x0,xc+gap],[xc-gap,x1]] : [[x0,x1]];
+    spans.forEach(function(sp){
+      if(Math.abs(sp[1]-sp[0])<1) return;
+      s+='<line x1="'+F(sp[0],1)+'" y1="'+F(y0,1)+'" x2="'+F(sp[1],1)+'" y2="'+F(y0,1)+'" stroke="'+COLM+'" stroke-width="7" opacity="0.30"/>';
+      s+='<line x1="'+F(sp[0],1)+'" y1="'+F(y0,1)+'" x2="'+F(sp[1],1)+'" y2="'+F(y0,1)+'" stroke="'+COLM+'" stroke-width="2"/>';
+    });
+  }
+
+  // −1 点：标注挂在曲线"没走"的那一侧（曲线从上方掠过就挂下方），免得字压在线上
+  const xm=X(-1), ym=Y(0);
+  let imNear=0, bestD=1e9;
+  for(let i=i0;i<=NPTS;i+=3){
+    const dd=Math.hypot(d.RE[i]+1, d.IM[i]);
+    if(dd<bestD){ bestD=dd; imNear=d.IM[i]; }
+  }
+  s+='<line x1="'+F(xm-7,1)+'" y1="'+F(ym,1)+'" x2="'+F(xm+7,1)+'" y2="'+F(ym,1)+'" stroke="#A32D2D" stroke-width="1.6"/>';
+  s+='<line x1="'+F(xm,1)+'" y1="'+F(ym-7,1)+'" x2="'+F(xm,1)+'" y2="'+F(ym+7,1)+'" stroke="#A32D2D" stroke-width="1.6"/>';
+  s+='<circle cx="'+F(xm,1)+'" cy="'+F(ym,1)+'" r="9" fill="none" stroke="#A32D2D" stroke-width="1" opacity="0.45"/>';
+
+  /* --- γ：扇形（角度） ---
+     角度用扇形而不是细弧：γ 常常只有 20° 上下，细弧在本页的视野里几乎看不见。
+     要求原点在画框内、量得的点正好落在单位圆上，否则宁可不画（错位的标注比没有更误导）。 */
+  if(hasGm && cx0>=L && cx0<=L+PW && cy0>=TP && cy0<=TP+PH){
+    const p1x=X(d.gc.re), p1y=Y(d.gc.im);
+    const r0=Math.max(0.40*sc,24), a1=Math.PI, a2=Math.PI+d.gamma*D2R;
+    const large=Math.abs(d.gamma)>180?1:0, sw=d.gamma>0?0:1;
+    const ax=cx0+r0*Math.cos(a1), ay=cy0-r0*Math.sin(a1);
+    const bx=cx0+r0*Math.cos(a2), by=cy0-r0*Math.sin(a2);
+    s+='<path d="M'+F(cx0,1)+' '+F(cy0,1)+'L'+F(ax,1)+' '+F(ay,1)
+      +'A'+F(r0,1)+' '+F(r0,1)+' 0 '+large+' '+sw+' '+F(bx,1)+' '+F(by,1)+'Z" fill="'+COLG+'" opacity="0.14"/>';
+    s+='<path d="M'+F(ax,1)+' '+F(ay,1)+'A'+F(r0,1)+' '+F(r0,1)+' 0 '+large+' '+sw+' '+F(bx,1)+' '+F(by,1)+'" fill="none" stroke="'+COLG+'" stroke-width="1.3"/>';
+    s+='<circle cx="'+F(p1x,1)+'" cy="'+F(p1y,1)+'" r="3.6" fill="'+COLG+'" stroke="#fff" stroke-width="1.2"/>';
+    if(roomy){
+      /* 字一律挂在实轴的另一侧（γ>0 挂上方、γ<0 挂下方）。
+         不放进扇形里：含积分时 k=1 的曲线本身就沿 −180° 方向贴着轴的下边走，
+         扇形内侧那点地方正好被它穿过，字号再大也压不住。 */
+      mgLab={x:cx0-(r0+22), y:cy0+(d.gamma>0?-9:17)};
+    }
+  }
+  if(hasHm){
+    /* 穿轴点上的圆点：标出这根量尺的终点正好落在曲线上（用真实 Im，别硬贴轴线） */
+    s+='<circle cx="'+F(X(d.gg.re),1)+'" cy="'+F(Y(d.gg.im),1)+'" r="3.4" fill="'+COLM+'" stroke="#fff" stroke-width="1.2"/>';
+  }
+
+  // 游标点
+  if(ST.cursor){
+    const g=gval(o,ST.K,ST.curW);
+    s+='<circle cx="'+F(X(g.re),1)+'" cy="'+F(Y(g.im),1)+'" r="4.5" fill="#A32D2D" stroke="#fff" stroke-width="1.5"/>';
+    s+='<line x1="'+F(xm,1)+'" y1="'+F(ym,1)+'" x2="'+F(X(g.re),1)+'" y2="'+F(Y(g.im),1)+'" stroke="#A32D2D" stroke-width="0.9" opacity="0.4"/>';
+  }
+  s+='</g>';
+
+  // 标注（裁剪外）
+  s+=txt(xm-9, imNear>0 ? ym+17 : ym-7, '−1', {a:'end', fill:'#A32D2D', size:11, anchor:true, w:700, halo:true});
+  s+=txt(L+PW-4, Y(0)+14, 'Re', {a:'end', fill:'#5F5E5A', size:9.5, anchor:true});
+  s+=txt(X(0)+5, TP+11, 'Im', {fill:'#5F5E5A', size:9.5});
+
+  // 裕度的读数：γ 是角度，可以用「°」直接标在扇形里；h 那段是线性长度，不标 dB（见下）
+  if(mgLab){
+    s+=txt(mgLab.x, mgLab.y, 'γ '+SM(F(d.gamma,1))+'°',
+           {a:'middle', fill:'#6B4FA8', size:9.5, w:600, anchor:true, halo:true});
+  }
+
+  // 绕数徽标：补画后只有一条完整曲线，N 就是它绕 −1 的圈数，不再拆成两段记账
+  const N2s=v=>{ const r=Math.round(v*4)/4;
+    return Math.abs(r)<1e-9 ? '0' : SM(F(r, Math.abs(r*2-Math.round(r*2))<1e-9?1:2)); };
+  s+=txt(L+2, TP+PH+22,
+          d.minD<2e-3 ? '完整曲线绕 −1 的圈数：—（正穿过，圈数在跳变）'
+                      : '完整曲线 ω: 0 → 0⁺ → ∞ 绕 −1 的圈数 N = '+N2s(d.N),
+          {fill:'#5F5E5A', size:9.5});
+  s+=txt(L+2, TP+PH+36,
+          d.minD<2e-3 ? '⚠ 曲线几乎压在 −1 上 → 临界'
+                      : '补画：φ(0⁺) = '+SM(F(d.arcPhi0,0))+'° 逆时针 +'+F(d.arcSweep,0)+'° → '+SM(F(d.arcPhiEnd,0))+'°'
+                        +(ST.arc&&!ST.zoom?'':'（未显示）')+'　·　Z = P − 2N 同前',
+          {fill: d.minD<2e-3?'#C9973F':'#B0ADA4', size:9});
+
+  // 图例
+  let lg='<g transform="translate('+(L+2)+','+(TP-6)+')">'
+    +'<line x1="0" y1="0" x2="14" y2="0" stroke="#D85A30" stroke-width="2.6"/>'
+    +txt(18,3.5,'|G|>1 的弧段',{fill:'#5F5E5A',size:8.5})
+    +'<line x1="98" y1="0" x2="112" y2="0" stroke="#185FA5" stroke-width="1.5"/>'
+    +txt(116,3.5,'|G|<1',{fill:'#5F5E5A',size:8.5});
+  if(fits) lg+='<line x1="156" y1="0" x2="170" y2="0" stroke="#C9973F" stroke-width="1" stroke-dasharray="4 4"/>'
+             +txt(174,3.5,'单位圆 |G|=1',{fill:'#5F5E5A',size:8.5});
+  if(hasGm) lg+='<path d="M236 -6A8.5 8.5 0 0 0 243.5 2" fill="none" stroke="#6B4FA8" stroke-width="1.4"/>'
+               +txt(248,3.5,'γ '+SM(F(d.gamma,1))+'°　ωc '+F(d.wc,2),{fill:'#6B4FA8',size:8.5,w:600});
+  if(hasHm){
+    /* 色块去掉（那一段已改成「原点→穿轴点」的洋红量尺），留空后直接给倍数；
+       |G(ωg)| 用洋红加粗，和图上那根量尺对上 */
+    const mult = 1/Math.pow(10,-d.hdb/20);
+    lg+='<text x="376" y="3.5" font-size="8.5" font-weight="600" fill="#5F5E5A">'
+      +'h → K ×'+F(mult,2)+' (= 1/'
+      +'<tspan fill="'+COLM+'" font-weight="700">|G(ωg)|</tspan>'
+      +')　ωg '+F(d.wg,2)+'</text>';
+  }
+  lg+='</g>';
+  s+=lg;
+
+  $('svgNyq').innerHTML=s;
+  $('nyqSub').textContent = ST.zoom ? '聚焦 −1 · 补画弧在无穷远不显示' : 'ω: 0 → 0⁺ → ∞（含补画）';
+}
+
+/* ============ 绘图：伯德 ============ */
+function drawBode(){
+  const d=DATA, o=OBJS[ST.obj];
+  const L=BD.L,R=BD.R,PW=BD.W-L-R;
+  const lg=v=>Math.log10(v);
+  const lx=v=>L+(lg(clamp(v,BD.wl,BD.wh))-lg(BD.wl))/(lg(BD.wh)-lg(BD.wl))*PW;
+  // 曲线不夹紧：越界部分交给 clipPath 裁掉，避免出现"贴着边框走"的假平段
+  const my=v=>BD.M.t+(BD.M.hi-v)/(BD.M.hi-BD.M.lo)*(BD.M.b-BD.M.t);
+  const py=v=>BD.P.t+(BD.P.hi-v)/(BD.P.hi-BD.P.lo)*(BD.P.b-BD.P.t);
+
+  let s='';
+  s+='<defs><clipPath id="bm"><rect x="'+L+'" y="'+BD.M.t+'" width="'+PW+'" height="'+(BD.M.b-BD.M.t)+'"/></clipPath>'
+    +'<clipPath id="bp"><rect x="'+L+'" y="'+BD.P.t+'" width="'+PW+'" height="'+(BD.P.b-BD.P.t)+'"/></clipPath>'
+    +'<clipPath id="ball"><rect x="'+L+'" y="'+BD.M.t+'" width="'+PW+'" height="'+(BD.P.b-BD.M.t)+'"/></clipPath></defs>';
+  s+='<rect x="'+L+'" y="'+BD.M.t+'" width="'+PW+'" height="'+(BD.M.b-BD.M.t)+'" fill="#fff" rx="2"/>';
+  s+='<rect x="'+L+'" y="'+BD.P.t+'" width="'+PW+'" height="'+(BD.P.b-BD.P.t)+'" fill="#fff" rx="2"/>';
+
+  // L>0 频段（橙色阴影，对应奈图上橙色弧段）
+  if(d.wc!==null){
+    const x0=L, x1=lx(d.wc);
+    s+='<rect x="'+F(x0,1)+'" y="'+BD.M.t+'" width="'+F(Math.max(0,x1-x0),1)+'" height="'+(BD.P.b-BD.M.t)+'" fill="#FBEEE8" opacity="0.85"/>';
+    s+='<line x1="'+F(x1,1)+'" y1="'+BD.M.t+'" x2="'+F(x1,1)+'" y2="'+BD.P.b+'" stroke="#D85A30" stroke-width="1" stroke-dasharray="3 3" opacity="0.8"/>';
+  }
+  s+='<g clip-path="url(#ball)"><rect x="'+L+'" y="'+BD.M.t+'" width="'+PW+'" height="'+(BD.M.b-BD.M.t)+'" fill="none"/></g>';
+
+  // 频率网格
+  [0.05,0.1,0.2,0.5,1,2,5,10,20,50,100,200].forEach(t=>{
+    const x=lx(t);
+    s+='<line x1="'+F(x,1)+'" y1="'+BD.M.t+'" x2="'+F(x,1)+'" y2="'+BD.M.b+'" stroke="#F2F0E9" stroke-width="0.7"/>';
+    s+='<line x1="'+F(x,1)+'" y1="'+BD.P.t+'" x2="'+F(x,1)+'" y2="'+BD.P.b+'" stroke="#F2F0E9" stroke-width="0.7"/>';
+    const lab = t<0.1?t.toFixed(2):(t<1?t.toFixed(1):(t<10?t.toFixed(0):t.toFixed(0)));
+    s+=txt(x, BD.P.b+15, lab, {a:'middle', fill:'#8A8880', size:9, anchor:true});
+  });
+
+  // dB 网格
+  [-60,-40,-20,0,20,40].forEach(v=>{
+    if(v<BD.M.lo||v>BD.M.hi) return;
+    const y=my(v), z=v===0;
+    s+='<line x1="'+L+'" y1="'+F(y,1)+'" x2="'+(L+PW)+'" y2="'+F(y,1)+'" stroke="'+(z?'#5F5E5A':'#EFEDE6')+'" stroke-width="'+(z?1.4:0.7)+'"/>';
+    s+=txt(L-5, y+3.5, (v>0?'+':'')+v, {a:'end', fill: z?'#2C2C2A':'#8A8880', size:9, anchor:true, w: z?600:400});
+  });
+  // 相位网格
+  [-360,-270,-180,-90,0].forEach(v=>{
+    if(v<BD.P.lo||v>BD.P.hi) return;
+    const y=py(v), z=v===-180;
+    s+='<line x1="'+L+'" y1="'+F(y,1)+'" x2="'+(L+PW)+'" y2="'+F(y,1)+'" stroke="'+(z?'#A32D2D':'#EFEDE6')+'" stroke-width="'+(z?1.4:0.7)+'"'+(z?' stroke-dasharray="5 3" opacity="0.8"':'')+'/>';
+    s+=txt(L-5, y+3.5, v+'°', {a:'end', fill: z?'#A32D2D':'#8A8880', size:9, anchor:true, w: z?600:400});
+  });
+
+  // 轴题
+  s+=txt(L+PW, BD.M.t-6, 'L(ω) / dB', {a:'end', fill:'#5F5E5A', size:9.5, anchor:true});
+  s+=txt(L+PW, BD.P.t-6, 'φ(ω) / deg', {a:'end', fill:'#5F5E5A', size:9.5, anchor:true});
+  s+=txt(L, BD.P.b+30, 'ω / (rad·s⁻¹) · 对数轴', {fill:'#8A8880', size:8.5});
+
+  // 曲线
+  let dm='', dp='';
+  const step=Math.max(1, Math.floor(NPTS/1400));
+  for(let i=0;i<=NPTS;i+=step){
+    if(d.W[i]<BD.wl||d.W[i]>BD.wh) continue;
+    const x=lx(d.W[i]);
+    dm += (dm?'L':'M')+F(x,1)+' '+F(my(d.DB[i]),1);
+    dp += (dp?'L':'M')+F(x,1)+' '+F(py(d.PHd[i]),1);
+  }
+  s+='<path fill="none" stroke="#185FA5" stroke-width="1.9" stroke-linejoin="round" clip-path="url(#bm)" d="'+dm+'"/>';
+  s+='<path fill="none" stroke="#6B4FA8" stroke-width="1.9" stroke-linejoin="round" clip-path="url(#bp)" d="'+dp+'"/>';
+
+  /* --- 补画段在伯德图上没有有限的 ω 横轴位置 ---
+     画成左边框上的一支紫色竖直箭头：下端是 ω=0⁺ 实线起点 φ(0⁺)，
+     箭头指向 ω=0 的方向 φ(0)。端点压 −180° 线时另标半次穿越。 */
+  const COLA='#8B72B8';
+  const yA=py(d.arcPhi0), yB=py(d.arcPhiEnd);
+  if(yA>BD.P.t && yA<BD.P.b && yB>BD.P.t && yB<BD.P.b){
+    const xA=L+7;
+    s+='<line x1="'+F(xA,1)+'" y1="'+F(yA,1)+'" x2="'+F(xA,1)+'" y2="'+F(yB,1)+'" stroke="'+COLA+'" stroke-width="1.6" stroke-dasharray="3 2.5"/>';
+    const up=yB<yA;
+    s+='<path d="M'+F(xA-3.5,1)+' '+F(yB+(up?3.7:-3.7),1)+'L'+F(xA,1)+' '+F(yB,1)
+      +'L'+F(xA+3.5,1)+' '+F(yB+(up?3.7:-3.7),1)+'" fill="none" stroke="'+COLA+'" stroke-width="1.6" stroke-linejoin="round"/>';
+    s+='<circle cx="'+F(xA,1)+'" cy="'+F(yA,1)+'" r="3.4" fill="'+COLA+'"/>';
+    s+=txt(L+15, yA+13, 'φ(0⁺) = '+SM(F(d.arcPhi0,0))+'°',
+           {fill:COLA, size:8.5, w:600, halo:true});
+    /* 标签压到 −180° 线附近时要短：右边紧挨着 γ / ωc 的读数，长句会撞上 */
+    s+=txt(L+15, yB-8, '补画 → ω=0：'+SM(F(d.arcPhiEnd,0))+'°',
+           {fill:COLA, size:8.5, w:600, halo:true});
+  }
+  /* 半次穿越：ω=0 端点恰好压在 −180° 线上（D 就是这种情况） */
+  if(Math.abs(d.arcHalf)>1e-9){
+    const yH=py(-180), col=d.arcHalf>0?'#3F8F5B':'#A32D2D';
+    s+='<circle cx="'+F(L+7,1)+'" cy="'+F(yH,1)+'" r="5.4" fill="#fff" stroke="'+col+'" stroke-width="1.8"/>';
+    s+=txt(L+16, yH+16, (d.arcHalf>0?'+':'−')+'½ 次穿越（端点压线）',
+           {fill:col, size:9, w:600, halo:true});
+  }
+
+  // 穿越标记（补画段事件画在左边框，实线段事件按 ω 定位）
+  d.cross.forEach(c=>{
+    if(c.half) return;                       // 半次已在上面单独标过
+    if(c.seg!=='arc' && (c.w<BD.wl*1.02 || c.w>BD.wh)) return;
+    if(c.phd<BD.P.lo||c.phd>BD.P.hi) return;
+    const x = c.seg==='arc' ? L+7 : lx(clamp(c.w,BD.wl,BD.wh));
+    const y = py(c.phd);
+    const lx2 = x+7, ly2 = c.dir>0 ? y+14 : y-9;
+    if(c.counted){
+      const col = c.dir>0 ? '#3F8F5B' : '#A32D2D';
+      s+='<circle cx="'+F(x,1)+'" cy="'+F(y,1)+'" r="5" fill="'+col+'" stroke="#fff" stroke-width="1.5"/>';
+      s+=txt(lx2, ly2, c.dir>0?'+1':'−1', {fill:col, size:9.5, w:700, halo:true});
+    }else{
+      s+='<circle cx="'+F(x,1)+'" cy="'+F(y,1)+'" r="5" fill="#fff" stroke="#C0BCCE" stroke-width="1.4" stroke-dasharray="2 2"/>';
+      s+=txt(lx2, ly2, 'L<0', {fill:'#B0ADA4', size:8.5, w:600, halo:true});
+    }
+  });
+
+  // ωc / ωg 的具体数值放到卡头副标题里（贴在图上必撞曲线与穿越标记）
+
+  /* --- 裕度：把「还差多少」画成带箭头的竖直距离 ---
+     γ 画在相频（ωc 处到 −180° 线），h 画在幅频（ωg 处到 0 dB 线）。
+     箭头两端各画一个头，读作"这一段就是余量"，比画双箭头符号省事也更清楚。 */
+  if(d.wg!==null && d.hdb!==null){
+    /* ωg 的竖直参考线：h 是在这条线上量的（先画线，箭头压在上面） */
+    const x=lx(d.wg);
+    s+='<line x1="'+F(x,1)+'" y1="'+BD.M.t+'" x2="'+F(x,1)+'" y2="'+BD.P.b+'" stroke="#6B4FA8" stroke-width="1" stroke-dasharray="2 3" opacity="0.5"/>';
+  }
+  const dimV=(x,yA,yB,col)=>{
+    const d=(yB>=yA)?1:-1;
+    let t='<line x1="'+F(x,1)+'" y1="'+F(yA,1)+'" x2="'+F(x,1)+'" y2="'+F(yB,1)+'" stroke="'+col+'" stroke-width="1.5" stroke-dasharray="4 2.5"/>';
+    [[yA,1],[yB,-1]].forEach(function(p){
+      const y=p[0], k=p[1];
+      t+='<path d="M'+F(x-3.5,1)+' '+F(y+k*3.7,1)+'L'+F(x,1)+' '+F(y,1)+'L'+F(x+3.5,1)+' '+F(y+k*3.7,1)
+        +'" fill="none" stroke="'+col+'" stroke-width="1.5" stroke-linejoin="round"/>';
+    });
+    return t;
+  };
+  if(d.wc!==null && d.phdc!==null && d.phdc>BD.P.lo+3 && d.phdc<BD.P.hi-3 && Math.abs(d.gamma)>0.15){
+    const x=lx(d.wc), yA=py(d.phdc), yB=py(-180), col='#6B4FA8';
+    s+=dimV(x,yA,yB,col);
+    s+='<circle cx="'+F(x,1)+'" cy="'+F(yA,1)+'" r="3.4" fill="'+col+'" stroke="#fff" stroke-width="1.2"/>';
+    const right=x+72<L+PW;
+    let lxL=right?x+8:x-8;
+    const an=right?'start':'end';
+    /* 箭头短的时候两行字会把 −180° 线夹在中间；而 −180° 线上下各 14px 内是穿越标记的
+       「+1/−1/L<0」小字，所以这组读数要整体抬到那圈之外。
+       ωc 与 ωg 挨得很近时（K 刚过临界那一下）还要再往右让一让，否则会压上那个标记的读数。 */
+    const tall=Math.abs(yB-yA)>=30, yTop=Math.min(yA,yB);
+    let y1=(yA+yB)/2-2, y2=(yA+yB)/2+9;
+    if(!tall){
+      y1=yTop-27; y2=yTop-16;
+      if(right) lxL=x+30;
+      if(y1<BD.P.t+12){ y1=yTop+23; y2=yTop+34; }
+    }
+    s+=txt(lxL, y1,'γ = '+SM(F(d.gamma,1))+'°',{a:an,fill:col,size:10.5,w:600,anchor:true,halo:true});
+    s+=txt(lxL, y2,'ωc = '+F(d.wc,2),{a:an,fill:'#8A8880',size:8.5,anchor:true,halo:true});
+  }
+  if(d.wg!==null && d.hdb!==null && Math.abs(d.hdb)>0.12){
+    const x=lx(d.wg), yA=clamp(my(-d.hdb),BD.M.t+2,BD.M.b-2), yB=my(0), col='#185FA5';
+    s+=dimV(x,yA,yB,col);
+    s+='<circle cx="'+F(x,1)+'" cy="'+F(yA,1)+'" r="3.4" fill="'+col+'" stroke="#fff" stroke-width="1.2"/>';
+    const right=x+76<L+PW;
+    const lxL=right?x+8:x-8, an=right?'start':'end';
+    const tall=Math.abs(yB-yA)>=30, yTop=Math.min(yA,yB);
+    s+=txt(lxL, tall?(yA+yB)/2-2:yTop-14,'h = '+SM(F(d.hdb,1))+' dB',{a:an,fill:col,size:10.5,w:600,anchor:true,halo:true});
+    s+=txt(lxL, tall?(yA+yB)/2+9:yTop-3,'ωg = '+F(d.wg,2),{a:an,fill:'#8A8880',size:8.5,anchor:true,halo:true});
+  }
+
+  // 游标
+  if(ST.cursor){
+    const x=lx(ST.curW);
+    s+='<line x1="'+F(x,1)+'" y1="'+BD.M.t+'" x2="'+F(x,1)+'" y2="'+BD.P.b+'" stroke="#A32D2D" stroke-width="1.1" stroke-dasharray="3 3" opacity="0.8"/>';
+    const i=Math.round((Math.log(ST.curW/W0)/Math.log(W1/W0))*NPTS);
+    if(i>=0&&i<=NPTS){
+      const db=d.DB[i], ph=d.PHd[i];
+      s+='<circle cx="'+F(x,1)+'" cy="'+F(my(db),1)+'" r="4.2" fill="#A32D2D" stroke="#fff" stroke-width="1.4"/>';
+      if(ph>=BD.P.lo&&ph<=BD.P.hi) s+='<circle cx="'+F(x,1)+'" cy="'+F(py(ph),1)+'" r="4.2" fill="#A32D2D" stroke="#fff" stroke-width="1.4"/>';
+      s+=txt(x+7, my(db)-7, F(db,1)+' dB', {fill:'#A32D2D', size:9, w:600, halo:true});
+    }
+  }
+
+  // 图例
+  s+='<g transform="translate('+(L+2)+','+(BD.M.t-6)+')">'
+    +'<rect x="0" y="-7" width="12" height="11" fill="#FBEEE8" stroke="#D85A30" stroke-width="0.7"/>'
+    +txt(17,3.5,'L>0（|G|>1）',{fill:'#5F5E5A',size:8.5})
+    +'</g>';
+
+  $('svgBode').innerHTML=s;
+  let sub;
+  if(d.wc===null){ sub='|G| 全程不到 1：没有 0 dB 穿越'; }
+  else if(d.wg===null){ sub='L>0：ω < '+F(d.wc,2)+'　无 ωg'; }
+  else { sub='L>0：ω < '+F(d.wc,2); }
+  $('bodeSub').textContent = sub;
+  $('bodeSub').title = 'γ 在 ωc = '+(d.wc===null?'—':F(d.wc,3))+' rad/s 处量，h 在 ωg = '+(d.wg===null?'—':F(d.wg,3))+' rad/s 处量';
+}
+
+function txt(x,y,s,opt){
+  opt=opt||{};
+  const a=opt.a||'start', fill=opt.fill||'#8A8880', size=opt.size||10, w=opt.w||400;
+  const anc=opt.anchor?(' text-anchor="'+a+'"'):'';
+  const halo=opt.halo?' stroke="#fff" stroke-width="3.2" paint-order="stroke" stroke-linejoin="round"':'';
+  return '<text x="'+F(x,1)+'" y="'+F(y,1)+'" font-size="'+size+'" fill="'+fill+'" font-weight="'+w+'"'+anc+halo+'>'+s+'</text>';
+}
+
+/* ============ 判定面板 ============ */
+function drawVerdict(){
+  const d=DATA, o=OBJS[ST.obj];
+  /* 补画后规则与不含积分环节完全相同：N 就是完整曲线绕 −1 的圈数，
+     Z = P − 2N，稳定要求 N = P/2（伯德净穿越同样应等于 P/2）。 */
+  const N=d.N, Z=o.P-2*N, diff=d.npos-d.nneg;
+  const target = o.P/2;
+  const diffOk = Math.abs(diff-target) < 0.06;
+  const jump = d.minD < 2e-3;                       // 曲线正压在 −1 上，圈数在跳变
+  const onAx = POLES.filter(p=>Math.abs(p.re)<1e-3); // 极点落在虚轴上（Z=0 查不出来）
+  const marg = onAx.length > 0;
+  const cri = jump || marg;
+  const isStable = Math.abs(Z)<0.05 && !cri;
+  const fmtN = v => {
+    let t;
+    if(Math.abs(v-Math.round(v))<1e-6) t=String(Math.round(v));
+    else if(Math.abs(v*2-Math.round(v*2))<1e-6) t=F(v,1);
+    else t=F(v,2);
+    return SM(t);
+  };
+
+  const set=(id,cls,val,sub)=>{
+    const el=$(id);
+    el.className='vt'+(cls?' '+cls:'')+(el.dataset.wide?' wide':'');
+    el.querySelector('.v').textContent=val;
+    if(sub!==null&&sub!==undefined) el.querySelector('.s').textContent=sub;
+  };
+
+  set('vtP', '', String(o.P),
+      o.P===0 ? '开环无右半平面极点；原点 '+o.k+' 重极点不计入 P'
+              : '开环已有 '+o.P+' 个右半平面极点；原点 '+o.k+' 重不计入 P');
+
+  if(jump){
+    set('vtN','warn', '—', '曲线正穿过 −1，圈数在跳变');
+    set('vtB','warn', '—', '−180° 穿越点正好压在 0 dB 线上');
+  }else{
+    set('vtN','', fmtN(N), 'ω: 0 → 0⁺ → ∞ 整条，含补画 '+F(d.arcSweep,0)+'°');
+    set('vtB', diffOk?'':'bad', fmtN(diff),
+        'N⁺='+fmtN(d.npos)+'　N⁻='+fmtN(d.nneg)+'　要求 P/2 = '+fmtN(target)
+        +(Math.abs(d.arcHalf)>1e-9?'（端点 '+(d.arcHalf>0?'+':'−')+'½）':''));
+  }
+
+  let cls='ok', txtv='', subt='';
+  if(cri && marg){
+    cls='warn'; txtv='临界';
+    subt = jump ? '曲线几乎穿过 −1，闭环有纯虚根'
+                : '极点落在虚轴上：Z=0 只说右半平面没极点';
+  }
+  else if(Math.abs(Z)<0.05){ cls='ok'; txtv='0'; subt='闭环稳定，全部极点在左半平面'; }
+  else { cls='bad'; txtv=fmtN(Z); subt='闭环不稳定，有 '+fmtN(Z)+' 个极点在右半平面'; }
+  set('vtZ', cls, txtv, subt);
+
+  /* --- 裕度两格：值 + 对应的穿越频率（γ 量在 ωc，h 量在 ωg） --- */
+  const hasG = d.wc!==null && d.gamma!==null && isFinite(d.gamma);
+  const hasH = d.wg!==null && d.hdb!==null && isFinite(d.hdb) && d.hdb<60;
+  /* 没有有限 ωg 时，只有闭环确实稳定的对象（A、C）才说 h = ∞、任意增益都稳；
+     D 这类 P>0、闭环不稳的对象相位始终低于 −180°，不能套 h 的常规读法。 */
+  const hInf = !hasH && d.wg===null;
+  if(hasG){
+    const gd=d.gamma;
+    set('vtG', Math.abs(gd)<0.4?'warn':(gd>0?'ok':'bad'), SM(F(gd,1))+'°',
+        'ωc = '+F(d.wc,2)+' rad/s　φ(ωc) = '+SM(F(gd-180,1))+'°');
+  }else{
+    set('vtG','warn','—','|G| 全程不到 1，没有 0 dB 穿越 ⇒ γ 无定义');
+  }
+  if(hasH){
+    const hd=d.hdb;
+    set('vtH', Math.abs(hd)<0.15?'warn':(hd>0?'ok':'bad'), SM(F(hd,1))+' dB',
+        'ωg = '+F(d.wg,2)+' rad/s　|G(ωg)| = '+(hd<20?F(Math.pow(10,-hd/20),3):Math.pow(10,-hd/20).toExponential(1)));
+  }else if(hInf && isStable){
+    set('vtH','ok','∞','φ(ω) 在有限频段不穿越 −180°：无有限 ωg，曲线碰不到 −1');
+  }else{
+    set('vtH','warn','—','φ(ω) 在有限频段不穿越 −180°：无有限 ωg，判稳按 Z = P − 2N');
+  }
+  if(hasH){
+    set('vtM', d.hLin>1.2?'':(d.hLin<0.85?'bad':'warn'), F(d.hLin,2)+'×',
+        '= 1/|G(ωg)| = 10^(h/20)：乘到就压上 −1');
+  }else if(hInf && isStable){
+    set('vtM','ok','∞×','曲线永远碰不到 −1：任意增益都稳');
+  }else{
+    set('vtM','warn','—','闭环不稳或临界：增益倍数不适用，按 Z 判定');
+  }
+
+  const zt=d.Ztrue;
+  let h;
+  if(marg && !jump){
+    h = '<span>Z = P − 2N = <b>'+o.P+' − 2×'+fmtN(N)+' = 0</b>，右半平面确实没极点</span>'
+      + '<span class="eq">｜</span><span>可有 <b>'+onAx.length+'</b> 个极点正落在虚轴上</span>'
+      + '<span class="eq">｜</span><span style="color:#C9973F;font-weight:600">临界：判据只查右半平面，查不出虚轴上的极点</span>';
+  }else if(jump){
+    h = '<span>曲线离 −1 最近仅 <b>'+d.minD.toExponential(1)+'</b></span>'
+      + '<span class="eq">｜</span><span>实算闭环极点：右半平面 <b>'+zt+'</b> 个</span>'
+      + '<span class="eq">｜</span><span style="color:#C9973F;font-weight:600">临界：Z = P − 2N 只给出稳定边界</span>';
+  }else{
+    const agree = Math.abs(Z-zt)<0.51;
+    h = '<span>Z = P − 2N = <b>'+o.P+' − 2×('+fmtN(N)+') = '+fmtN(Z)+'</b>（N 为完整曲线绕数）</span>'
+      + '<span class="eq">｜</span><span>实算右半平面极点 <b>'+zt+'</b> 个</span>'
+      + '<span class="eq">｜</span>'
+      + '<span style="color:'+(agree?'#3F8F5B':'#A32D2D')+';font-weight:600">'+(agree?'✓ 判据与实算一致':'✗ 不一致')+'</span>'
+      + '<span class="eq">｜</span><span style="color:'+(diffOk?'#3F8F5B':'#A32D2D')+';font-weight:600">'
+      + '伯德 N⁺−N⁻ = '+fmtN(diff)+'，要求 P/2 = '+fmtN(target)+(diffOk?' ✓':' ✗')+'</span>';
+  }
+  $('chain').innerHTML = h;
+}
+
+/* ============ 闭环极点：Durand–Kerner 求根 ============
+   和 Routh 表完全独立的第二条路：一个数符号变化，一个解方程。
+   两条路给出同一个右半平面极点数，才敢说判据是对的。 */
+function polyRoots(c){
+  const n=c.length-1;
+  if(n<1) return [];
+  const a=new Float64Array(n+1);
+  for(let i=0;i<=n;i++) a[i]=c[i]/c[0];
+  let R=0;
+  for(let i=1;i<=n;i++){ const t=Math.pow(Math.abs(a[i]),1/i); if(t>R) R=t; }
+  R=clamp(R*1.15,0.35,1e3);
+  const zr=new Float64Array(n), zi=new Float64Array(n);
+  for(let k=0;k<n;k++){
+    const th=2*Math.PI*k/n+0.4;
+    zr[k]=R*Math.cos(th); zi[k]=R*Math.sin(th);
+  }
+  for(let it=0;it<200;it++){
+    let md=0;
+    for(let k=0;k<n;k++){
+      const x=zr[k], y=zi[k];
+      let pr=0, pi=0;
+      for(let i=0;i<=n;i++){                    // Horner：p = p·z + a[i]
+        const t=pr*x-pi*y+a[i], u=pr*y+pi*x;
+        pr=t; pi=u;
+      }
+      let dr=1, di=0;
+      for(let j=0;j<n;j++){                     // 分母 = ∏(z_k − z_j)
+        if(j===k) continue;
+        const dx=x-zr[j], dy=y-zi[j];
+        const t=dr*dx-di*dy, u=dr*dy+di*dx;
+        dr=t; di=u;
+      }
+      const dd=dr*dr+di*di;
+      if(dd<1e-300) continue;
+      const qr=(pr*dr+pi*di)/dd, qi=(pi*dr-pr*di)/dd;
+      zr[k]-=qr; zi[k]-=qi;
+      const m=Math.hypot(qr,qi);
+      if(m>md) md=m;
+    }
+    if(md<1e-12) break;
+  }
+  const out=[];
+  for(let k=0;k<n;k++){
+    let re=zr[k], im=zi[k];
+    if(Math.abs(re)<1e-9) re=0;
+    if(Math.abs(im)<1e-8) im=0;
+    out.push({re:re, im:im});
+  }
+  return out;
+}
+
+/* 视野：跨整个 K 区间取样，取并集 —— 这样拖 K 时极点是"移动"，不是"缩放" */
+function poleView(o){
+  if(o._pv) return o._pv;
+  let mr=0.5, mi=0.5;
+  for(let i=0;i<=20;i++){
+    const K=o.Kmin*Math.pow(o.Kmax/o.Kmin, i/20);
+    polyRoots(closedPoly(o,K)).forEach(p=>{
+      if(Math.abs(p.re)>mr) mr=Math.abs(p.re);
+      if(Math.abs(p.im)>mi) mi=Math.abs(p.im);
+    });
+  }
+  o._pv={hr:mr*1.12, hi:mi*1.08};
+  return o._pv;
+}
+
+function niceStep(x){
+  if(!(x>0)) return 1;
+  const p=Math.pow(10,Math.floor(Math.log10(x))), n=x/p;
+  return (n<1.5?1:(n<3.5?2:(n<7.5?5:10)))*p;
+}
+
+const PL={L:44,R:14,T:18,B:46,W:600,H:420};
+function drawPole(){
+  const o=OBJS[ST.obj], ps=POLES, v=poleView(o);
+  const L=PL.L,R=PL.R,TP=PL.T,B=PL.B,PW=PL.W-L-R,PH=PL.H-TP-B;
+  const sc=Math.min(PW/(2*v.hr), PH/(2*v.hi));
+  const cxp=L+PW/2, cyp=TP+PH/2;
+  const X=r=>cxp+r*sc, Y=i=>cyp-i*sc;
+  const x0=X(0), y0=Y(0);
+
+  let s='<defs><clipPath id="plc"><rect x="'+L+'" y="'+TP+'" width="'+PW+'" height="'+PH+'" rx="3"/></clipPath></defs>';
+  // 左右半平面：不是装饰，是把"稳不稳"画成面积
+  s+='<rect x="'+L+'" y="'+TP+'" width="'+F(x0-L,1)+'" height="'+PH+'" fill="#F3F8F5"/>';
+  s+='<rect x="'+F(x0,1)+'" y="'+TP+'" width="'+F(L+PW-x0,1)+'" height="'+PH+'" fill="#FDF3F1"/>';
+  s+='<g clip-path="url(#plc)">';
+
+  const gs=niceStep(Math.max(v.hr,v.hi)/3);
+  /* 实轴刻度单独排一份细的：含积分对象的极点虚部往往远大于实部，
+     共用一套步长时 Re 轴上只剩"0"一个刻度，看不出到底离虚轴多远。
+     但横向被压扁时字会叠在一起，所以步长要一路放大到相邻刻度分得开为止。 */
+  let gsx=niceStep(Math.max(v.hr,0.3)/2.5);
+  while(gsx*sc<26) gsx=niceStep(gsx*2.01);
+  for(let rv=Math.ceil(-v.hr/gsx)*gsx; rv<=v.hr; rv+=gsx){
+    const x=X(rv);
+    if(x<L-0.5||x>L+PW+0.5) continue;
+    s+='<line x1="'+F(x,1)+'" y1="'+TP+'" x2="'+F(x,1)+'" y2="'+(TP+PH)+'" stroke="#EAE8E0" stroke-width="0.7"/>';
+  }
+  for(let iv=Math.ceil(-v.hi/gs)*gs; iv<=v.hi; iv+=gs){
+    const y=Y(iv);
+    if(y<TP-0.5||y>TP+PH+0.5) continue;
+    s+='<line x1="'+L+'" y1="'+F(y,1)+'" x2="'+(L+PW)+'" y2="'+F(y,1)+'" stroke="#EAE8E0" stroke-width="0.7"/>';
+  }
+
+  // 虚轴 = 稳定边界，画得比实轴重
+  s+='<line x1="'+F(x0,1)+'" y1="'+TP+'" x2="'+F(x0,1)+'" y2="'+(TP+PH)+'" stroke="#5F5E5A" stroke-width="1.3"/>';
+  s+='<line x1="'+L+'" y1="'+F(y0,1)+'" x2="'+(L+PW)+'" y2="'+F(y0,1)+'" stroke="#B5B1A6" stroke-width="0.9"/>';
+
+  // 极点
+  let zr=0, onAx=0;
+  ps.forEach(p=>{
+    const x=X(p.re), y=Y(p.im);
+    if(p.re>1e-7) zr++;
+    else if(Math.abs(p.re)<=1e-7) onAx++;
+    const col = p.re>1e-7 ? '#A32D2D' : (Math.abs(p.re)<=1e-7 ? '#C9973F' : '#185FA5');
+    s+='<path d="M'+F(x-6.2,1)+' '+F(y-6.2,1)+'L'+F(x+6.2,1)+' '+F(y+6.2,1)
+      +'M'+F(x-6.2,1)+' '+F(y+6.2,1)+'L'+F(x+6.2,1)+' '+F(y-6.2,1)
+      +'" stroke="'+col+'" stroke-width="2.2" stroke-linecap="round"/>';
+  });
+  s+='</g>';
+
+  // 区域名与轴名
+  s+=txt(L+(x0-L)/2, TP+15, '左半平面 · 稳定', {a:'middle', fill:'#7FA98E', size:9, anchor:true});
+  s+=txt(x0+(L+PW-x0)/2, TP+15, '右半平面 · 不稳定', {a:'middle', fill:'#C58C86', size:9, anchor:true});
+  s+=txt(x0+5, TP+11, 'Im', {fill:'#5F5E5A', size:9.5});
+  s+=txt(L+PW-4, y0+13, 'Re', {a:'end', fill:'#5F5E5A', size:9.5, anchor:true});
+  // Re 刻度（只标实轴：这里要读的是"离虚轴多远"）
+  const dec = gsx>=1?0:(gsx>=0.1?1:2);
+  for(let rv=Math.ceil(-v.hr/gsx)*gsx; rv<=v.hr; rv+=gsx){
+    const x=X(rv);
+    if(x<L+6||x>L+PW-34) continue;
+    if(Math.abs(rv)<1e-9) continue;
+    s+=txt(x, y0+12, F(rv,dec), {a:'middle', fill:'#B0ADA4', size:8, anchor:true});
+  }
+
+  // 图注
+  const maxRe = ps.reduce((m,p)=>Math.max(m,p.re), -1e9);
+  s+=txt(L+2, TP+PH+19, '闭环极点 '+ps.length+' 个　右半平面 '+zr+' 个'
+        +(onAx?'　虚轴上 '+onAx+' 个':'')+'　最右实部 '+SM(F(maxRe,2)),
+        {fill: zr>0?'#A32D2D':'#5F5E5A', size:9.5, w: zr>0?600:400});
+  s+=txt(L+2, TP+PH+33, '极点跨过虚轴 ↔ 开环曲线跨过 −1 —— 同一次事件', {fill:'#B0ADA4', size:9});
+
+  $('svgPole').innerHTML=s;
+
+  const sub=$('poleSub');
+  sub.textContent = zr>0 ? ('右半平面 '+zr+' 个 → 不稳定') : (onAx? '极点在虚轴上 → 临界' : '全在左半平面 → 稳定');
+  sub.style.color = zr>0 ? '#A32D2D' : (onAx? '#C9973F' : '#3F8F5B');
+}
+
+/* ============ 闭环阶跃响应 ============ */
+const SP={L:50,R:16,T:18,B:46,W:600,H:330};
+
+function rkStep(c,b0,n,tEnd,N){
+  const dt=tEnd/N;
+  const x=new Float64Array(n), k1=new Float64Array(n), k2=new Float64Array(n),
+        k3=new Float64Array(n), k4=new Float64Array(n), xt=new Float64Array(n);
+  const der=(xs,out)=>{
+    for(let i=0;i<n-1;i++) out[i]=xs[i+1];
+    let s=b0;
+    for(let i=0;i<n;i++) s-=c[n-i]*xs[i];   // c 降幂 → y^(i) 的系数是 c[n-i]
+    out[n-1]=s;
+  };
+  const T=new Float64Array(N+1), Y=new Float64Array(N+1);
+  for(let i=0;i<N;i++){
+    der(x,k1);
+    for(let j=0;j<n;j++) xt[j]=x[j]+0.5*dt*k1[j]; der(xt,k2);
+    for(let j=0;j<n;j++) xt[j]=x[j]+0.5*dt*k2[j]; der(xt,k3);
+    for(let j=0;j<n;j++) xt[j]=x[j]+dt*k3[j];     der(xt,k4);
+    for(let j=0;j<n;j++) x[j]+=dt*(k1[j]+2*k2[j]+2*k3[j]+k4[j])/6;
+    T[i+1]=(i+1)*dt; Y[i+1]=x[0];
+  }
+  return {T,Y};
+}
+
+function stepResp(o,K){
+  const c=CLOSED, n=c.length-1;
+  const b0=o.num[o.num.length-1]*K;      // 分子常数项
+  const c0=c[n];                          // 特征多项式常数项
+  const yss=Math.abs(c0)>1e-12?b0/c0:NaN;
+  let right=-1e9, zr=0;
+  POLES.forEach(p=>{ if(p.re>right) right=p.re; if(p.re>1e-7) zr++; });
+  const marginal = zr===0 && POLES.some(p=>Math.abs(p.re)<1e-3);
+  let tEnd = right>1e-6 ? 6/right : 6/Math.max(1e-6,-right);
+  tEnd = clamp(tEnd,1,40);
+
+  const N=1400;
+  let run = rkStep(c,b0,n,tEnd,N);
+  const ref0=Math.max(1, Math.abs(isFinite(yss)?yss:1));
+  // 临界：极点压在虚轴上，响应要么等幅振荡、要么无界（斜坡）。后者按它冲出参考带的时间重定窗口，
+  // 否则整条曲线会挤在左边 5% 里，什么也看不出来。
+  if(marginal){
+    let hit=-1;
+    for(let i=0;i<=N;i++) if(!isFinite(run.Y[i])||Math.abs(run.Y[i])>3*ref0){ hit=i; break; }
+    if(hit>2){
+      const t2=clamp(run.T[hit]*0.95, 2, 40);
+      if(t2<tEnd*0.9){ tEnd=t2; run=rkStep(c,b0,n,tEnd,N); }
+    }
+  }
+  const T=run.T, Y=run.Y;
+
+  // 发散就别硬画到 1e6：截在 3 倍稳态值处，让"冲出画框"这件事自己说话
+  const ref=ref0;
+  const cap=3*ref;
+  let cut=N, div=false;
+  for(let i=0;i<=N;i++){
+    if(!isFinite(Y[i])||Math.abs(Y[i])>cap){ cut=i; div=true; break; }
+  }
+  if(cut<8) cut=8;
+
+  let ymax=-1e18, ymin=1e18;
+  for(let i=0;i<=cut;i++){ const y=Y[i]; if(y>ymax) ymax=y; if(y<ymin) ymin=y; }
+
+  let top=Math.max(ymax, isFinite(yss)?Math.abs(yss)*1.12:0, 0.4);
+  let bot=Math.min(ymin,0);
+  const pad=(top-bot)*0.08;
+  top+=pad; bot-=pad;
+
+  return {T,Y,cut,tEnd,yss,div,zr,top,bot,cap,
+          marginal:marginal, stable:(zr===0&&!marginal)};
+}
+
+function drawStep(){
+  const o=OBJS[ST.obj], r=stepResp(o,ST.K);
+  const L=SP.L,R=SP.R,TP=SP.T,B=SP.B,PW=SP.W-L-R,PH=SP.H-TP-B;
+  const X=t=>L+t/r.tEnd*PW;
+  const Y=y=>TP+(r.top-y)/(r.top-r.bot)*PH;
+
+  let s='<defs><clipPath id="spc"><rect x="'+L+'" y="'+TP+'" width="'+PW+'" height="'+PH+'" rx="2"/></clipPath></defs>';
+  s+='<rect x="'+L+'" y="'+TP+'" width="'+PW+'" height="'+PH+'" fill="#fff" rx="2"/>';
+  s+='<g clip-path="url(#spc)">';
+
+  // y 网格
+  const gs=niceStep((r.top-r.bot)/5);
+  for(let v=Math.ceil(r.bot/gs)*gs; v<=r.top; v+=gs){
+    const y=Y(v), z=Math.abs(v)<1e-9;
+    s+='<line x1="'+L+'" y1="'+F(y,1)+'" x2="'+(L+PW)+'" y2="'+F(y,1)+'" stroke="'+(z?'#D8D5CC':'#F2F0E9')+'" stroke-width="'+(z?1:0.7)+'"/>';
+  }
+  // t 网格
+  for(let k=0;k<=4;k++){
+    const x=L+PW*k/4;
+    s+='<line x1="'+F(x,1)+'" y1="'+TP+'" x2="'+F(x,1)+'" y2="'+(TP+PH)+'" stroke="#F2F0E9" stroke-width="0.7"/>';
+  }
+
+  // 输入 r(t)=1
+  if(1>r.bot&&1<r.top){
+    s+='<line x1="'+L+'" y1="'+F(Y(1),1)+'" x2="'+(L+PW)+'" y2="'+F(Y(1),1)+'" stroke="#C0BCCE" stroke-width="1" stroke-dasharray="4 3"/>';
+  }
+  // 稳态值：只有真稳定才有资格画这条线，不稳定时那是"本应到达的值"，会误导
+  if(r.stable && isFinite(r.yss) && r.yss>r.bot && r.yss<r.top){
+    s+='<line x1="'+L+'" y1="'+F(Y(r.yss),1)+'" x2="'+(L+PW)+'" y2="'+F(Y(r.yss),1)+'" stroke="#3F8F5B" stroke-width="0.9" stroke-dasharray="2 3" opacity="0.75"/>';
+  }
+
+  // 曲线
+  let d='';
+  for(let i=0;i<=r.cut;i++) d+=(i?'L':'M')+F(X(r.T[i]),1)+' '+F(Y(r.Y[i]),1);
+  s+='<path fill="none" stroke="'+(r.zr>0?'#A32D2D':'#185FA5')+'" stroke-width="2.1" stroke-linejoin="round" d="'+d+'"/>';
+
+  // 峰值点
+  if(r.zr===0){
+    let ip=0;
+    for(let i=0;i<=r.cut;i++) if(r.Y[i]>r.Y[ip]) ip=i;
+    if(ip>0&&ip<r.cut-1){
+      s+='<circle cx="'+F(X(r.T[ip]),1)+'" cy="'+F(Y(r.Y[ip]),1)+'" r="3.2" fill="#185FA5" stroke="#fff" stroke-width="1.2"/>';
+    }
+  }
+  s+='</g>';
+
+  // 发散标记
+  if(r.div){
+    const x=X(r.T[r.cut]), y=Y(r.Y[r.cut]);
+    s+=txt(Math.min(x+6,L+PW-52), Math.max(y+14,TP+12), '↗ 不收敛', {fill:'#A32D2D', size:10, w:700, halo:true});
+  }
+
+  // 轴名
+  s+=txt(L, TP-6, 'y(t)', {fill:'#5F5E5A', size:9.5});
+  s+=txt(L+PW, TP+PH+32, 't / s', {a:'end', fill:'#8A8880', size:9, anchor:true});
+  s+=txt(L, TP+PH+32, 'r(t) = 1(t)，零初态', {fill:'#B0ADA4', size:8.5});
+  for(let k=0;k<=4;k++){
+    s+=txt(L+PW*k/4, TP+PH+15, F(r.tEnd*k/4, r.tEnd<3?2:(r.tEnd<20?1:0)),
+           {a:'middle', fill:'#8A8880', size:9, anchor:true});
+  }
+  const ydec = gs>=1?0:(gs>=0.1?1:2);
+  for(let v=Math.ceil(r.bot/gs)*gs; v<=r.top; v+=gs){
+    s+=txt(L-5, Y(v)+3.5, F(v,ydec), {a:'end', fill:'#8A8880', size:9, anchor:true});
+  }
+
+  $('svgStep').innerHTML=s;
+
+  /* 指标 */
+  let chips;
+  if(!r.stable){
+    const why = r.zr>0 ? '不稳定' : '临界';
+    $('stepSub').textContent = why+'，指标无定义';
+    $('stepSub').style.color = r.zr>0 ? '#A32D2D' : '#C9973F';
+    chips=[['y(∞) 稳态值'],['σ% 超调量'],['tp 峰值时间'],['ts 调节时间(±5%)'],['e_ss 稳态误差']]
+      .map(c=>({k:c[0],v:'—',na:true}));
+  }else{
+    $('stepSub').textContent = 'r(t) = 1(t)';
+    $('stepSub').style.color = '#8A8880';
+    let ip=0;
+    for(let i=0;i<=r.cut;i++) if(r.Y[i]>r.Y[ip]) ip=i;
+    const ymax=r.Y[ip];
+    const sg=Math.max(0,(ymax-r.yss)/Math.abs(r.yss))*100;
+    // 调节时间：最后一次超出 ±5% 带
+    let il=0;
+    for(let i=0;i<=r.cut;i++) if(Math.abs(r.Y[i]-r.yss)>0.05*Math.abs(r.yss)) il=i;
+    const tsTxt = il>=r.cut ? '> '+F(r.tEnd, r.tEnd<10?1:0)+' s' : F(r.T[il],2)+' s';
+    chips=[
+      {k:'y(∞) 稳态值', v:F(r.yss,3)},
+      {k:'σ% 超调量', v:(sg<0.05?'0':F(sg,1))+'%'},
+      {k:'tp 峰值时间', v:F(r.T[ip],2)+' s'},
+      {k:'ts 调节时间(±5%)', v:tsTxt},
+      {k:'e_ss 稳态误差', v:F(1-r.yss,3)}
+    ];
+  }
+  $('specs').innerHTML=chips.map(c=>'<span><i>'+c.k+'</i><b'+(c.na?' class="na"':'')+'>'+c.v+'</b></span>').join('');
+}
+
+/* ============ 刷新 ============ */
+let POLES=[], CLOSED=[];
+function refresh(){
+  const o=OBJS[ST.obj];
+  DATA = compute(o, ST.K);
+  CLOSED = closedPoly(o, ST.K);
+  POLES = polyRoots(CLOSED);
+  drawNyq();
+  drawBode();
+  drawVerdict();
+  drawPole();
+  drawStep();
+  $('vK').textContent = F(ST.K, ST.K<10?2:1);
+  $('vKc').textContent = o.kcTag;
+  $('btnCri').disabled = (o.Kc==null);
+  $('btnCri').title = o.Kc==null ? (o.kcTag+'，没有临界增益') : '把 K 拖到临界值';
+  $('tfSlot').textContent = o.tf;
+  $('objStrip').innerHTML = '<b>补画口径</b>　'+o.note;
+  dumpProbe();
+}
+function dumpProbe(){
+  if(!PROBE || !window.__NY__) return;
+  const el=$('probe');
+  el.style.display='block';
+  el.textContent=JSON.stringify(window.__NY__.state());
+}
+
+/* ============ 交互 ============ */
+const kSlider = v => Math.log(v/OBJS[ST.obj].Kmin)/Math.log(OBJS[ST.obj].Kmax/OBJS[ST.obj].Kmin);
+const kFromSlider = v => {
+  const o=OBJS[ST.obj];
+  return o.Kmin*Math.pow(o.Kmax/o.Kmin, clamp(v,0,1));
+};
+
+$('segObj').addEventListener('click', e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  ST.obj=b.dataset.obj;
+  document.querySelectorAll('#segObj button').forEach(x=>x.classList.toggle('on', x.dataset.obj===ST.obj));
+  const o=OBJS[ST.obj];
+  ST.K=o.Kdef;
+  $('sK').value=Math.round(kSlider(ST.K)*1000);
+  refresh();
+});
+
+$('sK').addEventListener('input', e=>{
+  ST.K=kFromSlider(e.target.value/1000);
+  refresh();
+});
+
+$('btnCri').addEventListener('click', ()=>{
+  const o=OBJS[ST.obj];
+  if(o.Kc==null) return;
+  ST.K=o.Kc;
+  $('sK').value=Math.round(kSlider(ST.K)*1000);
+  refresh();
+});
+
+$('cbArc').addEventListener('change', e=>{
+  ST.arc=e.target.checked;
+  drawNyq();
+});
+
+$('cbZoom').addEventListener('change', e=>{
+  ST.zoom=e.target.checked;
+  drawNyq();
+});
+
+$('btnCursor').addEventListener('click', e=>{
+  ST.cursor=!ST.cursor;
+  e.target.classList.toggle('on', ST.cursor);
+  e.target.textContent = ST.cursor ? '停止游标' : '同步游标';
+  if(ST.cursor){ ST.curW=BD.wl; curT0=0; startLoop(); } else stopLoop();
+  drawNyq(); drawBode();
+});
+
+/* 游标用 setInterval 推进：后台标签页与预览面板里 requestAnimationFrame 会被节流 */
+let curT0=0, curTimer=0;
+function tick(){
+  if(STILL || !ST.cursor){ stopLoop(); return; }
+  const now=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
+  if(!curT0) curT0=now;
+  const p=((now-curT0)/9000)%1;
+  ST.curW=Math.exp(Math.log(BD.wl)+(Math.log(BD.wh)-Math.log(BD.wl))*p);
+  drawNyq(); drawBode();
+}
+function startLoop(){ if(curTimer||STILL) return; curTimer=setInterval(tick,40); }
+function stopLoop(){ if(curTimer){ clearInterval(curTimer); curTimer=0; } curT0=0; }
+
+/* ============ 诊断接口 ============ */
+window.__NY__ = {
+  setObj:id=>{ $('segObj').querySelector('button[data-obj="'+id+'"]').click(); },
+  setK:v=>{ const o=OBJS[ST.obj]; ST.K=v; $('sK').value=Math.round(kSlider(v)*1000); refresh(); },
+  state:()=>({
+    obj:ST.obj, K:ST.K, P:OBJS[ST.obj].P, k:OBJS[ST.obj].k, arc:ST.arc, zoom:ST.zoom,
+    cursor:ST.cursor, curW:ST.curW, still:STILL,
+    N:DATA.N, Z:OBJS[ST.obj].P-2*DATA.N,
+    arcSweep:DATA.arcSweep, arcPhi0:DATA.arcPhi0, arcPhiEnd:DATA.arcPhiEnd, arcHalf:DATA.arcHalf,
+    phi0:DATA.PHd[0], shift:DATA.shift,
+    npos:DATA.npos, nneg:DATA.nneg, diff:DATA.npos-DATA.nneg, target:OBJS[ST.obj].P/2,
+    minD:DATA.minD, Ztrue:DATA.Ztrue,
+    wc:DATA.wc, gamma:DATA.gamma, wg:DATA.wg, hdb:DATA.hdb,
+    poles:POLES.map(p=>({re:+p.re.toFixed(8), im:+p.im.toFixed(8)})),
+    rhs:POLES.filter(p=>p.re>1e-7).length,
+    step:(()=>{ const r=stepResp(OBJS[ST.obj],ST.K);
+      let ip=0; for(let i=0;i<=r.cut;i++) if(r.Y[i]>r.Y[ip]) ip=i;
+      return {tEnd:+r.tEnd.toFixed(4), yss:+r.yss.toFixed(5), div:r.div, zr:r.zr,
+              top:+r.top.toFixed(4), bot:+r.bot.toFixed(4),
+              ymax:+r.Y[ip].toFixed(5), tmax:+r.T[ip].toFixed(4),
+              yend:+r.Y[r.cut].toFixed(4)}; })()
+  }),
+  table:(objId, Ks)=>{
+    const o=OBJS[objId];
+    return Ks.map(K=>{
+      const d=compute(o,K);
+      return { K, k:o.k, P:o.P,
+               N:+d.N.toFixed(4), Z:+(o.P-2*d.N).toFixed(3),
+               arcSweep:d.arcSweep, arcPhi0:+d.arcPhi0.toFixed(2), arcPhiEnd:+d.arcPhiEnd.toFixed(2),
+               arcHalf:d.arcHalf,
+               diff:+(d.npos-d.nneg).toFixed(3), npos:d.npos, nneg:d.nneg,
+               minD:+d.minD.toExponential(2), Ztrue:d.Ztrue,
+               wc:d.wc===null?null:+d.wc.toFixed(4), gamma:d.gamma===null?null:+d.gamma.toFixed(2),
+               wg:d.wg===null?null:+d.wg.toFixed(4), hdb:d.hdb===null?null:+d.hdb.toFixed(2) };
+    });
+  },
+  objs:()=>Object.keys(OBJS)
+};
+
+/* ============ 启动 ============ */
+ST.K=OBJS[ST.obj].Kdef;
+$('sK').value=Math.round(kSlider(ST.K)*1000);
+refresh();
+
+})();
+</script>
+</body>
+</html>
