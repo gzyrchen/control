@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buck 变换器双环控制 · 状态空间平均建模与伯德图校正</title>
+<style>
+:root{
+  --ink:#2C2C2A; --ink2:#5F5E5A; --ink3:#8A8880;
+  --panel:#F1EFE8; --panel2:#FAF9F5; --line:rgba(0,0,0,.12);
+  --blue:#185FA5; --blue-l:#E6F1FB; --orange:#D85A30; --orange-l:#FBEEE8;
+  --green:#3F8F5B; --green-l:#E8F3EC; --red:#A32D2D; --purple:#6B4FA8;
+  --gold:#C9973F; --grid:#E4E2DB;
+  --mono:ui-monospace,Consolas,"Courier New",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:22px 24px 40px;background:#fff;color:var(--ink);font-family:var(--sans)}
+.wrap{max-width:1232px;margin:0 auto;font-size:13px}
+h1{font-size:16.5px;font-weight:600;margin:0 0 7px;letter-spacing:.1px}
+.lead{font-size:13px;line-height:1.7;color:var(--ink2);margin:0 0 15px;max-width:1080px}
+.lead b{color:var(--ink);font-weight:600}
+.lead code,.note code,.stage-note code,.theory code,.cap code{font-family:var(--mono);font-size:11.5px;background:var(--panel);padding:1px 5px;border-radius:4px;color:var(--blue);overflow-wrap:anywhere}
+
+.bar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:var(--panel);border-radius:10px;padding:9px 12px;margin-bottom:12px}
+.seg{display:inline-flex;background:#fff;border:.5px solid var(--line);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:transparent;font:inherit;font-size:12px;padding:6px 10px;cursor:pointer;color:var(--ink2);white-space:nowrap}
+.seg button+button{border-left:.5px solid var(--line)}
+.seg button.on{background:var(--blue);color:#fff}
+.sp{flex:1}
+.btn{font:inherit;font-size:12px;padding:6px 11px;border:.5px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;color:var(--ink);white-space:nowrap}
+.btn:hover{background:var(--panel2)}
+.btn.on{background:var(--orange);border-color:var(--orange);color:#fff}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+.card{background:var(--panel2);border:.5px solid var(--line);border-radius:12px;padding:9px 10px 6px;min-width:0}
+.chd{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 2px 5px;flex-wrap:wrap}
+.chd h2{font-size:11.5px;font-weight:600;margin:0;color:var(--ink);letter-spacing:.15px}
+.chd .sub{font-size:10.5px;color:var(--ink3);font-family:var(--mono);line-height:1.5}
+svg{width:100%;height:auto;display:block;overflow:visible}
+svg text{font-family:var(--sans)}
+.kl{font-size:10.5px;fill:var(--ink3)}
+.lb{font-size:12px;fill:var(--ink2)}
+.tt{font-size:12px;font-weight:600;fill:var(--ink)}
+.bf{font-family:var(--mono);font-size:10.5px;fill:var(--ink2)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+.stage-card{background:var(--panel2);border:.5px solid var(--line);border-radius:12px;padding:10px 11px 8px;margin-bottom:12px}
+.stage-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(270px,1fr);gap:14px;align-items:start}
+.scroll-wrap{min-width:0}
+.stage-scroll,.bode-scroll{overflow-x:auto;background:#fff;border:.5px solid var(--line);border-radius:9px}
+#svgStage{width:100%;min-width:760px}
+#svgBode{width:100%;min-width:880px}
+.stage-note{background:#fff;border:.5px solid var(--line);border-radius:9px;padding:10px 12px;font-size:11.5px;line-height:1.72;color:var(--ink2)}
+.stage-note h3{font-size:12px;color:var(--ink);margin:0 0 6px;font-weight:600}
+.stage-note p{margin:0 0 6px}
+.stage-note p:last-child{margin-bottom:0}
+.stage-note b{color:var(--ink)}
+.stage-note .live{margin-top:8px;padding-top:7px;border-top:.5px dashed var(--line);font-family:var(--mono);font-size:10.5px;color:var(--ink3);line-height:1.6}
+
+.designbar{background:var(--panel);border-radius:10px;padding:10px 12px;margin-bottom:12px}
+.design-step{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px;font-size:11.5px;color:var(--ink2)}
+.param-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 16px}
+.param{display:flex;flex-direction:column;gap:4px;min-width:0}
+.phead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:11.5px;color:var(--ink2)}
+.phead span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pval{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:3px;background:#D8D5CC;border-radius:2px;outline:0;margin:7px 0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--blue);border:2px solid #fff;box-shadow:0 0 0 .5px var(--line);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--blue);border:2px solid #fff;cursor:pointer}
+input[type=range]:disabled::-webkit-slider-thumb{background:#B8B5AC;cursor:not-allowed}
+select{font:inherit;font-size:11.5px;padding:3px 6px;border:.5px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}
+.status{font-size:10.8px;color:var(--ink3);margin-top:9px;line-height:1.6}
+.badge{display:inline-block;padding:1px 6px;border-radius:5px;font-size:10px;font-weight:600;white-space:nowrap}
+.badge.ok{background:var(--green-l);color:var(--green)}
+.badge.off{background:#FBF3E4;color:#7A5B22}
+.badge.bad{background:#FBE9E9;color:var(--red)}
+label.ck{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;cursor:pointer;font-size:11.5px;color:var(--ink2)}
+
+.main,.main2,.main3{display:grid;gap:14px;align-items:start;margin-bottom:14px}
+.main,.main2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.main3{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}
+.wide{margin-bottom:14px}
+.specs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;padding:7px 1px 2px}
+.spec{background:var(--panel);border-radius:7px;padding:5px 8px 6px;min-width:0}
+.spec i{display:block;font-style:normal;font-size:9.5px;color:var(--ink3);letter-spacing:.2px;white-space:nowrap}
+.spec b{display:block;font-family:var(--mono);font-size:12.5px;font-weight:600;margin-top:1px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.spec em{display:block;font-style:normal;font-size:9.5px;color:var(--ink3);margin-top:1px;line-height:1.35;overflow-wrap:anywhere}
+.spec.bad b{color:var(--red)}
+.cap{font-size:10px;color:#A8A59C;line-height:1.6;padding:5px 2px 1px}
+.drag-hint{font-size:10.5px;color:var(--ink3);font-family:var(--mono);white-space:nowrap}
+.handle{cursor:ew-resize;touch-action:none}
+
+.theory{font-size:11px;line-height:1.6;color:var(--ink2);overflow-x:auto}
+.theory h3{font-size:11.5px;color:var(--ink);margin:8px 0 5px;font-weight:600}
+.theory h3:first-child{margin-top:0}
+.theory table{width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:7px}
+.theory th,.theory td{border-bottom:.5px solid var(--line);padding:4px 5px;text-align:left;vertical-align:top}
+.theory th{color:var(--ink3);font-weight:500;background:var(--panel)}
+.theory td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.theory .dev{background:#fff;border:.5px solid var(--line);border-radius:7px;padding:6px 8px;font-family:var(--mono);font-size:10px;line-height:1.65;margin-bottom:8px;overflow-wrap:anywhere}
+.theory .warn{background:#FBF3E4;border-left:2px solid var(--gold);border-radius:0 5px 5px 0;padding:6px 8px;font-size:10.5px;color:#7A5B22;line-height:1.6;margin-top:6px}
+
+.notes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+.note{background:var(--panel2);border:.5px solid var(--line);border-radius:10px;padding:11px 13px;min-width:0}
+.note h3{font-size:12px;font-weight:600;margin:0 0 5px;color:var(--ink);display:flex;gap:6px;align-items:baseline}
+.note h3 i{font-style:normal;font-family:var(--mono);font-size:10.5px;color:#fff;background:var(--ink3);width:15px;height:15px;line-height:15px;text-align:center;border-radius:4px;flex:none}
+.note p{font-size:11.5px;line-height:1.72;color:var(--ink2);margin:0 0 5px}
+.note p:last-child{margin-bottom:0}
+.note b{color:var(--ink);font-weight:600}
+.note ul,.note ol{margin:4px 0;padding-left:20px}
+.note li{font-size:11.5px;line-height:1.7;color:var(--ink2);margin-bottom:3px}
+.note code{font-size:10.5px}
+.note .warn{display:block;margin-top:6px;padding:6px 8px;background:#FBF3E4;border-left:2px solid var(--gold);border-radius:0 5px 5px 0;font-size:11px;color:#7A5B22;line-height:1.65}
+.scroll-hint{display:none;font-size:10px;color:var(--ink3);text-align:right;padding:3px 4px 0}
+#probe{display:none}
+
+@media (max-width:1000px){
+  .main,.main2,.main3,.stage-grid{grid-template-columns:1fr}
+  #svgBodeP,#svgBodeI,#svgStep,#svgPM{width:100%}
+  .notes{grid-template-columns:1fr 1fr}
+  .param-grid{grid-template-columns:1fr 1fr}
+  .specs{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .stage-scroll{max-width:100%}
+  .scroll-hint{display:block}
+}
+@media (max-width:680px){
+  body{padding:16px 12px 32px}
+  .notes{grid-template-columns:1fr}
+  .param-grid{grid-template-columns:1fr}
+  .specs{grid-template-columns:1fr 1fr}
+  .spec b{font-size:12px}
+  .seg button{padding:6px 8px;font-size:11px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Buck 变换器双环控制：状态空间平均建模 → 小信号传递函数 → 伯德图校正</h1>
+  <p class="lead">
+    按<b>「控制系统数学模型」</b>章节的步骤走完一遍：从 CCM 下开关 <b>ON / OFF 状态方程</b>出发做<b>状态空间平均</b>，加扰动线性化，
+    在复域解出 <code>Gvd(s)</code>、<code>Gid(s)</code>、<code>Gvg(s)</code>；再按<b>先内环（电感电流）后外环（输出电压）</b>搭双环结构。
+    外环用 <b>PI + 高频极点</b> 的 Type-II 补偿网络，按频域法把零点、极点、截止频率配到目标相角裕度。
+    拖动伯德图顶部的 <b>● 零点 / × 极点 / ▲ 截止</b> 标记或下方滑块，开环伯德图、输出电压小信号阶跃响应与
+    <b>相角裕度—超调量</b>关系同时重算。
+  </p>
+
+  <div class="bar">
+    <div class="seg" id="segStage">
+      <button data-stage="0" class="on">① 电路与开关</button>
+      <button data-stage="1">② ON / OFF 状态方程</button>
+      <button data-stage="2">③ 状态空间平均</button>
+      <button data-stage="3">④ 稳态与扰动线性化</button>
+      <button data-stage="4">⑤ 复域传递函数</button>
+      <button data-stage="5">⑥ 双环控制结构</button>
+    </div>
+    <span class="sp"></span>
+    <button class="btn" id="btnPlayStage">▶ 播放建模推导</button>
+    <button class="btn" id="btnDesign">按频域法整定</button>
+    <button class="btn" id="btnReset">复位</button>
+  </div>
+
+  <div class="stage-card">
+    <div class="chd">
+      <h2 id="stageTitle">状态空间平均法 · 建模推导</h2>
+      <span class="sub" id="stageSub">第 1 / 6 步</span>
+    </div>
+    <div class="stage-grid">
+      <div class="scroll-wrap"><div class="stage-scroll"><svg id="svgStage" viewBox="0 0 1000 280" role="img" aria-label="Buck 变换器状态空间平均建模推导"></svg></div><div class="scroll-hint">← 左右滑动查看完整图 →</div></div>
+      <div class="stage-note" id="stageNote"></div>
+    </div>
+  </div>
+
+  <div class="designbar">
+    <div class="design-step">
+      <span><b>① 内环（电流环 PI，先行整定）：</b></span>
+      <label class="ck"><input type="checkbox" id="cbAuto" checked>自动定标 K<sub>c</sub> 使 ω<sub>c</sub> = 目标截止频率</label>
+      <span class="sp" style="flex:1"></span>
+      <span class="mono" id="designTag"></span>
+    </div>
+    <div class="param-grid">
+      <div class="param">
+        <div class="phead"><span>内环交越 f<sub>ci</sub> / Hz</span><span class="pval" id="vFci">—</span></div>
+        <input type="range" id="sFci" min="1000" max="20000" step="10" value="5000">
+      </div>
+      <div class="param">
+        <div class="phead"><span>内环 PI 零点 f<sub>zi</sub> / Hz</span><span class="pval" id="vFzi">—</span></div>
+        <input type="range" id="sFzi" min="50" max="4000" step="10" value="500">
+      </div>
+      <div class="param">
+        <div class="phead"><span>内环比例 K<sub>pi</sub>（自动解出）</span><span class="pval" id="vKpi">—</span></div>
+        <input type="range" id="sDummy" min="0" max="1" step="1" value="0" disabled>
+      </div>
+      <div class="param">
+        <div class="phead"><span>补偿零点 f<sub>z</sub> / Hz</span><span class="pval" id="vFz">—</span></div>
+        <input type="range" id="sFz" min="20" max="8000" step="1" value="200">
+      </div>
+      <div class="param">
+        <div class="phead"><span>补偿极点 f<sub>p</sub> / Hz</span><span class="pval" id="vFp">—</span></div>
+        <input type="range" id="sFp" min="300" max="60000" step="10" value="5000">
+      </div>
+      <div class="param">
+        <div class="phead"><span>目标截止 f<sub>c</sub> / Hz</span><span class="pval" id="vFc">—</span></div>
+        <input type="range" id="sFc" min="100" max="8000" step="10" value="1000">
+      </div>
+      <div class="param">
+        <div class="phead"><span>补偿增益 K<sub>c</sub>（log₁₀）</span><span class="pval" id="vKc">—</span></div>
+        <input type="range" id="sKc" min="1" max="8" step="0.001" value="4.9504" disabled>
+      </div>
+      <div class="param">
+        <div class="phead"><span>给定阶跃幅值 / V</span><span class="pval" id="vAmp">—</span></div>
+        <input type="range" id="sAmp" min="0.2" max="2" step="0.1" value="1">
+      </div>
+      <div class="param">
+        <div class="phead"><span>误差带 Δ</span><span class="pval" id="vBand">—</span></div>
+        <select id="band"><option value="0.05">±5%</option><option value="0.02">±2%</option></select>
+      </div>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="main">
+    <div class="card">
+      <div class="chd"><h2>功率级小信号伯德图 · G<sub>vd</sub>(s) / G<sub>id</sub>(s)</h2><span class="sub" id="bodePSub">—</span></div>
+      <svg id="svgBodeP" viewBox="0 0 600 420" role="img" aria-label="Buck 功率级控制到输出、占空比到电感电流伯德图"></svg>
+    </div>
+    <div class="card">
+      <div class="chd"><h2>电流内环开环伯德图 · L<sub>i</sub>(s)</h2><span class="sub" id="bodeISub">—</span></div>
+      <svg id="svgBodeI" viewBox="0 0 600 420" role="img" aria-label="电流内环开环伯德图"></svg>
+    </div>
+  </div>
+
+  <div class="card wide">
+    <div class="chd">
+      <h2>外环开环伯德图 · 校正前对象 G<sub>p</sub> / 补偿网络 C<sub>v</sub> / 校正后 L<sub>o</sub></h2>
+      <span class="drag-hint" id="dragHint">↔ 拖动顶部 ● f_z ／ × f_p ／ ▲ f_c 标记</span>
+    </div>
+    <div class="bode-scroll"><svg id="svgBode" viewBox="0 0 1100 500" role="img" aria-label="外环开环伯德图，可拖动补偿网络零点极点与截止频率"></svg></div>
+    <div class="scroll-hint">← 左右滑动查看完整伯德图 →</div>
+    <div class="cap" id="bodeCap">—</div>
+  </div>
+
+  <div class="main3">
+    <div class="card">
+      <div class="chd">
+        <h2>输出电压小信号阶跃响应 Δv<sub>o</sub>(t)</h2>
+        <button class="btn" id="btnPlayResp">▶ 播放响应</button>
+      </div>
+      <svg id="svgStep" viewBox="0 0 600 330" role="img" aria-label="输出电压闭环阶跃响应"></svg>
+      <div class="specs" id="specs"></div>
+      <div class="cap" id="stepCap">—</div>
+    </div>
+    <div class="card">
+      <div class="chd">
+        <h2>相角裕度 γ ↔ 超调量 σ 对照</h2>
+        <button class="btn" id="btnSweep">重算扫描曲线</button>
+      </div>
+      <svg id="svgPM" viewBox="0 0 600 330" role="img" aria-label="相角裕度与超调量关系图"></svg>
+      <div class="cap" id="pmCap">—</div>
+    </div>
+  </div>
+
+  <div class="card wide">
+    <div class="chd"><h2>推导与频域整定 · 公式 / 设计值 / 本页现算</h2><span class="sub" id="theorySub">—</span></div>
+    <div class="theory" id="theory"></div>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <h3><i>1</i> 状态空间平均法（课程建模四步）</h3>
+      <p>取状态 <code>x = [i_L, v_o]ᵀ</code>、输入 <code>u = v_g</code>、控制量 <code>d</code>。CCM 下每个开关周期只有两个线性电路：</p>
+      <ol>
+        <li>写 <b>ON</b> 态 <code>ẋ = A₁x + B₁v_g</code> 与 <b>OFF</b> 态 <code>ẋ = A₂x + B₂v_g</code>；</li>
+        <li>按占空比加权平均：<code>A = dA₁ + (1−d)A₂</code>、<code>B = dB₁ + (1−d)B₂</code>；</li>
+        <li>令 <code>ẋ = 0</code> 解稳态工作点 <code>X</code>、<code>D</code>；</li>
+        <li>加小扰动 <code>x = X + x̂</code>、<code>d = D + d̂</code>，<b>丢掉二阶小量 d̂·x̂</b> 得线性小信号模型。</li>
+      </ol>
+      <p>本页参数：<code>V_g = 24 V</code>、<code>V_o = 12 V</code>、<code>D = 0.5</code>、<code>L = 220 μH</code>、<code>C = 470 μF</code>、<code>R = 2.4 Ω</code>、<code>f_s = 100 kHz</code>。</p>
+    </div>
+    <div class="note">
+      <h3><i>2</i> 复域数学模型与负载阻抗</h3>
+      <p>令 <code>D_n(s) = LCs² + (L/R)s + 1</code>，在 <code>v̂_g = 0</code> 下解出：</p>
+      <p><code>G_vd(s) = V_g / D_n(s)</code>、<code>G_id(s) = V_g(Cs + 1/R)/D_n(s)</code>、<code>G_vg(s) = D / D_n(s)</code>。</p>
+      <p>两式相除得 <code>G_vd/G_id = 1/(Cs+1/R) = Z(s)</code>，正是<b>输出侧负载阻抗</b>——双环等效变换的关键一步。LC 双极点
+        <code>f₀ = 494.95 Hz</code>、<code>Q = 3.508</code>（谐振峰约 <code>+10.9 dB</code>）；负载零点 <code>1/(RC) = 141.09 Hz</code>。</p>
+      <p class="warn">课程理想模型不含电容 ESR，因此 <code>G_vd</code> 没有 ESR 零点。实际样机高频相位会少滞后 90°，本页的补偿参数不能直接照搬到硬件。</p>
+    </div>
+    <div class="note">
+      <h3><i>3</i> 先内环：电感电流环整定</h3>
+      <p>内环 <code>C_i(s) = K_pi(s + ω_zi)/s</code>，开环 <code>L_i = C_i·F_m·R_i·G_id</code>。高频段 <code>G_id ≈ V_g/(Ls)</code> 只有一个极点，
+        把 PI 零点放在 <code>f_zi = f_ci/10</code>，交越处 PI 近似纯比例，于是 <code>γ_i ≈ 84.3°</code>。</p>
+      <p>本页由 <code>|L_i(jω_ci)| = 1</code> 精确解出 <code>K_pi = 0.283744</code>（不是只靠渐近线 <code>ω_ci L/V_g</code>）。检测与调制增益按课程传递函数框图<b>标幺化为 1</b>：<code>F_m = 1/V_m = 1</code>、<code>R_i = H_v = 1</code>。</p>
+      <p>内环闭环 <code>T_i = L_i/(1+L_i)</code>，外环看到的等效对象是 <code>G_p(s) = Z(s)·T_i(s)</code>：三阶、直流增益 <code>R</code>，
+        低频近似一阶惯性，这正是外环能用简单 PI 校正的前提。</p>
+    </div>
+    <div class="note">
+      <h3><i>4</i> 频域法设计外环补偿网络</h3>
+      <p>补偿器取 <code>C_v(s) = K_c(s+ω_z)/[s(s+ω_p)]</code>：<b>原点极点</b>保证零稳态误差，<b>零点 ω_z</b> 抬相位，<b>高频极点 ω_p</b> 抑制开关噪声。
+        外环开环 <code>L_o = C_v·G_p</code>。</p>
+      <p>频域整定三步：① 选目标截止 <code>f_c</code>（本页 1 kHz，约 <code>f_s/100</code>）；② 选 <code>γ</code>，按
+        <code>f_z ≈ f_c/5</code>、<code>f_p ≈ 5f_c</code> 布置零极点；③ 由 <code>|L_o(jω_c)| = 1</code> 反解 <code>K_c</code>。</p>
+      <p>推荐点：<code>f_z = 200 Hz</code>、<code>f_p = 5 kHz</code>、<code>γ = 67.80°</code>、<code>h = 18.80 dB @ 4.705 kHz</code>、<code>K_c = 8.9215×10⁴</code>。</p>
+      <p class="warn">关掉「自动定标」后 <code>K_c</code> 可手动拖，此时 <code>f_c</code> 变成<b>实测交越频率</b>，橙标记会跟着走，不再是设计目标。</p>
+    </div>
+    <div class="note">
+      <h3><i>5</i> 相角裕度 ↔ 超调量</h3>
+      <p>二阶系统 <code>γ = arctan[2ζ/√(√(1+4ζ⁴)−2ζ²)]</code>、<code>σ = 100·e^(−πζ/√(1−ζ²))</code>。图中<b>灰虚线</b>是这条理论曲线，
+        <b>蓝点</b>是保持 <code>f_p、f_c、K_c</code> 定标不变、只扫 <code>f_z</code> 时本页五阶闭环的实测 <code>(γ, σ)</code>。</p>
+      <p>趋势一致：<code>γ ↓ → σ ↑</code>。但两条线<b>不重合</b>——五阶系统还有一对高频闭环极点与一个零点，二阶公式只在中频段近似成立。
+        例如 <code>γ = 40.4°</code> 时二阶公式给约 <code>28%</code>，本页实测 <code>35.1%</code>。</p>
+      <p>注意 <code>Δ=5%</code> 且超调很小时，<code>t_s</code> 可能<b>小于</b> <code>t_r</code>（响应一进误差带就不再出来），这不是算错。</p>
+    </div>
+    <div class="note">
+      <h3><i>6</i> 模型边界与易错点</h3>
+      <p><b>小信号、连续导通、平均模型。</b>阶跃是给定电压叠加 <code>0.2~2 V</code> 的小扰动 <code>Δv_o</code>，不是从 0 V 启动到大占空比；
+        不含 PWM 饱和、开关纹波、采样保持与数字延时，也不含 ESR / 电感 DCR。</p>
+      <p><b>单位。</b><code>G_vd</code> 单位 V（每单位占空比）、<code>G_id</code> 单位 A；<code>G_p = v_o/i_ref</code> 单位 Ω；
+        <code>C_v = i_ref/v_error</code> 单位 Ω⁻¹·s⁻¹ 量级，所以 <code>K_c</code> 数值看起来大是正常的。</p>
+      <p><b>失稳工况。</b>若把零点推到截止频率以上，<code>γ</code> 会变负、闭环极点进入右半平面，响应标红「发散」，伯德图仍照常显示，方便观察失稳过程。</p>
+      <p><b>单文件离线可用</b>，无外部库。<code>?still=1</code> 关闭自动播放，<code>?probe=1</code> 输出诊断数据。</p>
+    </div>
+  </div>
+
+  <pre id="probe"></pre>
+  <pre id="err" style="display:none"></pre>
+</div>
+
+<script>
+(function(){
+'use strict';
+var $=function(id){return document.getElementById(id);};
+var PI=Math.PI,R2D=180/PI,LOG10=Math.LN10;
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function fmt(v,n){return (v===null||v===undefined||!isFinite(v))?'—':Number(v).toFixed(n===undefined?3:n);}
+function fmtt(t){if(t===null||t===undefined||!isFinite(t))return '—';return t<0.1?(t*1000).toFixed(3)+' ms':t.toFixed(5)+' s';}
+function fhz(f){if(f===null||f===undefined||!isFinite(f))return '—';return f>=10000?(f/1000).toFixed(1)+' kHz':f>=1000?(f/1000).toFixed(2)+' kHz':f.toFixed(1)+' Hz';}
+var SUP=['⁰','¹','²','³','⁴','⁵','⁶','⁷','⁸','⁹'];
+function sci(v){if(v===null||!isFinite(v)||v===0)return '—';var e=Math.floor(Math.log10(Math.abs(v)));
+  return (v/Math.pow(10,e)).toFixed(4)+'×10'+(e<0?'⁻':'')+String(Math.abs(e)).split('').map(function(d){return SUP[+d];}).join('');}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+/* ================= 电路参数 / 设计基准 ================= */
+var E={Vg:24,Vo:12,R:2.4,L:220e-6,C:470e-6,fs:1e5,Vm:1,Ri:1,Hv:1};
+E.D=E.Vo/E.Vg; E.Io=E.Vo/E.R; E.Fm=1/E.Vm;
+E.w0=1/Math.sqrt(E.L*E.C); E.f0=E.w0/(2*PI);
+E.Q=E.R*Math.sqrt(E.C/E.L); E.fzL=1/(E.R*E.C)/(2*PI);
+E.Dn=[E.L*E.C,E.L/E.R,1];
+E.Gvd_n=[E.Vg]; E.Gvd_d=E.Dn.slice();
+E.Gid_n=[E.Vg*E.C,E.Vg/E.R]; E.Gid_d=E.Dn.slice();
+E.Gvg_n=[E.D]; E.Gvg_d=E.Dn.slice();
+var DEF={fci:5000,fzi:500,fz:200,fp:5000,fc:1000,amp:1,band:.05,auto:true,stage:0};
+var K0=8.921492e4;   /* 推荐点自动定标解，用于手动模式的初值 */
+var q=new URLSearchParams(location.search);
+var reduced=(q.has('still')||(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches));
+var st={fci:DEF.fci,fzi:DEF.fzi,fz:DEF.fz,fp:DEF.fp,fc:DEF.fc,amp:DEF.amp,band:DEF.band,
+        auto:DEF.auto,stage:0,reduced:reduced,logKc:Math.log10(K0),
+        playingStage:false,stageTimer:null,playingResp:false,cursor:0,last:null,
+        curve:null,sweep:null,lastAction:'已载入状态空间平均模型与频域整定值',errors:[],cache:null};
+window.addEventListener('error',function(e){
+  var msg=String(e.message||e.error||'error');st.errors.push(msg);
+  var er=$('err');if(er){er.style.display='block';er.textContent=msg;}
+});
+
+/* ================= 复数 / 多项式（降幂系数） ================= */
+function cadd(a,b){return [a[0]+b[0],a[1]+b[1]];}
+function cmul(a,b){return [a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0]];}
+function cdiv(a,b){var d=b[0]*b[0]+b[1]*b[1];if(d<1e-300)return [NaN,NaN];return [(a[0]*b[0]+a[1]*b[1])/d,(a[1]*b[0]-a[0]*b[1])/d];}
+function cabs(a){return Math.hypot(a[0],a[1]);}
+function pval(c,z){var r=[0,0],i;for(i=0;i<c.length;i++)r=cadd(cmul(r,z),[c[i],0]);return r;}
+function align(a,n){var r=new Array(n).fill(0),i;for(i=0;i<a.length&&i<n;i++)r[n-a.length+i]=a[i];return r;}
+function padd(a,b){var n=Math.max(a.length,b.length),A=align(a,n),B=align(b,n),r=[],i;for(i=0;i<n;i++)r.push(A[i]+B[i]);return r;}
+function pmul(a,b){var r=new Array(a.length+b.length-1).fill(0),i,j;for(i=0;i<a.length;i++)for(j=0;j<b.length;j++)r[i+j]+=a[i]*b[j];return r;}
+function pscale(a,k){return a.map(function(v){return v*k;});}
+function tfval(n,d,z){return cdiv(pval(n,z),pval(d,z));}
+function tfAt(n,d,f){return tfval(n,d,[0,2*PI*f]);}
+function polyRoots(coef){
+  var c=coef.slice();while(c.length>1&&Math.abs(c[0])<1e-300)c.shift();
+  var n=c.length-1;if(n<1)return [];
+  var a=c.map(function(v){return v/c[0];}),R=1,k;
+  for(k=1;k<=n;k++)R=Math.max(R,Math.pow(Math.abs(a[k]),1/k));
+  R*=2;if(!isFinite(R)||R<1)R=1;
+  var z=[],i,it,j;
+  for(i=0;i<n;i++){var th=2*PI*(i+.23)/n;z.push([.8*R*Math.cos(th),.8*R*Math.sin(th)]);}
+  for(it=0;it<500;it++){
+    var mx=0;
+    for(i=0;i<n;i++){
+      var nu=pval(a,z[i]),de=[1,0];
+      for(j=0;j<n;j++)if(j!==i)de=cmul(de,[z[i][0]-z[j][0],z[i][1]-z[j][1]]);
+      var dz=cdiv(nu,de);
+      if(isFinite(dz[0])&&isFinite(dz[1])){z[i][0]-=dz[0];z[i][1]-=dz[1];mx=Math.max(mx,cabs(dz));}
+    }
+    if(mx<1e-10*Math.max(1,R))break;
+  }
+  return z;
+}
+
+/* ================= Bode / 稳定裕度 ================= */
+function bodeData(n,d,fmin,fmax,N){
+  var out=[],acc=0,i,prev=null;N=N||520;
+  for(i=0;i<=N;i++){
+    var f=fmin*Math.pow(fmax/fmin,i/N),z=tfAt(n,d,f),mag=20*Math.log10(Math.max(cabs(z),1e-300));
+    var ph=Math.atan2(z[1],z[0])*R2D;
+    if(prev!==null){var df=ph-prev;if(df>180)acc-=360;else if(df<-180)acc+=360;}
+    out.push({f:f,mag:isFinite(mag)?mag:-300,ph:ph+acc});prev=ph;
+  }
+  return out;
+}
+function margins(n,d,fmin,fmax,N){
+  var B=bodeData(n,d,fmin||1,fmax||1e6,N||1400),i;
+  var wc=null,pm=null,phc=null,wg=null,gm=null;
+  for(i=1;i<B.length;i++){
+    if(B[i-1].mag>=0&&B[i].mag<0){
+      var t=B[i-1].mag/(B[i-1].mag-B[i].mag),f=B[i-1].f*Math.pow(B[i].f/B[i-1].f,t);
+      if(wc===null||f<wc){wc=f;phc=B[i-1].ph+(B[i].ph-B[i-1].ph)*t;pm=180+phc;}
+    }
+    if((B[i-1].ph+180)*(B[i].ph+180)<0&&B[i].mag<60){
+      var t2=(-180-B[i-1].ph)/(B[i].ph-B[i-1].ph),f2=B[i-1].f*Math.pow(B[i].f/B[i-1].f,t2);
+      if(wg===null||f2<wg){wg=f2;gm=-(B[i-1].mag+(B[i].mag-B[i-1].mag)*t2);}
+    }
+  }
+  return {B:B,wc:wc,pm:pm,phc:phc,wg:wg,gm:gm};
+}
+
+/* ================= 模型构建 ================= */
+function buildModel(s){
+  var m={};
+  /* 内环 PI：Ci(s)=Kpi(s+wzi)/s，由 |Li(j wci)|=1 精确解 Kpi */
+  m.wci=2*PI*s.fci;m.wzi=2*PI*s.fzi;
+  var base=cabs(tfval(pmul([1,m.wzi],E.Gid_n),pmul([1,0],E.Dn),[0,m.wci]))*E.Fm*E.Ri;
+  m.Kpi=1/Math.max(base,1e-300);m.Kii=m.Kpi*m.wzi;
+  m.Ci_n=[m.Kpi,m.Kpi*m.wzi];m.Ci_d=[1,0];
+  m.Li_n=pscale(pmul(m.Ci_n,E.Gid_n),E.Fm*E.Ri);m.Li_d=pmul(m.Ci_d,E.Gid_d);
+  /* 内环闭环 T_i 与外环等效对象 G_p = Z·T_i（消去 (Cs+1/R) 的精确形式） */
+  var K=E.Vg*m.Kpi*E.Fm*E.Ri;
+  m.Gp_n=[K,K*m.wzi];
+  m.Gp_d=padd(pmul([1,0],E.Dn),pscale(pmul([1,m.wzi],[E.C,1/E.R]),K));
+  m.Z_n=[1];m.Z_d=[E.C,1/E.R];
+  m.Ti_n=m.Li_n.slice();m.Ti_d=padd(m.Li_d,m.Li_n);
+  /* 外环 Type-II 补偿 */
+  m.wz=2*PI*s.fz;m.wp=2*PI*s.fp;m.wct=2*PI*s.fc;
+  m.Cv0_n=[1,m.wz];m.Cv0_d=[1,m.wp,0];
+  var L0n=pmul(m.Cv0_n,m.Gp_n),L0d=pmul(m.Cv0_d,m.Gp_d);
+  var z0=tfval(L0n,L0d,[0,m.wct]);
+  m.KcAuto=1/Math.max(cabs(z0),1e-300);
+  m.Kc=s.auto?m.KcAuto:Math.pow(10,s.logKc);
+  m.Cv_n=pscale(m.Cv0_n,m.Kc);m.Cv_d=m.Cv0_d.slice();
+  m.Lo_n=pscale(L0n,m.Kc);m.Lo_d=L0d.slice();
+  m.T_n=m.Lo_n.slice();m.T_d=padd(m.Lo_d,m.Lo_n);
+  return m;
+}
+
+/* ================= 闭环阶跃响应：可控标准型 RK4 ================= */
+function stepResponse(T,opt){
+  var d=T.T_d.slice(),n=align(T.T_n,d.length-1),lead=d[0],i;
+  d=d.map(function(v){return v/lead;});n=n.map(function(v){return v/lead;});
+  var N=d.length-1,a=d.slice(1).reverse(),b=n.slice().reverse();
+  var fmax=Math.max(opt.fp,opt.fci,5*opt.fc,10*E.f0);
+  var dt=0.12/(2*PI*fmax*3);
+  var Tend=opt.Tend||clamp(6/Math.max(200,Math.min(opt.fc,1500)),.004,.05);
+  var M=clamp(Math.ceil(Tend/dt),900,opt.maxM||26000);dt=Tend/M;
+  var x=new Array(N).fill(0),out=[],k;
+  function rhs(y){var r=new Array(N),j,s=1;for(j=0;j<N-1;j++)r[j]=y[j+1];for(j=0;j<N;j++)s-=a[j]*y[j];r[N-1]=s;return r;}
+  function yof(y){var s=0,j;for(j=0;j<N;j++)s+=b[j]*y[j];return s;}
+  function addx(y,h,v){return y.map(function(q,j){return q+h*v[j];});}
+  var blown=false;
+  for(k=0;k<=M;k++){
+    var y=yof(x);
+    if(!isFinite(y)||Math.abs(y)>1e5){blown=true;for(;k<=M;k++)out.push({t:k*dt,y:NaN});break;}
+    out.push({t:k*dt,y:y});if(k===M)break;
+    var k1=rhs(x),k2=rhs(addx(x,dt/2,k1)),k3=rhs(addx(x,dt/2,k2)),k4=rhs(addx(x,dt,k3)),j;
+    for(j=0;j<N;j++)x[j]+=dt/6*(k1[j]+2*k2[j]+2*k3[j]+k4[j]);
+  }
+  var dc=tfval(T.T_n,T.T_d,[0,0])[0];
+  return {out:out,dt:dt,N:N,dc:dc,blown:blown,Tend:Tend};
+}
+function stepMetrics(S,band){
+  var o=S.out,dc=S.dc,peak=-Infinity,tp=null,tr=null,ts=0,i,valid=!S.blown;
+  for(i=0;i<o.length;i++){if(!isFinite(o[i].y)){valid=false;break;}if(o[i].y>peak){peak=o[i].y;tp=o[i].t;}}
+  if(!valid||!isFinite(dc)||Math.abs(dc)<1e-9)return {sigma:null,tp:null,tr:null,ts:null,unstable:true,dc:dc};
+  var sig=Math.max(0,(peak-dc)/dc*100);
+  for(i=1;i<o.length;i++)if(tr===null&&o[i-1].y<dc&&o[i].y>=dc){
+    tr=o[i-1].t+(dc-o[i-1].y)/(o[i].y-o[i-1].y)*(o[i].t-o[i-1].t);break;
+  }
+  var lo=dc*(1-band),hi=dc*(1+band);
+  for(i=0;i<o.length;i++)if(o[i].y<lo||o[i].y>hi)ts=o[i].t;
+  return {sigma:sig,tp:tp,tr:tr,ts:ts,unstable:false,peak:peak,dc:dc};
+}
+
+/* ================= 全局计算 ================= */
+function compute(){
+  var m=buildModel(st);
+  var mo=margins(m.Lo_n,m.Lo_d,1,1e6,1400);
+  var mi=margins(m.Li_n,m.Li_d,10,1e5,700);
+  var S=stepResponse(m,{fp:st.fp,fc:st.fc,fci:st.fci});
+  var mt=stepMetrics(S,st.band);
+  var poles=polyRoots(m.T_d),maxRe=-Infinity,j;
+  for(j=0;j<poles.length;j++)maxRe=Math.max(maxRe,poles[j][0]);
+  var unstable=(maxRe>1||mt.unstable||!isFinite(maxRe));
+  var slow=(mo.wc===null||mo.wc<20);
+  if(unstable){mt.sigma=null;mt.tp=null;mt.tr=null;mt.ts=null;mt.unstable=true;}
+  else if(slow){mt.sigma=null;mt.tp=null;mt.tr=null;mt.ts=null;mt.slow=true;}
+  /* 绘图视窗：把暂态放大到可读区间，指标仍在完整时域上计算 */
+  S.Tview=clamp(Math.max(8/(2*PI*st.fc),2.4*(mt.tp||0),1.5*(mt.ts||0)),2e-4,S.Tend);
+  if(unstable||slow)S.Tview=Math.min(S.Tend,Math.max(S.Tview,.008));
+  S.viewIdx=S.out.length-1;
+  for(j=0;j<S.out.length;j++){if(S.out[j].t>S.Tview){S.viewIdx=Math.max(2,j);break;}}
+  return {m:m,mo:mo,mi:mi,S:S,mt:mt,poles:poles,maxRe:maxRe,unstable:unstable,slow:slow};
+}
+function cur(){if(!st.cache)st.cache=compute();return st.cache;}
+
+/* ================= 绘图通用 ================= */
+var C={blue:'#185FA5',orange:'#D85A30',green:'#3F8F5B',red:'#A32D2D',purple:'#6B4FA8',gold:'#C9973F',grid:'#E4E2DB',ink:'#2C2C2A',ink2:'#5F5E5A',ink3:'#8A8880'};
+function T(x,y,s,cls,anchor,extra){return '<text x="'+x+'" y="'+y+'" class="'+(cls||'kl')+'"'+(anchor?' text-anchor="'+anchor+'"':'')+(extra||'')+'>'+s+'</text>';}
+function LN(x1,y1,x2,y2,col,w,dash){return '<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="'+col+'" stroke-width="'+(w||1)+'"'+(dash?' stroke-dasharray="'+dash+'"':'')+'/>';}
+function RE(x,y,w,h,col,fill,r){return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="'+(r===undefined?7:r)+'" fill="'+(fill||'#fff')+'" stroke="'+col+'" stroke-width="1"/>';}
+function CI(x,y,r,col,fill,w){return '<circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="'+(fill||'#fff')+'" stroke="'+col+'" stroke-width="'+(w||1.4)+'"/>';}
+function AR(x1,y1,x2,y2,col,dash){
+  var dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy)||1,ux=dx/L,uy=dy/L,px=-uy,py=ux,s=6;
+  return '<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="'+col+'" stroke-width="1.4"'+(dash?' stroke-dasharray="'+dash+'"':'')+'/>'+
+    '<path d="M'+x2+' '+y2+' L'+(x2-ux*s+px*s*.55)+' '+(y2-uy*s+py*s*.55)+' L'+(x2-ux*s-px*s*.55)+' '+(y2-uy*s-py*s*.55)+' Z" fill="'+col+'"/>';
+}
+function pathFrom(pts,col,w,dash){
+  var s='',i,started=false;
+  for(i=0;i<pts.length;i++){
+    if(!isFinite(pts[i][0])||!isFinite(pts[i][1])){started=false;continue;}
+    s+=(started?'L':'M')+pts[i][0].toFixed(2)+' '+pts[i][1].toFixed(2)+' ';started=true;
+  }
+  return '<path d="'+s+'" fill="none" stroke="'+col+'" stroke-width="'+(w||2)+'" stroke-linejoin="round" stroke-linecap="round"'+(dash?' stroke-dasharray="'+dash+'"':'')+'/>';
+}
+var FMIN=10,FMAX=1e5,LF0=Math.log10(FMIN),LF1=Math.log10(FMAX);
+function XLOG(f,L,R){return L+(Math.log10(clamp(f,FMIN,FMAX))-LF0)/(LF1-LF0)*(R-L);}
+function FLOG(x,L,R){return Math.pow(10,LF0+(x-L)/(R-L)*(LF1-LF0));}
+var FTICKS=[10,100,1000,10000,100000];
+function tickLabel(f){return f>=1000?(f/1000)+'k':''+f;}
+function freqAxis(L,R,yTop,yBot){var s='',i;
+  for(i=0;i<FTICKS.length;i++){var x=XLOG(FTICKS[i],L,R);
+    s+=LN(x,yTop,x,yBot,C.grid,1)+T(x,yBot+15,tickLabel(FTICKS[i]),'kl','middle');
+  }
+  return s;
+}
+function magAxis(L,R,yT,yB,vmin,vmax,step){var s='',v;
+  for(v=vmin;v<=vmax+.001;v+=step){var y=yB-(v-vmin)/(vmax-vmin)*(yB-yT);
+    s+=LN(L,y,R,y,v===0?C.ink3:C.grid,v===0?1.2:1)+T(L-7,y+3.5,v,'kl','end');
+  }
+  return s;
+}
+function phAxis(L,R,yT,yB,vmin,vmax,step){var s='',v;
+  for(v=vmin;v<=vmax+.001;v+=step){var y=yB-(v-vmin)/(vmax-vmin)*(yB-yT);
+    s+=LN(L,y,R,y,v===-180?C.red:C.grid,v===-180?1.2:1,v===-180?'4 3':null)+T(L-7,y+3.5,v+'°','kl','end');
+  }
+  return s;
+}
+
+/* ================= 六步建模推导图 ================= */
+function stageBox(x,y,w,h,title,col,fill){
+  var s=RE(x,y,w,h,col,fill||'#fff',9);
+  s+='<path d="M'+x+' '+(y+28)+' H'+(x+w)+'" stroke="'+col+'" stroke-width=".8" opacity=".4"/>';
+  s+=T(x+13,y+19,title,'tt','start',' fill="'+col+'"');
+  return s;
+}
+function coil(x1,x2,y,n){
+  var s=LN(x1,y,x1+9,y,C.ink,1.6),dx=(x2-x1-18)/n,i;
+  for(i=0;i<n;i++)s+='<path d="M'+(x1+9+dx*i)+' '+y+' A'+(dx/2)+' '+(dx/2)+' 0 0 0 '+(x1+9+dx*(i+1))+' '+y+'" fill="none" stroke="'+C.blue+'" stroke-width="1.8"/>';
+  return s+LN(x2-9,y,x2,y,C.ink,1.6);
+}
+function s0(){
+  var s='';
+  s+=CI(70,165,24,C.ink,'#fff',1.6)+T(70,158,'+','tt','middle')+T(70,177,'−','tt','middle')+T(70,205,'v_g','bf','middle');
+  s+=LN(70,141,70,110,C.ink,1.6)+LN(70,189,70,220,C.ink,1.6);
+  s+=LN(70,110,140,110,C.ink,1.6)+CI(140,110,3.2,C.ink,C.ink,1)+CI(190,110,3.2,C.ink,C.ink,1);
+  s+=LN(140,110,186,94,C.blue,2)+LN(190,110,250,110,C.ink,1.6);
+  s+=T(165,80,'S','tt','middle',' fill="'+C.blue+'"')+T(165,66,'PWM  d(t)','kl','middle');
+  s+=LN(250,110,250,150,C.ink,1.6)+LN(237,150,263,150,C.ink,1.8);
+  s+='<path d="M237 170 L263 170 L250 150 Z" fill="#fff" stroke="'+C.ink+'" stroke-width="1.5"/>';
+  s+=LN(250,170,250,220,C.ink,1.6)+T(272,166,'D','tt','start');
+  s+=coil(250,470,110,4)+LN(470,110,620,110,C.ink,1.6);
+  s+=CI(250,110,3.5,C.ink,C.ink,1)+CI(470,110,3.5,C.ink,C.ink,1)+CI(620,110,3.5,C.ink,C.ink,1);
+  s+=LN(470,110,470,156,C.ink,1.6)+LN(452,156,488,156,C.ink,2)+LN(452,165,488,165,C.ink,2)+LN(470,165,470,220,C.ink,1.6);
+  s+=T(497,164,'C','tt','start');
+  s+=LN(620,110,620,146,C.ink,1.6)+RE(608,146,24,64,C.ink,'#fff',2)+T(620,182,'R','tt','middle')+LN(620,210,620,220,C.ink,1.6);
+  s+=T(650,142,'+  v_o','bf','start')+T(650,208,'−','bf','start');
+  s+=LN(70,220,620,220,C.ink,1.6);
+  s+=AR(300,84,382,84,C.blue)+T(341,76,'i_L','bf','middle');
+  s+=LN(345,220,345,232,C.ink,1.4)+LN(334,232,356,232,C.ink,1.4)+LN(338,236,352,236,C.ink,1.2)+LN(342,240,348,240,C.ink,1.2);
+  s+=stageBox(690,40,290,200,'PWM 波形与稳态工作点',C.blue,'#F7FBFF');
+  var x0=706,x1=964,yh=104,yl=140,i;
+  for(i=0;i<3;i++){
+    var a=x0+i*86,b=a+43,c=a+86;
+    s+='<path d="M'+a+' '+yl+' V'+yh+' H'+b+' V'+yl+' H'+c+'" fill="none" stroke="'+C.blue+'" stroke-width="1.8"/>';
+  }
+  s+=T(706,158,'0','kl')+T(958,158,'t','kl','end')+T(835,94,'d(t)','bf','middle');
+  s+=T(706,182,'V_o = D·V_g = 12 V   I_L = V_o/R = 5 A','bf');
+  s+=T(706,202,'D = 0.5   f_s = 100 kHz   T_s = 10 μs','bf');
+  s+=T(706,222,'CCM：一个周期只有 ON / OFF 两个线性电路','kl');
+  return s;
+}
+function s1(){
+  var s='';
+  s+=stageBox(40,32,440,196,'① ON 态：S 导通、D 反偏  (0 ≤ t < dT_s)',C.blue,'#F7FBFF');
+  s+=T(60,86,'L·di_L/dt = v_g − v_o','bf')+T(60,110,'C·dv_o/dt = i_L − v_o/R','bf');
+  s+=T(60,142,'A₁ = [[0, −1/L], [1/C, −1/(RC)]]','bf');
+  s+=T(60,164,'B₁ = [1/L, 0]ᵀ','bf');
+  s+=T(60,196,'ẋ = A₁x + B₁v_g','tt');
+  s+=stageBox(520,32,440,196,'② OFF 态：S 关断、D 续流  (dT_s ≤ t < T_s)',C.orange,'#FFF9F6');
+  s+=T(540,86,'L·di_L/dt = − v_o','bf')+T(540,110,'C·dv_o/dt = i_L − v_o/R','bf');
+  s+=T(540,142,'A₂ = [[0, −1/L], [1/C, −1/(RC)]]','bf');
+  s+=T(540,164,'B₂ = [0, 0]ᵀ','bf');
+  s+=T(540,196,'ẋ = A₂x + B₂v_g','tt');
+  s+=T(60,254,'两个子系统都是线性定常的；开关动作只是让状态在两者之间切换。','lb');
+  s+=T(500,254,'⇒ 按占空比加权平均，得单个连续的平均模型','tt','start',' fill="'+C.green+'"');
+  return s;
+}
+function s2(){
+  var s='';
+  s+=stageBox(70,24,860,168,'③ 状态空间平均：A = dA₁ + (1−d)A₂ ，B = dB₁ + (1−d)B₂',C.green,'#F7FCF8');
+  s+=T(95,80,'L·d⟨i_L⟩/dt = d·v_g − ⟨v_o⟩','tt');
+  s+=T(95,106,'C·d⟨v_o⟩/dt = ⟨i_L⟩ − ⟨v_o⟩/R','tt');
+  s+=T(95,140,'A(d) = [[0, −1/L], [1/C, −1/(RC)]]    B(d) = [d/L, 0]ᵀ','bf');
+  s+=T(95,168,'Buck 的 A₁ = A₂ ⇒ A 与 d 无关；唯一的非线性乘积来自输入项 d·v_g。','lb');
+  s+=stageBox(70,204,860,60,'平均模型是「连续但非线性」的（含 d·v_g），还需在工作点附近线性化',C.purple,'#FBF9FF');
+  s+=T(95,242,'下一步：令 x = X + x̂ ,  d = D + d̂ ,  v_g = V_g + v̂_g ，并略去二阶小量 d̂·v̂_g','tt');
+  return s;
+}
+function s3(){
+  var s='';
+  s+=stageBox(40,30,440,200,'④ 稳态工作点（令 ẋ = 0）',C.blue,'#F7FBFF');
+  s+=T(62,84,'D·V_g − V_o = 0    ⇒    V_o = D·V_g','bf');
+  s+=T(62,108,'I_L − V_o/R = 0    ⇒    I_L = V_o/R','bf');
+  s+=T(62,140,'本页：V_g = 24 V，D = 0.5','tt');
+  s+=T(62,164,'V_o = 12 V，I_L = 5 A，R = 2.4 Ω','tt');
+  s+=T(62,198,'稳态值就是小信号的坐标原点','lb');
+  s+=stageBox(520,30,440,200,'⑤ 加扰动、线性化（小信号模型）',C.orange,'#FFF9F6');
+  s+=T(542,82,'(D + d̂)(V_g + v̂_g) ≈ D·V_g + D·v̂_g + V_g·d̂','bf');
+  s+=T(542,110,'L·dî_L/dt = D·v̂_g + V_g·d̂ − v̂_o','tt');
+  s+=T(542,134,'C·dv̂_o/dt = î_L − v̂_o/R','tt');
+  s+=T(542,166,'被丢掉的项：d̂·v̂_g（二阶小量）','lb');
+  s+=T(542,198,'现在是线性定常模型 ⇒ 可拉氏变换','tt','start',' fill="'+C.green+'"');
+  s+=T(500,258,'零初始条件下取拉氏变换，消去 î_L 即得复域传递函数','lb','middle');
+  return s;
+}
+function s4(){
+  var s='';
+  var Dn='D_n(s) = LCs² + (L/R)s + 1';
+  s+=stageBox(40,24,920,46,'⑥ 复域数学模型（v̂_g = 0 时先解控制→输出）',C.ink,'#F7F7F4');
+  s+=T(60,54,Dn+'     f₀ = 1/(2π√LC) = 494.95 Hz     Q = R√(C/L) = 3.508','bf');
+  s+=stageBox(40,82,295,122,'占空比 → 输出电压',C.blue,'#F7FBFF');
+  s+=T(58,126,'G_vd(s) = v̂_o/d̂','tt')+T(58,152,'= V_g / D_n(s)','bf')+T(58,180,'二阶双极点，无零点','kl');
+  s+=stageBox(352,82,295,122,'占空比 → 电感电流',C.orange,'#FFF9F6');
+  s+=T(370,126,'G_id(s) = î_L/d̂','tt')+T(370,152,'= V_g(Cs+1/R)/D_n(s)','bf')+T(370,180,'零点 1/(RC) = 141.09 Hz','kl');
+  s+=stageBox(664,82,295,122,'输入电压 → 输出电压',C.green,'#F7FCF8');
+  s+=T(682,126,'G_vg(s) = v̂_o/v̂_g','tt')+T(682,152,'= D / D_n(s)','bf')+T(682,180,'音频衰减率（line rejection）','kl');
+  s+=stageBox(40,216,920,48,'关键恒等式（双环等效变换的桥梁）',C.purple,'#FBF9FF');
+  s+=T(60,246,'G_vd(s) / G_id(s) = 1/(Cs + 1/R) = R/(RCs+1) = Z(s)   →   输出电压 / 电感电流 = 输出侧负载阻抗','bf');
+  return s;
+}
+function blk(x,y,w,h,l1,l2,col,fill){
+  var s=RE(x,y,w,h,col,fill||'#fff',8);
+  if(l2){s+=T(x+w/2,y+h/2-3,l1,'bf','middle',' fill="'+col+'"');
+         s+=T(x+w/2,y+h/2+14,l2,'bf','middle',' fill="'+col+'"');}
+  else s+=T(x+w/2,y+h/2+4,l1,'tt','middle',' fill="'+col+'"');
+  return s;
+}
+function s5(){
+  var s='',y=112;
+  s+=T(30,26,'外环（电压）→ 内环（电感电流）→ 功率级','tt','start',' fill="'+C.blue+'"');
+  s+=T(30,44,'严格先整定内环，再把 T_i 代入外环','kl');
+  s+=AR(30,y,86,y,C.ink)+T(32,y-9,'v̂_ref','bf');
+  s+=CI(100,y,13,C.ink,'#fff',1.5)+T(100,y+4,'Σ','tt','middle');
+  s+=AR(113,y,166,y,C.ink)+T(140,y-9,'e_v','bf','middle');
+  s+=blk(166,y-33,150,66,'C_v(s)','K_c(s+ω_z)/[s(s+ω_p)]',C.blue,'#F7FBFF');
+  s+=AR(316,y,368,y,C.ink)+T(342,y-9,'î_ref','bf','middle');
+  s+=CI(382,y,13,C.ink,'#fff',1.5)+T(382,y+4,'Σ','tt','middle');
+  s+=AR(395,y,446,y,C.ink)+T(420,y-9,'e_i','bf','middle');
+  s+=blk(446,y-33,140,66,'C_i(s)','K_pi(s+ω_zi)/s',C.orange,'#FFF9F6');
+  s+=AR(586,y,634,y,C.ink)+T(610,y-9,'d̂','bf','middle');
+  s+=CI(646,y,6,C.ink,C.ink,1);
+  s+=AR(652,y,706,y,C.ink);
+  s+=blk(706,y-33,124,66,'Buck 功率级','G_id / G_vd',C.green,'#F7FCF8');
+  s+=AR(830,y,900,y,C.ink)+T(906,y+4,'v̂_o','tt');
+  /* 电压外环反馈 */
+  s+=LN(900,y,900,y+50,C.blue,1.3)+AR(900,y+50,100,y+50,C.blue,'5 3')+AR(100,y+50,100,y+15,C.blue);
+  s+=T(500,y+45,'H_v = 1 · 电压外环反馈','kl','middle',' fill="'+C.blue+'"');
+  s+=T(111,y+30,'−','tt','start',' fill="'+C.blue+'"');
+  /* 电流内环反馈（取自 i_L） */
+  s+=LN(768,y+33,768,y+82,C.orange,1.3)+AR(768,y+82,382,y+82,C.orange,'5 3')+AR(382,y+82,382,y+15,C.orange);
+  s+=T(575,y+77,'R_i = 1 · 电流内环反馈（取自 î_L）','kl','middle',' fill="'+C.orange+'"');
+  s+=T(393,y+30,'−','tt','start',' fill="'+C.orange+'"');
+  s+=stageBox(40,214,920,54,'等效变换结果（双环 → 单环）',C.purple,'#FBF9FF');
+  s+=T(58,252,'T_i = L_i/(1+L_i)　·　G_p(s) = Z(s)·T_i(s)　·　L_o(s) = C_v(s)·G_p(s)　·　Φ(s) = L_o/(1+L_o)','bf');
+  return s;
+}
+var STAGES=[
+ {t:'电路拓扑与开关状态',sub:'CCM · 两个线性子电路',svg:s0,note:function(){return '<h3>① 从电路图写出状态方程</h3>'+
+   '<p>取状态向量 <code>x = [i_L, v_o]ᵀ</code>。开关 <b>S</b> 以周期 <code>T_s = 10 μs</code> 通断，二极管 <b>D</b> 在 S 关断时续流，电感电流始终为正，即 <b>CCM</b>。</p>'+
+   '<p>稳态占空比 <code>D = V_o/V_g = 0.5</code>，输出 <code>V_o = 12 V</code>、<code>I_L = 5 A</code>。一个开关周期内电路只在两个线性拓扑之间切换，这是状态空间平均法成立的前提。</p>'+
+   '<p class="live">V_g 24 V · V_o 12 V · D 0.5 · L 220 μH · C 470 μF · R 2.4 Ω · f_s 100 kHz</p>';}},
+ {t:'ON / OFF 状态方程',sub:'ẋ = A₁x + B₁v_g ／ ẋ = A₂x + B₂v_g',svg:s1,note:function(){return '<h3>② 两个子系统的状态空间表达式</h3>'+
+   '<p><b>ON 态</b>：电感左端接 <code>v_g</code>，<code>L·di_L/dt = v_g − v_o</code>；<b>OFF 态</b>：电感左端被二极管钳到地，<code>L·di_L/dt = −v_o</code>。</p>'+
+   '<p>电容方程两个状态相同：<code>C·dv_o/dt = i_L − v_o/R</code>。写成矩阵形式 <code>ẋ = A₁x + B₁v_g</code> 与 <code>ẋ = A₂x + B₂v_g</code>。</p>'+
+   '<p>注意 <b>Buck 恰有 A₁ = A₂</b>，只有输入矩阵不同。这不是所有变换器都有的性质，Boost / Buck-Boost 的 A 会显含 d。</p>'+
+   '<p class="live">A₁ = A₂ = [[0, −1/L], [1/C, −1/(RC)]]　 B₁ = [1/L, 0]ᵀ　 B₂ = [0, 0]ᵀ</p>';}},
+ {t:'状态空间平均',sub:'A = dA₁+(1−d)A₂',svg:s2,note:function(){return '<h3>③ 加权平均得到连续模型</h3>'+
+   '<p>用一个开关周期内的平均值代替瞬时值：<code>ẋ = [dA₁+(1−d)A₂]x + [dB₁+(1−d)B₂]v_g</code>。这就是<b>状态空间平均法</b>的核心一步。</p>'+
+   '<p>代回电路语言：<code>L·d⟨i_L⟩/dt = d·v_g − ⟨v_o⟩</code>，<code>C·d⟨v_o⟩/dt = ⟨i_L⟩ − ⟨v_o⟩/R</code>。</p>'+
+   '<p>由于 A₁ = A₂，平均后 <b>A 与 d 无关</b>；模型仍是连续的，但含乘积 <code>d·v_g</code>，所以是<b>非线性</b>模型，还不能直接拉氏变换。</p>'+
+   '<p class="live">平均模型：L·i̇_L = d·v_g − v_o ； C·v̇_o = i_L − v_o/R</p>';}},
+ {t:'稳态工作点与扰动线性化',sub:'x = X + x̂ ，d = D + d̂',svg:s3,note:function(){return '<h3>④ 解工作点，再做小信号线性化</h3>'+
+   '<p>令 <code>ẋ = 0</code>：<code>V_o = D·V_g = 12 V</code>、<code>I_L = V_o/R = 5 A</code>。</p>'+
+   '<p>令 <code>x = X + x̂</code>、<code>d = D + d̂</code>、<code>v_g = V_g + v̂_g</code>，展开 <code>(D+d̂)(V_g+v̂_g)</code> 后<b>丢掉二阶小量 d̂·v̂_g</b>，得线性小信号方程。</p>'+
+   '<p>这一步正是课程「控制系统数学模型」里<b>非线性方程的线性化</b>：用工作点处的增量模型代替原系统。控制量 <code>d̂</code> 的系数 <code>V_g</code> 就是稳态输入电压。</p>'+
+   '<p class="live">L·dî_L/dt = D·v̂_g + V_g·d̂ − v̂_o ； C·dv̂_o/dt = î_L − v̂_o/R</p>';}},
+ {t:'复域传递函数',sub:'G_vd / G_id / G_vg / Z(s)',svg:s4,note:function(){return '<h3>⑤ 拉氏变换，得到复域数学模型</h3>'+
+   '<p>零初始条件下变换并消去 <code>î_L</code>，记 <code>D_n(s) = LCs² + (L/R)s + 1</code>，得三条传递函数（图中三张卡）。</p>'+
+   '<p>LC 双极点 <code>f₀ = 494.95 Hz</code>、<code>Q = 3.508</code>，谐振峰约 <code>20lgQ ≈ 10.9 dB</code>；<code>G_id</code> 比 <code>G_vd</code> 多一个负载零点 <code>1/(RC) = 141.09 Hz</code>，所以高频段只滚 −20 dB/dec，相位约 −90°。</p>'+
+   '<p>两式相除得到 <code>Z(s) = G_vd/G_id = R/(RCs+1)</code>：<b>把电流环闭起来以后，外环看到的对象就是「负载阻抗 × 电流环闭环」</b>。</p>'+
+   '<p class="live">f₀ 494.95 Hz · Q 3.5079 · 1/(2πRC) 141.09 Hz · G_vd(0) 24 V · G_id(0) 10 A</p>';}},
+ {t:'双环控制结构与等效变换',sub:'先内环、后外环',svg:s5,note:function(){var c=cur();return '<h3>⑥ 双环结构与频域整定</h3>'+
+   '<p><b>内环</b>（电感电流）：<code>L_i = C_i·F_m·R_i·G_id</code>，先整定，交越 <code>f_ci = '+fmt(st.fci,0)+' Hz</code>，相角裕度 <code>'+fmt(c.mi.pm,1)+'°</code>。</p>'+
+   '<p><b>外环</b>（输出电压）：内环闭环 <code>T_i = L_i/(1+L_i)</code> 与负载阻抗相乘得 <code>G_p = Z·T_i</code>，再用 <code>C_v(s)</code> 校正，开环 <code>L_o = C_v·G_p</code>。</p>'+
+   '<p>顺序不能反：外环的被控对象必须先知道内环等效传递函数。本页按 <code>|L_o(jω_c)| = 1</code> 自动定标增益，当前 <code>γ = '+fmt(c.mo.pm,1)+'°</code>。</p>'+
+   '<p class="live">K_pi '+fmt(c.m.Kpi,6)+' · K_c '+sci(c.m.Kc)+' · ω_c '+fhz(c.mo.wc)+' · γ '+fmt(c.mo.pm,2)+'°</p>';}}
+];
+function renderStage(){
+  var S=STAGES[st.stage];
+  $('svgStage').innerHTML=S.svg();
+  $('stageNote').innerHTML=S.note();
+  $('stageTitle').textContent='状态空间平均法 · '+S.t;
+  $('stageSub').textContent='第 '+(st.stage+1)+' / 6 步　'+S.sub;
+  Array.prototype.forEach.call($('segStage').children,function(b){b.classList.toggle('on',+b.dataset.stage===st.stage);});
+}
+
+/* ================= 伯德图：通用小图 ================= */
+function frame(x,y,w,h){return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="none" stroke="'+C.grid+'" stroke-width="1"/>';}
+function legend(x,y,items){
+  var s='<rect x="'+(x-6)+'" y="'+(y-14)+'" width="'+(items.reduce(function(a,b){return a+b.w;},0)+18)+'" height="20" rx="4" fill="#fff" opacity=".94"/>',cx=x;
+  items.forEach(function(it){
+    s+=LN(cx,y-4,cx+17,y-4,it.col,2.2,it.dash)+T(cx+21,y,it.label,'kl');
+    cx+=it.w;
+  });
+  return s;
+}
+function magAt(n,d,f){return 20*Math.log10(Math.max(cabs(tfAt(n,d,f)),1e-300));}
+function drawBodeSmall(id,curves,opt){
+  var L=54,R=575,mT=46,mB=205,pT=245,pB=376,mv=opt.mag,pv=opt.ph,s='';
+  var YM=function(v){return mB-(clamp(v,mv[0],mv[2])-(mv[0]))/((mv[2])-(mv[0]))*(mB-mT);};
+  var YP=function(v){return pB-(clamp(v,pv[0],pv[2])-(pv[0]))/((pv[2])-(pv[0]))*(pB-pT);};
+  s+=frame(L,mT,R-L,mB-mT)+frame(L,pT,R-L,pB-pT);
+  s+=magAxis(L,R,mT,mB,mv[0],mv[2],mv[1])+phAxis(L,R,pT,pB,pv[0],pv[2],pv[1]);
+  s+=freqAxis(L,R,mT,pB);
+  s+=T(L-42,mT-12,'|G| / dB','kl')+T(L-42,pT-10,'φ / °','kl');
+  s+=T((L+R)/2,pB+30,'频率 f / Hz','kl','middle');
+  curves.forEach(function(cv){
+    var B=bodeData(cv.n,cv.d,FMIN,FMAX,520),pm=[],pp=[],i,x,y;
+    for(i=0;i<B.length;i++){x=XLOG(B[i].f,L,R);pm.push([x,YM(B[i].mag)]);pp.push([x,YP(B[i].ph)]);}
+    s+=pathFrom(pm,cv.col,cv.w||2,cv.dash||null)+pathFrom(pp,cv.col,cv.w||2,cv.dash||null);
+  });
+  var lastMX=-1e9,mrow=0;
+  (opt.marks||[]).forEach(function(mk){
+    var x=XLOG(mk.f,L,R),w=Math.max(76,mk.label.length*7.4+20);
+    var cx=clamp(x,L+w/2,R-w/2);
+    mrow=(x-lastMX<w+10)?(mrow+1)%2:0;
+    var cy=3+mrow*19;
+    s+=LN(x,cy+16,x,pB,mk.col,1.2,'5 4');
+    s+='<rect x="'+(cx-w/2)+'" y="'+cy+'" width="'+w+'" height="16" rx="8" fill="'+mk.col+'" opacity=".93"/>';
+    s+=T(cx,cy+11.5,mk.label,'bf','middle',' fill="#fff"');
+    lastMX=x;
+  });
+  s+=legend(opt.legendX||(L+8),mT+2,opt.legend);
+  if(opt.foot)s+=T(L+6,pB+46,opt.foot,'kl');
+  $(id).innerHTML=s;
+}
+
+/* ================= 伯德图：主图（可拖动零 / 极点 / 截止） ================= */
+var BL=64,BR=1072,BMT=70,BMB=248,BPT=300,BPB=452,BMV=[-100,20,60],BPV=[-270,30,-60];
+function bY(v){return BMB-(clamp(v,BMV[0],BMV[2])-BMV[0])/(BMV[2]-BMV[0])*(BMB-BMT);}
+function bP(v){return BPB-(clamp(v,BPV[0],BPV[2])-BPV[0])/(BPV[2]-BPV[0])*(BPB-BPT);}
+function chip(x,y,label,col,h,drag){
+  var w=146,cx=clamp(x,BL+w/2,BR-w/2);
+  var s='<g'+(drag?' class="handle" data-h="'+h+'"':'')+'>';
+  s+='<rect x="'+(cx-w/2)+'" y="'+y+'" width="'+w+'" height="17" rx="8.5" fill="'+col+'" opacity=".95"/>';
+  s+=T(cx,y+12.2,label,'bf','middle',' fill="#fff" font-weight="600"');
+  s+='</g>';
+  return s;
+}
+function drawBodeMain(c){
+  var m=c.m,mo=c.mo,s='',L=BL,R=BR;
+  var YM=function(v){return bY(v);},YP=function(v){return bP(v);};
+  s+=frame(L,BMT,R-L,BMB-BMT)+frame(L,BPT,R-L,BPB-BPT);
+  s+=magAxis(L,R,BMT,BMB,BMV[0],BMV[2],BMV[1])+phAxis(L,R,BPT,BPB,BPV[0],BPV[2],BPV[1]);
+  s+=freqAxis(L,R,BMT,BPB);
+  s+=T(L-46,BMT-12,'|L| / dB','kl')+T(L-46,BPT-10,'φ / °','kl');
+  s+=T((L+R)/2,BPB+30,'频率 f / Hz','kl','middle');
+  /* 三条幅频曲线：对象 / 补偿器 / 校正后 */
+  var sets=[
+    {n:m.Gp_n,d:m.Gp_d,col:C.ink3,w:1.5,dash:'5 4'},
+    {n:m.Cv_n,d:m.Cv_d,col:C.green,w:1.5,dash:'3 3'},
+    {n:m.Lo_n,d:m.Lo_d,col:C.blue,w:2.5,dash:null}
+  ];
+  sets.forEach(function(cv){
+    var B=bodeData(cv.n,cv.d,FMIN,FMAX,640),pm=[],i;
+    for(i=0;i<B.length;i++)pm.push([XLOG(B[i].f,L,R),YM(B[i].mag)]);
+    s+=pathFrom(pm,cv.col,cv.w,cv.dash);
+  });
+  /* 相位：校正后 + 对象 */
+  [{n:m.Lo_n,d:m.Lo_d,col:C.blue,w:2.5,dash:null},{n:m.Gp_n,d:m.Gp_d,col:C.ink3,w:1.3,dash:'5 4'}].forEach(function(cv){
+    var B=bodeData(cv.n,cv.d,FMIN,FMAX,640),pp=[],i;
+    for(i=0;i<B.length;i++)pp.push([XLOG(B[i].f,L,R),YP(B[i].ph)]);
+    s+=pathFrom(pp,cv.col,cv.w,cv.dash);
+  });
+  s+=legend(L+12,BPB-12,[
+    {label:'L_o = C_v·G_p 校正后',col:C.blue,w:168},
+    {label:'G_p 对象',col:C.ink3,w:80,dash:'5 4'},
+    {label:'C_v 补偿器',col:C.green,w:96,dash:'3 3'}
+  ]);
+  /* 零 / 极点 / 截止 竖线与可拖动芯片 */
+  var hz=[{h:'fz',f:st.fz,col:C.green,lab:'○ 零点 f_z '+fhz(st.fz),y:5,glyph:'o'},
+          {h:'fp',f:st.fp,col:C.purple,lab:'× 极点 f_p '+fhz(st.fp),y:25,glyph:'x'},
+          {h:'fc',f:(st.auto?st.fc:(mo.wc||st.fc)),col:C.orange,
+           lab:(st.auto?'▲ 截止 f_c ':'▲ 实测 ω_c ')+fhz(st.auto?st.fc:mo.wc),y:45,glyph:'t'}];
+  hz.forEach(function(k){
+    var x=XLOG(k.f,L,R);
+    s+=LN(x,BMT+16,x,BPB,k.col,1.3,'6 5');
+    s+=chip(x,k.y,k.lab,k.col,k.h,!(k.h==='fc'&&!st.auto));
+    if(k.glyph==='o')s+=CI(x,BMT+9,5,'#fff',C.green,2);
+    else if(k.glyph==='x'){s+=LN(x-5,BMT+4,x+5,BMT+14,C.purple,2)+LN(x+5,BMT+4,x-5,BMT+14,C.purple,2);}
+    else s+='<path d="M'+x+' '+(BMT+3)+' L'+(x+6)+' '+(BMT+14)+' L'+(x-6)+' '+(BMT+14)+' Z" fill="'+C.orange+'"/>';
+  });
+  /* 0 dB / −180° 加粗 */
+  s+=LN(L,YM(0),R,YM(0),C.ink2,1.3);
+  s+=LN(L,YP(-180),R,YP(-180),C.red,1.3,'5 4');
+  /* 交越标记 + PM 括号 */
+  if(mo.wc&&isFinite(mo.wc)){
+    var xw=XLOG(mo.wc,L,R),yp=YP(mo.phc);
+    s+=CI(xw,YM(0),5,C.orange,'#fff',2);
+    s+=CI(xw,yp,4.5,C.blue,'#fff',2);
+    s+='<rect x="'+(xw+5)+'" y="'+(YM(0)-23)+'" width="116" height="15" rx="3" fill="#fff" opacity=".92"/>';
+    s+=T(xw+8,YM(0)-11,'ω_c = '+fhz(mo.wc),'bf','start',' fill="'+C.orange+'"');
+    var ya=Math.min(yp,YP(-180)),yb=Math.max(yp,YP(-180));
+    if(Math.abs(yb-ya)>8){
+      s+=LN(xw+15,ya,xw+15,yb,C.orange,2)+LN(xw+11,ya,xw+19,ya,C.orange,1.6)+LN(xw+11,yb,xw+19,yb,C.orange,1.6);
+      s+=T(xw+22,(ya+yb)/2+4,'γ = '+fmt(mo.pm,1)+'°','tt','start',' fill="'+C.orange+'"');
+    }
+  }
+  /* 相位穿越 + 幅值裕度括号 */
+  if(mo.wg&&isFinite(mo.wg)&&isFinite(mo.gm)){
+    var xg=XLOG(mo.wg,L,R),mg=magAt(m.Lo_n,m.Lo_d,mo.wg),ym=YM(mg),y0=YM(0);
+    s+=CI(xg,YP(-180),4.5,C.red,'#fff',2);
+    s+=CI(xg,ym,4,C.red,'#fff',2);
+    var t1=Math.min(ym,y0),t2=Math.max(ym,y0);
+    if(Math.abs(t2-t1)>8){
+      s+=LN(xg+13,t1,xg+13,t2,C.red,2)+LN(xg+9,t1,xg+17,t1,C.red,1.6)+LN(xg+9,t2,xg+17,t2,C.red,1.6);
+      s+=T(xg+20,(t1+t2)/2+4,'h = '+fmt(mo.gm,1)+' dB','tt','start',' fill="'+C.red+'"');
+    }
+    s+=T(xg+8,BPT+16,'ω_g = '+fhz(mo.wg),'bf','start',' fill="'+C.red+'"');
+  }
+  /* 零极点标注在相位侧 */
+  s+=T(L+8,BPT+16,'−180° 线（相位穿越）','kl','start',' fill="'+C.red+'"');
+  $( 'svgBode').innerHTML=s;
+  $('dragHint').textContent=st.auto?'↔ 拖动顶部 ● f_z ／ × f_p ／ ▲ f_c 标记':'↔ 拖动顶部 ○ f_z ／ × f_p 标记（▲ 为实测交越）';
+  $('bodeCap').innerHTML='幅频上 <b>L_o = G_p + C_v</b>（dB 相加），这正是伯德图校正：'+
+    '<b style="color:'+C.blue+'">蓝实线</b>为校正后开环、<b style="color:'+C.ink3+'">灰虚线</b>为等效对象、<b style="color:'+C.green+'">绿点线</b>为补偿网络。'+
+    ' 当前 γ = <b>'+fmt(mo.pm,2)+'°</b>（ω_c = '+fhz(mo.wc)+'），h = <b>'+fmt(mo.gm,2)+' dB</b>（ω_g = '+fhz(mo.wg)+'）。'+
+    (mo.pm!==null&&mo.pm<0?' <b style="color:'+C.red+'">γ &lt; 0，闭环已失稳。</b>':'');
+}
+
+/* ================= 阶跃响应 ================= */
+function drawStep(c){
+  var S=c.S,mt=c.mt,L=54,R=575,top=28,bot=268,amp=st.amp,band=st.band;
+  var peak=(mt.sigma!==null?mt.peak:1.25)*amp;
+  var ymax=Math.max(amp*1.35,peak*1.10,amp*(1+band)*1.25),ymin=Math.min(-amp*.18,0);
+  if(!isFinite(ymax)||ymax>amp*6)ymax=amp*1.6;
+  var Tmax=S.Tview||S.Tend;
+  var X=function(t){return L+t/Tmax*(R-L);},Y=function(v){return bot-(clamp(v,ymin,ymax)-ymin)/(ymax-ymin)*(bot-top);};
+  var s=frame(L,top,R-L,bot-top),i,v;
+  /* y 网格 */
+  var stepY=niceY((ymax-ymin)/5);
+  for(v=Math.ceil(ymin/stepY)*stepY;v<=ymax+.0001;v+=stepY){
+    var yy=Y(v);s+=LN(L,yy,R,yy,C.grid,1)+T(L-7,yy+3.5,fmt(v,amp<1?2:1),'kl','end');
+  }
+  for(i=0;i<=5;i++){var xx=L+i/5*(R-L);s+=LN(xx,top,xx,bot,C.grid,1)+T(xx,bot+15,fmt(Tmax*i/5*1000,1),'kl','middle');}
+  s+=T(L-42,top-9,'Δv_o / V','kl')+T(R,bot+30,'时间 t / ms','kl','end');
+  /* 误差带 */
+  s+='<rect x="'+L+'" y="'+Y(amp*(1+band))+'" width="'+(R-L)+'" height="'+(Y(amp*(1-band))-Y(amp*(1+band)))+'" fill="'+C.green+'" opacity=".055"/>';
+  s+=LN(L,Y(amp*(1+band)),R,Y(amp*(1+band)),C.green,1,'4 4')+LN(L,Y(amp*(1-band)),R,Y(amp*(1-band)),C.green,1,'4 4');
+  s+=T(L+7,Y(amp*(1+band))-5,'±'+(band*100).toFixed(0)+'% 误差带','kl','start',' fill="'+C.green+'"');
+  /* 给定阶跃 */
+  s+='<path d="M'+L+' '+Y(0)+' L'+L+' '+Y(amp)+' H'+R+'" fill="none" stroke="'+C.ink3+'" stroke-width="1.3" stroke-dasharray="6 4"/>';
+  s+='<rect x="'+(R-158)+'" y="'+(Y(amp)-25)+'" width="154" height="14" rx="3" fill="#fff" opacity=".92"/>';
+  s+=T(R-7,Y(amp)-14,'给定 Δv_ref = '+fmt(amp,1)+' V','kl','end');
+  /* 响应曲线（可动画截断） */
+  var vEnd=S.viewIdx||S.out.length;
+  var lim=st.cursor>=1?vEnd:Math.max(2,Math.floor(vEnd*st.cursor));
+  var pts=[],blown=false;
+  for(i=0;i<lim;i++){
+    var yyv=S.out[i].y*amp;
+    if(!isFinite(yyv)||Math.abs(yyv)>amp*5){blown=true;pts.push([X(S.out[i].t),NaN]);continue;}
+    pts.push([X(S.out[i].t),Y(yyv)]);
+  }
+  s+=pathFrom(pts,c.unstable?C.red:C.blue,2.4);
+  /* 峰值与指标 */
+  if(mt.sigma!==null&&mt.tp!==null&&st.cursor>=1){
+    var px=X(mt.tp),py=Y(mt.peak*amp);
+    s+=CI(px,py,4,C.orange,'#fff',2);
+    s+=T(px+7,py-7,'σ = '+fmt(mt.sigma,2)+'%','tt','start',' fill="'+C.orange+'"');
+  }
+  if(c.unstable||blown)s+=T((L+R)/2,top+26,'响应发散（闭环极点进入右半平面）','tt','middle',' fill="'+C.red+'"');
+  else if(c.slow)s+=T((L+R)/2,top+26,'开环交越过低：响应时域超出仿真视窗，时域指标不可读','tt','middle',' fill="'+C.gold+'"');
+  if(st.cursor<1&&st.cursor>0)s+=T((L+R)/2,top+16,'▶ 播放中 …','kl','middle',' fill="'+C.blue+'"');
+  $('svgStep').innerHTML=s;
+  /* 指标卡 */
+  var sp=[
+    ['σ 超调量',c.unstable?'—':fmt(mt.sigma,2)+' %','闭环实测',c.unstable],
+    ['t_p 峰值时间',c.unstable?'—':fmtt(mt.tp),'首次峰值',c.unstable],
+    ['t_r 上升时间',c.unstable?'—':fmtt(mt.tr),'首次到达稳态',c.unstable],
+    ['t_s 调节时间',c.unstable?'—':fmtt(mt.ts),'最后离开 ±'+(band*100).toFixed(0)+'%',c.unstable],
+    ['γ 相角裕度',fmt(c.mo.pm,2)+' °','ω_c = '+fhz(c.mo.wc),c.mo.pm!==null&&c.mo.pm<30],
+    ['h 幅值裕度',fmt(c.mo.gm,2)+' dB','ω_g = '+fhz(c.mo.wg),c.mo.gm!==null&&c.mo.gm<6],
+    ['γ_i 内环裕度',fmt(c.mi.pm,2)+' °','f_ci = '+fhz(st.fci),false],
+    ['K_pi 内环比例',fmt(c.m.Kpi,6),'由 |L_i|=1 解出',false],
+    ['K_c 补偿增益',sci(c.m.Kc),st.auto?'自动定标':'手动',false],
+    ['闭环极点 max Re',fmt(c.maxRe,1),c.unstable?'右半平面 · 失稳':'全部在左半平面',c.unstable]
+  ];
+  $('specs').innerHTML=sp.map(function(a){return '<div class="spec'+(a[3]?' bad':'')+'"><i>'+a[0]+'</i><b>'+a[1]+'</b><em>'+a[2]+'</em></div>';}).join('');
+  $('stepCap').innerHTML='由闭环传递函数 <code>Φ(s) = L_o/(1+L_o)</code> 零初值数值积分（可控标准型 RK4，'+
+    S.N+' 阶，步长 '+S.dt.toExponential(2)+' s）；小信号模型下稳态值 <code>Δv_o(∞) = Δv_ref = '+fmt(amp,1)+' V</code>。'+
+    (c.unstable?' <b style="color:'+C.red+'">当前参数失稳，σ / t_p / t_r / t_s 不予显示。</b>':
+     (c.slow?' <b style="color:'+C.gold+'">开环在扫描频段内无有效 0 dB 交越，环路带宽极低，时域指标不予显示。</b>':''));
+}
+function niceY(x){if(!isFinite(x)||x<=0)return 1;var p=Math.pow(10,Math.floor(Math.log10(x))),n=x/p,m=1;if(n>5)m=10;else if(n>2)m=5;else if(n>1)m=2;return m*p;}
+
+/* ================= PM ↔ σ 关系图 ================= */
+function pmOfZeta(z){return Math.atan2(2*z,Math.sqrt(Math.sqrt(1+4*Math.pow(z,4))-2*z*z))*R2D;}
+function sigOfZeta(z){return 100*Math.exp(-PI*z/Math.sqrt(1-z*z));}
+function computeSweep(){
+  var out=[],i,N=24;
+  for(i=0;i<N;i++){
+    var fz=30*Math.pow(8000/30,i/(N-1));
+    var tmp={};for(var k in st)tmp[k]=st[k];tmp.fz=fz;
+    var m=buildModel(tmp),mo=margins(m.Lo_n,m.Lo_d,1,1e6,520);
+    var S=stepResponse(m,{fp:tmp.fp,fc:tmp.fc,fci:tmp.fci,Tend:0.010,maxM:4200});
+    var mt=stepMetrics(S,tmp.band),poles=polyRoots(m.T_d),mx=-Infinity,j;
+    for(j=0;j<poles.length;j++)mx=Math.max(mx,poles[j][0]);
+    var bad=(mx>1||mt.unstable||mo.pm===null||mo.pm<0);
+    out.push({fz:fz,pm:mo.pm,sigma:bad?null:clamp(mt.sigma,0,140),bad:bad});
+  }
+  st.sweep=out;return out;
+}
+function drawPM(c){
+  if(!st.sweep)computeSweep();
+  var L=56,R=575,top=28,bot=268,xmax=80,ymax=100;
+  var X=function(v){return L+v/xmax*(R-L);},Y=function(v){return bot-v/ymax*(bot-top);};
+  var s=frame(L,top,R-L,bot-top),i,v;
+  for(v=0;v<=ymax;v+=20){var yy=Y(v);s+=LN(L,yy,R,yy,C.grid,1)+T(L-8,yy+3.5,v,'kl','end');}
+  for(v=0;v<=xmax;v+=10){var xx=X(v);s+=LN(xx,top,xx,bot,C.grid,1)+T(xx,bot+15,v+'°','kl','middle');}
+  s+=T(L-44,top-9,'σ / %','kl')+T(R,bot+30,'相角裕度 γ / °','kl','end');
+  /* 二阶理论曲线 */
+  var tp=[],z;
+  for(i=0;i<=180;i++){z=.04+(.94-.04)*i/180;var p=pmOfZeta(z),g=sigOfZeta(z);if(p<=xmax&&g<=ymax)tp.push([X(p),Y(g)]);}
+  s+=pathFrom(tp,C.ink3,1.7,'6 4');
+  s+=T(X(30),Y(60)+2,'二阶理论 ζ–γ–σ','kl','start',' fill="'+C.ink3+'"');
+  /* 本页扫描 */
+  var pts=[],valid=[];
+  st.sweep.forEach(function(o){if(o.pm===null||o.pm<0||o.pm>xmax||o.sigma===null)return;var p=[X(o.pm),Y(Math.min(o.sigma,ymax))];pts.push(p);valid.push(o);});
+  s+=pathFrom(pts,C.blue,2.2);
+  st.sweep.forEach(function(o){
+    if(o.pm===null||o.pm<0||o.pm>xmax||o.sigma===null)return;
+    s+=CI(X(o.pm),Y(Math.min(o.sigma,ymax)),2.6,C.blue,C.blue,1);
+  });
+  /* 当前工作点 */
+  if(c.mo.pm!==null&&c.mt.sigma!==null&&!c.unstable&&c.mo.pm>=0&&c.mo.pm<=xmax){
+    var x0=X(c.mo.pm),y0=Y(Math.min(c.mt.sigma,ymax));
+    s+=CI(x0,y0,9,C.orange,'none',2)+CI(x0,y0,4,C.orange,C.orange,1);
+    s+=T(x0+(c.mo.pm>58?-10:10),y0-13,'当前 γ='+fmt(c.mo.pm,1)+'°  σ='+fmt(c.mt.sigma,1)+'%','tt',c.mo.pm>58?'end':'start',' fill="'+C.orange+'"');
+  }
+  s+=T(R-10,top+18,'γ ↓  →  σ ↑','tt','end',' fill="'+C.orange+'"');
+  $('svgPM').innerHTML=s;
+  $('pmCap').innerHTML='<b style="color:'+C.ink3+'">灰虚线</b>：标准二阶公式 <code>γ=arctan[2ζ/√(√(1+4ζ⁴)−2ζ²)]</code>、<code>σ=100e^(−πζ/√(1−ζ²))</code>；'+
+    '<b style="color:'+C.blue+'">蓝点线</b>：固定 <code>f_p、f_c</code> 与定标方式，把补偿零点 <code>f_z</code> 从 30 Hz 扫到 8 kHz 时本页五阶闭环的实测值；'+
+    '<b style="color:'+C.orange+'">橙圈</b>为当前工作点。两条线趋势一致但不重合，因为高频极点与零点也会改变超调。';
+}
+
+/* ================= 理论面板 ================= */
+function renderTheory(c){
+  var m=c.m,mo=c.mo,mi=c.mi,mt=c.mt;
+  var rows=[
+    ['稳态占空比 D','V_o / V_g',fmt(E.D,4),''],
+    ['LC 谐振频率 f₀','1/(2π√LC)',fhz(E.f0),'Q = '+fmt(E.Q,4)],
+    ['负载零点','1/(2πRC)',fhz(E.fzL),'G_id 分子零点'],
+    ['内环比例 K_pi','|C_i·F_m·R_i·G_id(jω_ci)| = 1',fmt(m.Kpi,6),'f_zi = '+fhz(st.fzi)],
+    ['内环积分 K_ii','K_pi·ω_zi',fmt(m.Kii,2),''],
+    ['内环相角裕度 γ_i','180° + ∠L_i(jω_ci)',fmt(mi.pm,2)+' °','实测 ω_ci = '+fhz(mi.wc)],
+    ['外环对象 G_p(0)','Z(0)·T_i(0) = R',fmt(tfAt(m.Gp_n,m.Gp_d,0)[0],4)+' Ω',''],
+    ['补偿零点 f_z','设计取 f_c/5',fhz(st.fz),'目标 '+fhz(st.fc/5)],
+    ['补偿极点 f_p','设计取 5f_c',fhz(st.fp),'目标 '+fhz(st.fc*5)],
+    ['目标 / 实测截止','f_c 或 |L_o|=1 实测',fhz(st.fc)+' / '+fhz(mo.wc),st.auto?'自动定标':'手动 K_c'],
+    ['补偿增益 K_c','|L_o(jω_c)| = 1',sci(m.Kc),st.auto?'自动解出':'手动'],
+    ['相角裕度 γ','180° + ∠L_o(jω_c)',fmt(mo.pm,2)+' °','φ(ω_c) = '+fmt(mo.phc,2)+'°'],
+    ['幅值裕度 h','−20lg|L_o(jω_g)|',fmt(mo.gm,2)+' dB','ω_g = '+fhz(mo.wg)],
+    ['超调量 σ','闭环数值积分',c.unstable?'—':fmt(mt.sigma,3)+' %','γ=67.8° → 2.386%'],
+    ['t_p / t_r / t_s','闭环数值积分',c.unstable?'—':[mt.tp,mt.tr,mt.ts].map(function(v){return fmtt(v).replace(' ','');}).join(' / '),'Δ = ±'+(st.band*100).toFixed(0)+'%']
+  ];
+  var h='<h3>建模推导（一步步对应「控制系统数学模型」）</h3><div class="dev">'+
+    'ON :  L·i̇_L = v_g − v_o ,  C·v̇_o = i_L − v_o/R　⇒　A₁=[[0,−1/L],[1/C,−1/(RC)]], B₁=[1/L,0]ᵀ<br>'+
+    'OFF:  L·i̇_L = − v_o ,      C·v̇_o = i_L − v_o/R　⇒　A₂=A₁, B₂=[0,0]ᵀ<br>'+
+    '平均: A = dA₁+(1−d)A₂ = A₁ ,  B(d) = [d/L, 0]ᵀ　⇒　L·i̇_L = d·v_g − v_o<br>'+
+    '稳态: V_o = D·V_g , I_L = V_o/R　（X = [5 A, 12 V]ᵀ, D = 0.5）<br>'+
+    '扰动: L·dî_L/dt = D·v̂_g + V_g·d̂ − v̂_o ,  C·dv̂_o/dt = î_L − v̂_o/R　（略去 d̂·v̂_g）<br>'+
+    '复域: D_n(s) = LCs²+(L/R)s+1 ,  G_vd = V_g/D_n ,  G_id = V_g(Cs+1/R)/D_n ,  G_vg = D/D_n<br>'+
+    '等效: Z = G_vd/G_id = R/(RCs+1) ,  T_i = L_i/(1+L_i) ,  G_p = Z·T_i ,  L_o = C_v·G_p ,  Φ = L_o/(1+L_o)</div>';
+  h+='<h3>频域整定：设计目标 vs 本页现算</h3><table><thead><tr><th>量</th><th>课程公式 / 设计目标</th><th>本页现算</th><th>备注</th></tr></thead><tbody>';
+  rows.forEach(function(r){h+='<tr><td>'+r[0]+'</td><td>'+r[1]+'</td><td class="num">'+r[2]+'</td><td>'+r[3]+'</td></tr>';});
+  h+='</tbody></table>';
+  h+='<h3>频域法整定步骤</h3><div class="dev">'+
+    '① 内环 C_i(s)=K_pi(s+ω_zi)/s ：取 f_ci = f_s/20 = 5 kHz，f_zi = f_ci/10；由 |L_i(jω_ci)|=1 解 K_pi。<br>'+
+    '② 外环对象 G_p(s)=Z(s)·T_i(s)（三阶，低频近似一阶惯性），直流增益 R = 2.4 Ω。<br>'+
+    '③ 补偿器 C_v(s)=K_c(s+ω_z)/[s(s+ω_p)] ：原点极点 → 零稳态误差；ω_z 抬相位；ω_p 抑制开关噪声。<br>'+
+    '④ 选 f_c ≈ f_s/100 = 1 kHz；取 f_z ≈ f_c/5 、f_p ≈ 5f_c；由 |L_o(jω_c)|=1 解 K_c。<br>'+
+    '⑤ 校核 γ = 180°+∠L_o(jω_c) 与 h = −20lg|L_o(jω_g)|；用闭环阶跃验证 σ 与 γ 的对应关系。</div>';
+  h+='<div class="warn"><b>注意：</b>γ 与 σ 的解析对应只对标准二阶系统成立。本页闭环为五阶，'+
+    '扫描曲线与二阶理论曲线不重合属正常现象；工程上 γ 常取 45°~70°，本页推荐点 γ = 67.80°、σ = 2.386%。'+
+    '另外理想模型不含 ESR / 采样延时，实测样机的高频相位会不同。</div>';
+  $('theory').innerHTML=h;
+  $('theorySub').textContent='f_c = '+fhz(st.fc)+' · f_z = '+fhz(st.fz)+' · f_p = '+fhz(st.fp)+' · γ = '+fmt(mo.pm,2)+'°';
+}
+
+/* ================= 参数条 / 状态 ================= */
+function syncInputs(){
+  $('sFci').value=st.fci;$('sFzi').value=st.fzi;$('sFz').value=st.fz;$('sFp').value=st.fp;
+  $('sFc').value=st.fc;$('sKc').value=st.logKc;$('sAmp').value=st.amp;$('band').value=String(st.band);
+  $('cbAuto').checked=st.auto;
+  $('sFc').disabled=!st.auto;$('sKc').disabled=st.auto;
+  $('vFci').textContent=fmt(st.fci,0);$('vFzi').textContent=fmt(st.fzi,0);
+  $('vFz').textContent=fmt(st.fz,0);$('vFp').textContent=fmt(st.fp,0);
+  $('vFc').textContent=fmt(st.fc,0);$('vKc').textContent=sci(Math.pow(10,st.logKc));
+  $('vAmp').textContent=fmt(st.amp,1)+' V';$('vBand').textContent='±'+(st.band*100).toFixed(0)+'%';
+  $('vKpi').textContent=fmt(cur().m.Kpi,6);
+}
+function renderStatus(c){
+  var tag,cls;
+  if(c.unstable){tag='闭环失稳 · γ = '+fmt(c.mo.pm,1)+'°';cls='bad';}
+  else if(c.slow){tag='环路带宽过低 · 时域指标不可读';cls='off';}
+  else if(c.mo.pm!==null&&c.mo.pm<35){tag='γ 偏小 · 超调较大';cls='off';}
+  else{tag='稳定 · γ = '+fmt(c.mo.pm,1)+'° · h = '+fmt(c.mo.gm,1)+' dB';cls='ok';}
+  var isDef=Math.abs(st.fz-DEF.fz)<1&&Math.abs(st.fp-DEF.fp)<1&&Math.abs(st.fc-DEF.fc)<1&&
+            Math.abs(st.fci-DEF.fci)<1&&Math.abs(st.fzi-DEF.fzi)<1&&st.auto;
+  $('designTag').textContent=isDef?'● 推荐频域整定点':'';
+  $('status').innerHTML='<span class="badge '+cls+'">'+tag+'</span>　'+
+    '<span class="mono">L_o = C_v·G_p　|　G_p = Z·T_i　|　Φ = L_o/(1+L_o)</span>　'+
+    '<span>当前：'+st.lastAction+'</span>';
+}
+
+/* ================= 渲染入口 ================= */
+function render(){
+  var c=cur();
+  syncInputs();renderStage();
+  drawBodeSmall('svgBodeP',[
+    {n:E.Gvd_n,d:E.Gvd_d,col:C.blue,w:2.2},
+    {n:E.Gid_n,d:E.Gid_d,col:C.orange,w:2.2}
+  ],{mag:[-80,20,40],ph:[-200,40,40],
+     legend:[{label:'G_vd  v̂_o/d̂',col:C.blue,w:112},{label:'G_id  î_L/d̂',col:C.orange,w:112}],legendX:337,
+     marks:[{f:E.f0,label:'f₀ 495 Hz',col:C.purple},{f:E.fzL,label:'1/(2πRC)',col:C.green}],
+     foot:'蓝：控制→输出电压（V）；橙：控制→电感电流（A）。dB 基准不同，看形状与相位即可。'});
+  $('bodePSub').textContent='f₀ = '+fhz(E.f0)+' · Q = '+fmt(E.Q,3)+' · 负载零点 '+fhz(E.fzL);
+  var m=c.m;
+  drawBodeSmall('svgBodeI',[{n:m.Li_n,d:m.Li_d,col:C.blue,w:2.2}],
+    {mag:[-60,20,60],ph:[-220,40,-20],legend:[{label:'L_i = C_i·F_m·R_i·G_id',col:C.blue,w:190}],
+     marks:c.mi.wc?[{f:c.mi.wc,label:'ω_ci',col:C.orange}]:[],
+     foot:'内环先整定：高频段 G_id ≈ V_g/(Ls) 只有一极点，故 γ_i 接近 90°。'});
+  $('bodeISub').textContent='ω_ci = '+fhz(c.mi.wc)+' · γ_i = '+fmt(c.mi.pm,2)+'° · K_pi = '+fmt(m.Kpi,6);
+  drawBodeMain(c);drawStep(c);drawPM(c);renderTheory(c);renderStatus(c);
+  if(q.has('probe')){
+    var p=$('probe');p.style.display='block';p.textContent=JSON.stringify({ready:true,errors:st.errors,snapshot:snapshot(),sweepCount:(st.sweep||[]).length},null,1);
+  }
+}
+function invalidate(){st.cache=null;}
+function snapshot(){
+  var c=cur();
+  return {fci:st.fci,fzi:st.fzi,fz:st.fz,fp:st.fp,fcTarget:st.fc,auto:st.auto,amp:st.amp,band:st.band,
+    Kpi:c.m.Kpi,Kii:c.m.Kii,Kc:c.m.Kc,GpDC:tfAt(c.m.Gp_n,c.m.Gp_d,0)[0],
+    wci:c.mi.wc,pmi:c.mi.pm,wc:c.mo.wc,pm:c.mo.pm,phc:c.mo.phc,wg:c.mo.wg,gm:c.mo.gm,
+    sigma:c.mt.sigma,tp:c.mt.tp,tr:c.mt.tr,ts:c.mt.ts,unstable:c.unstable,slow:c.slow,maxRe:c.maxRe,
+    stage:st.stage,stepPoints:c.S.out.length,errors:st.errors.slice()};
+}
+function setParams(o){
+  var keys=['fci','fzi','fz','fp','fc','amp','band','auto','logKc','stage'];
+  keys.forEach(function(k){if(o[k]!==undefined)st[k]=o[k];});
+  st.cursor=1;invalidate();render();return snapshot();
+}
+function applyDesign(){
+  st.fci=DEF.fci;st.fzi=DEF.fzi;st.fz=DEF.fz;st.fp=DEF.fp;st.fc=DEF.fc;
+  st.amp=DEF.amp;st.band=DEF.band;st.auto=true;st.logKc=Math.log10(K0);
+  st.cursor=1;st.stage=0;st.lastAction='已回填频域法推荐整定值';
+  invalidate();computeSweep();render();return snapshot();
+}
+function bindRange(id,key,parse){
+  var el=$(id);
+  el.addEventListener('input',function(){st[key]=parse(el.value);st.cursor=1;st.lastAction='拖动 '+key;invalidate();render();});
+  el.addEventListener('change',function(){computeSweep();render();});
+}
+function svgPoint(svg,e){
+  var p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;
+  var m=svg.getScreenCTM();return m?p.matrixTransform(m.inverse()):{x:BL,y:0};
+}
+function setupDrag(){
+  var svg=$('svgBode'),drag=null;
+  svg.addEventListener('pointerdown',function(e){
+    var g=e.target.closest?e.target.closest('[data-h]'):null;
+    if(!g)return;
+    drag={h:g.getAttribute('data-h')};
+    try{svg.setPointerCapture(e.pointerId);}catch(err){}
+    e.preventDefault();
+  });
+  svg.addEventListener('pointermove',function(e){
+    if(!drag)return;
+    var p=svgPoint(svg,e),f=FLOG(clamp(p.x,BL,BR),BL,BR),lim;
+    if(drag.h==='fz'){lim=[20,8000];st.fz=Math.round(clamp(f,lim[0],lim[1]));$('sFz').value=st.fz;}
+    else if(drag.h==='fp'){lim=[300,60000];st.fp=Math.round(clamp(f,lim[0],lim[1]));$('sFp').value=st.fp;}
+    else if(drag.h==='fc'&&st.auto){lim=[100,8000];st.fc=Math.round(clamp(f,lim[0],lim[1]));$('sFc').value=st.fc;}
+    st.cursor=1;st.lastAction='图上拖动 '+drag.h;invalidate();render();e.preventDefault();
+  });
+  function end(e){if(!drag)return;drag=null;computeSweep();render();}
+  svg.addEventListener('pointerup',end);svg.addEventListener('pointercancel',end);
+}
+function playStage(){
+  if(st.playingStage){stopStage();return;}
+  st.playingStage=true;$('btnPlayStage').textContent='❚❚ 暂停推导';
+  st.stageTimer=setInterval(function(){
+    st.stage=(st.stage+1)%6;renderStage();
+    if(st.stage===0){stopStage();}
+  },1900);
+}
+function stopStage(){st.playingStage=false;clearInterval(st.stageTimer);$('btnPlayStage').textContent='▶ 播放建模推导';}
+function playResp(){
+  if(st.playingResp)return;
+  st.playingResp=true;st.cursor=0;var t0=null,dur=1500;
+  function tick(ts){
+    if(t0===null)t0=ts;
+    st.cursor=clamp((ts-t0)/dur,0,1);drawStep(cur());
+    if(st.cursor<1)requestAnimationFrame(tick);else st.playingResp=false;
+  }
+  requestAnimationFrame(tick);
+}
+function init(){
+  Array.prototype.forEach.call($('segStage').children,function(b){
+    b.addEventListener('click',function(){st.stage=+b.dataset.stage;stopStage();renderStage();});
+  });
+  $('btnPlayStage').addEventListener('click',playStage);
+  $('btnDesign').addEventListener('click',function(){applyDesign();});
+  $('btnReset').addEventListener('click',function(){applyDesign();});
+  $('btnPlayResp').addEventListener('click',playResp);
+  $('btnSweep').addEventListener('click',function(){st.lastAction='重算 PM–σ 扫描曲线';computeSweep();render();});
+  $('cbAuto').addEventListener('change',function(){
+    if(!$('cbAuto').checked)st.logKc=Math.log10(cur().m.Kc);
+    st.auto=$('cbAuto').checked;st.cursor=1;st.lastAction=st.auto?'开启自动定标':'切换为手动 K_c';
+    invalidate();computeSweep();render();
+  });
+  $('band').addEventListener('change',function(){st.band=+this.value;st.lastAction='切换误差带';invalidate();render();});
+  bindRange('sFci','fci',Number);bindRange('sFzi','fzi',Number);
+  bindRange('sFz','fz',Number);bindRange('sFp','fp',Number);
+  bindRange('sFc','fc',Number);bindRange('sKc','logKc',Number);
+  bindRange('sAmp','amp',Number);
+  setupDrag();
+  computeSweep();
+  st.cursor=1;
+  window.__BUCK__={
+    state:function(){return {fci:st.fci,fzi:st.fzi,fz:st.fz,fp:st.fp,fc:st.fc,auto:st.auto,logKc:st.logKc,amp:st.amp,band:st.band,stage:st.stage,errors:st.errors.slice()};},
+    snapshot:snapshot,set:setParams,design:applyDesign,
+    table:function(list){var out=[];list.forEach(function(o){out.push(setParams(o));});return out;},
+    sweep:function(){return computeSweep();},
+    margins:function(){var c=cur();return {wc:c.mo.wc,pm:c.mo.pm,phc:c.mo.phc,wg:c.mo.wg,gm:c.mo.gm};}
+  };
+  try{render();}catch(e){
+    st.errors.push('render: '+(e&&e.stack||e));
+    var er=$('err');if(er){er.style.display='block';er.textContent=st.errors[st.errors.length-1];}
+    if(q.has('probe')){$('probe').style.display='block';$('probe').textContent=JSON.stringify({ready:false,errors:st.errors});}
+  }
+  if(!st.reduced&&!q.has('still')){st.cursor=0;st.playingResp=true;var t0=null;
+    requestAnimationFrame(function tick(ts){if(t0===null)t0=ts;st.cursor=clamp((ts-t0)/1400,0,1);
+      try{drawStep(cur());}catch(e){}if(st.cursor<1)requestAnimationFrame(tick);else st.playingResp=false;});
+  }
+}
+init();
+})();
+</script>
+</body>
+</html>
