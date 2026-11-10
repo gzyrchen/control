@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>同步发电机励磁 PID 控制 · 多环节串联建模与根轨迹校正</title>
+<style>
+:root{
+  --ink:#2C2C2A; --ink2:#5F5E5A; --ink3:#8A8880;
+  --panel:#F1EFE8; --panel2:#FAF9F5; --line:rgba(0,0,0,.12);
+  --blue:#185FA5; --blue-l:#E6F1FB; --orange:#D85A30; --orange-l:#FBEEE8;
+  --green:#3F8F5B; --green-l:#E8F3EC; --red:#A32D2D; --purple:#6B4FA8;
+  --gold:#C9973F; --grid:#E4E2DB; --magenta:#BE1E8A;
+  --mono:ui-monospace,Consolas,"Courier New",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:22px 24px 40px;background:#fff;color:var(--ink);font-family:var(--sans)}
+.wrap{max-width:1232px;margin:0 auto;font-size:13px}
+h1{font-size:16.5px;font-weight:600;margin:0 0 7px;letter-spacing:.1px}
+.lead{font-size:13px;line-height:1.7;color:var(--ink2);margin:0 0 15px;max-width:1080px}
+.lead b{color:var(--ink);font-weight:600}
+.lead code,.note code,.stage-note code,.theory code,.cap code{font-family:var(--mono);font-size:11.5px;background:var(--panel);padding:1px 5px;border-radius:4px;color:var(--blue);overflow-wrap:anywhere}
+
+.bar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:var(--panel);border-radius:10px;padding:9px 12px;margin-bottom:12px}
+.seg{display:inline-flex;background:#fff;border:.5px solid var(--line);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:transparent;font:inherit;font-size:12px;padding:6px 10px;cursor:pointer;color:var(--ink2);white-space:nowrap}
+.seg button+button{border-left:.5px solid var(--line)}
+.seg button.on{background:var(--blue);color:#fff}
+.sp{flex:1}
+.btn{font:inherit;font-size:12px;padding:6px 11px;border:.5px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;color:var(--ink);white-space:nowrap}
+.btn:hover{background:var(--panel2)}
+.btn.on{background:var(--orange);border-color:var(--orange);color:#fff}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+.card{background:var(--panel2);border:.5px solid var(--line);border-radius:12px;padding:9px 10px 6px;min-width:0}
+.chd{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 2px 5px;flex-wrap:wrap}
+.chd h2{font-size:11.5px;font-weight:600;margin:0;color:var(--ink);letter-spacing:.15px}
+.chd .sub{font-size:10.5px;color:var(--ink3);font-family:var(--mono);line-height:1.5}
+svg{width:100%;height:auto;display:block;overflow:visible}
+svg text{font-family:var(--sans)}
+.kl{font-size:10.5px;fill:var(--ink3)}
+.lb{font-size:12px;fill:var(--ink2)}
+.tt{font-size:12px;font-weight:600;fill:var(--ink)}
+.bf{font-family:var(--mono);font-size:10.5px;fill:var(--ink2)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+.stage-card{background:var(--panel2);border:.5px solid var(--line);border-radius:12px;padding:10px 11px 8px;margin-bottom:12px}
+.stage-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(270px,1fr);gap:14px;align-items:start}
+.scroll-wrap{min-width:0}
+.stage-scroll,.bode-scroll{overflow-x:auto;background:#fff;border:.5px solid var(--line);border-radius:9px}
+#svgStage{width:100%;min-width:760px}
+.stage-note{background:#fff;border:.5px solid var(--line);border-radius:9px;padding:10px 12px;font-size:11.5px;line-height:1.72;color:var(--ink2)}
+.stage-note h3{font-size:12px;color:var(--ink);margin:0 0 6px;font-weight:600}
+.stage-note p{margin:0 0 6px}
+.stage-note p:last-child{margin-bottom:0}
+.stage-note b{color:var(--ink)}
+.stage-note .live{margin-top:8px;padding-top:7px;border-top:.5px dashed var(--line);font-family:var(--mono);font-size:10.5px;color:var(--ink3);line-height:1.6}
+
+.designbar{background:var(--panel);border-radius:10px;padding:10px 12px;margin-bottom:12px}
+.design-step{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:9px;font-size:11.5px;color:var(--ink2)}
+.param-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 16px}
+.param{display:flex;flex-direction:column;gap:4px;min-width:0}
+.phead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:11.5px;color:var(--ink2)}
+.phead span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pval{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:3px;background:#D8D5CC;border-radius:2px;outline:0;margin:7px 0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--blue);border:2px solid #fff;box-shadow:0 0 0 .5px var(--line);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--blue);border:2px solid #fff;cursor:pointer}
+select{font:inherit;font-size:11.5px;padding:3px 6px;border:.5px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}
+.status{font-size:10.8px;color:var(--ink3);margin-top:9px;line-height:1.6}
+.badge{display:inline-block;padding:1px 6px;border-radius:5px;font-size:10px;font-weight:600;white-space:nowrap}
+.badge.ok{background:var(--green-l);color:var(--green)}
+.badge.off{background:#FBF3E4;color:#7A5B22}
+.badge.bad{background:#FBE9E9;color:var(--red)}
+label.ck{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;cursor:pointer;font-size:11.5px;color:var(--ink2)}
+
+.main,.main2{display:grid;gap:14px;align-items:start;margin-bottom:12px}
+.main,.main2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.specs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;padding:2px 0 4px;margin-bottom:12px}
+.spec{background:var(--panel);border-radius:7px;padding:5px 8px 6px;min-width:0}
+.spec i{display:block;font-style:normal;font-size:9.5px;color:var(--ink3);letter-spacing:.2px;white-space:nowrap}
+.spec b{display:block;font-family:var(--mono);font-size:12.5px;font-weight:600;margin-top:1px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.spec em{display:block;font-style:normal;font-size:9.5px;color:var(--ink3);margin-top:1px;line-height:1.35;overflow-wrap:anywhere}
+.spec.bad b{color:var(--red)}
+.cap{font-size:10px;color:#A8A59C;line-height:1.6;padding:5px 2px 1px}
+.scroll-hint{display:none;font-size:10px;color:var(--ink3);text-align:right;padding:3px 4px 0}
+
+.cmprow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.cmp{background:#fff;border:.5px solid var(--line);border-radius:9px;padding:7px 10px;min-width:0}
+.cmp i{display:block;font-style:normal;font-size:10px;color:var(--ink3);margin-bottom:3px}
+.cmp .row{display:flex;align-items:baseline;gap:6px;font-family:var(--mono);font-size:11.5px;white-space:nowrap}
+.cmp .row .old{color:var(--ink3)}
+.cmp .row .ar{color:var(--gold)}
+.cmp .row .new{color:var(--green);font-weight:600}
+
+.theory{font-size:11px;line-height:1.6;color:var(--ink2);overflow-x:auto}
+.theory h3{font-size:11.5px;color:var(--ink);margin:9px 0 5px;font-weight:600}
+.theory h3:first-child{margin-top:0}
+.theory table{width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:7px}
+.theory th,.theory td{border-bottom:.5px solid var(--line);padding:4px 5px;text-align:left;vertical-align:top}
+.theory th{color:var(--ink3);font-weight:500;background:var(--panel)}
+.theory td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.theory .dev{background:#fff;border:.5px solid var(--line);border-radius:7px;padding:7px 9px;font-family:var(--mono);font-size:10px;line-height:1.7;margin-bottom:8px;overflow-wrap:anywhere}
+.theory .warn{background:#FBF3E4;border-left:2px solid var(--gold);border-radius:0 5px 5px 0;padding:6px 8px;font-size:10.5px;color:#7A5B22;line-height:1.6;margin-top:6px}
+
+.notes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+.note{background:var(--panel2);border:.5px solid var(--line);border-radius:10px;padding:11px 13px;min-width:0}
+.note h3{font-size:12px;font-weight:600;margin:0 0 5px;color:var(--ink);display:flex;gap:6px;align-items:baseline}
+.note h3 i{font-style:normal;font-family:var(--mono);font-size:10.5px;color:#fff;background:var(--ink3);width:15px;height:15px;line-height:15px;text-align:center;border-radius:4px;flex:none}
+.note p{font-size:11.5px;line-height:1.72;color:var(--ink2);margin:0 0 5px}
+.note p:last-child{margin-bottom:0}
+.note b{color:var(--ink);font-weight:600}
+.note ul,.note ol{margin:4px 0;padding-left:20px}
+.note li{font-size:11.5px;line-height:1.7;color:var(--ink2);margin-bottom:3px}
+.note code{font-size:10.5px}
+.note .warn{display:block;margin-top:6px;padding:6px 8px;background:#FBF3E4;border-left:2px solid var(--gold);border-radius:0 5px 5px 0;font-size:11px;color:#7A5B22;line-height:1.65}
+#probe{display:none}
+
+@media (max-width:1000px){
+  .main,.main2,.stage-grid{grid-template-columns:1fr}
+  .notes{grid-template-columns:1fr 1fr}
+  .param-grid{grid-template-columns:1fr 1fr}
+  .specs{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .cmprow{grid-template-columns:1fr 1fr}
+  .stage-scroll{max-width:100%}
+  .scroll-hint{display:block}
+}
+@media (max-width:680px){
+  body{padding:16px 12px 32px}
+  .notes{grid-template-columns:1fr}
+  .param-grid{grid-template-columns:1fr}
+  .specs{grid-template-columns:1fr 1fr}
+  .cmprow{grid-template-columns:1fr}
+  .spec b{font-size:12px}
+  .seg button{padding:6px 8px;font-size:11px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>同步发电机励磁 PID 控制：三环节串联建模 → 二阶振荡近似 → 根轨迹法校正</h1>
+  <p class="lead">
+    按<b>「控制系统数学模型」</b>章节的写法，把同步发电机励磁调节系统拆成<b>发电机惯性环节</b>、<b>励磁机惯性环节</b>、
+    <b>电压测量环节</b>三个一阶惯性串联，得到 <code>G₀(s)=K/[(T_g s+1)(T_e s+1)(T_r s+1)]</code>。
+    注意：<b>三个一阶惯性串联本身不会振荡</b>（三个极点全在负实轴上）；只有<b>闭环</b>之后，主导极点才会分裂成共轭复根，
+    表现出二阶振荡特性，且励磁增益越大阻尼越差。这正是<b>根轨迹法</b>的用武之地：加入 PID 的积分极点与两个零点，
+    把根轨迹拉回左半平面。拖动 <b>K<sub>p</sub> / T<sub>i</sub> / T<sub>d</sub></b> 滑块，
+    根轨迹走向、闭环极点位置、机端电压阶跃响应与 <b>ζ—超调量</b>关系同步重算。
+  </p>
+
+  <div class="bar">
+    <div class="seg" id="segStage">
+      <button data-stage="0" class="on">① 系统结构</button>
+      <button data-stage="1">② 发电机惯性</button>
+      <button data-stage="2">③ 励磁机惯性</button>
+      <button data-stage="3">④ 电压测量</button>
+      <button data-stage="4">⑤ 串联与二阶近似</button>
+      <button data-stage="5">⑥ 闭环与根轨迹校正</button>
+    </div>
+    <span class="sp"></span>
+    <button class="btn" id="btnPlayStage">▶ 建模推导</button>
+    <button class="btn" id="btnDesign">根轨迹法整定</button>
+    <button class="btn" id="btnCritical">高增益演示</button>
+    <button class="btn" id="btnScan">▶ 扫描 K<sub>p</sub></button>
+    <button class="btn" id="btnReset">复位</button>
+  </div>
+
+  <div class="stage-card">
+    <div class="chd">
+      <h2 id="stageTitle">励磁调节系统 · 多环节串联建模推导</h2>
+      <span class="sub" id="stageSub">第 1 / 6 步</span>
+    </div>
+    <div class="stage-grid">
+      <div class="scroll-wrap"><div class="stage-scroll"><svg id="svgStage" viewBox="0 0 960 292" role="img" aria-label="同步发电机励磁系统多环节串联建模推导"></svg></div><div class="scroll-hint">← 左右滑动查看完整图 →</div></div>
+      <div class="stage-note" id="stageNote"></div>
+    </div>
+  </div>
+
+  <div class="designbar">
+    <div class="design-step">
+      <span><b>控制器：</b><code>C(s)=K_p(T_i T_d s²+T_i s+1)/(T_i s)</code></span>
+      <label class="ck"><input type="checkbox" id="cbCompare" checked>显示未校正（纯 P）对照</label>
+      <label class="ck"><input type="checkbox" id="cbPrefilter">给定预滤器（消去 PID 闭环零点）</label>
+      <span class="sp" style="flex:1"></span>
+      <span class="mono" id="designTag"></span>
+    </div>
+    <div class="param-grid">
+      <div class="param">
+        <div class="phead"><span>比例增益 K<sub>p</sub>（根轨迹变量）</span><span class="pval" id="vKp">—</span></div>
+        <input type="range" id="sKp" min="0.2" max="45" step="0.1" value="14">
+      </div>
+      <div class="param">
+        <div class="phead"><span>积分时间 T<sub>i</sub> / s</span><span class="pval" id="vTi">—</span></div>
+        <input type="range" id="sTi" min="0.20" max="3.00" step="0.01" value="0.7">
+      </div>
+      <div class="param">
+        <div class="phead"><span>微分时间 T<sub>d</sub> / s</span><span class="pval" id="vTd">—</span></div>
+        <input type="range" id="sTd" min="0" max="0.35" step="0.005" value="0.3">
+      </div>
+      <div class="param">
+        <div class="phead"><span>阶跃幅值 ΔU / pu（两种模式通用）</span><span class="pval" id="vAmp">—</span></div>
+        <input type="range" id="sAmp" min="0.2" max="1.5" step="0.05" value="1">
+      </div>
+    </div>
+    <div class="design-step" style="margin:9px 0 0">
+      <div class="seg" id="segResp">
+        <button data-resp="ref" class="on">机端电压给定阶跃（阶跃扰动试验）</button>
+        <button data-resp="dist">负载扰动阶跃（考察静差）</button>
+      </div>
+      <span class="sp"></span>
+      <label class="ck">根轨迹视窗
+        <select id="selView"><option value="focus" selected>聚焦工作点</option><option value="auto">自动适配</option><option value="wide">全览</option></select>
+      </label>
+      <label class="ck">时窗
+        <select id="selTime"><option value="auto" selected>自动</option><option value="1.5">1.5 s</option><option value="4">4 s</option><option value="8">8 s</option><option value="14">14 s</option></select>
+      </label>
+    </div>
+    <div class="status" id="statusLine"></div>
+  </div>
+
+  <div class="main">
+    <div class="card">
+      <div class="chd"><h2>根轨迹（K<sub>p</sub>: 0 → 显示上限，T<sub>i</sub> / T<sub>d</sub> 决定零点位置）</h2><span class="sub" id="locusSub">—</span></div>
+      <svg id="svgLocus" viewBox="0 0 620 470" role="img" aria-label="闭环系统根轨迹与当前极点位置"></svg>
+      <div class="cap" id="capLocus"></div>
+    </div>
+    <div class="card">
+      <div class="chd"><h2>机端电压响应 ΔU<sub>t</sub>(t)</h2><span class="sub" id="stepSub">—</span></div>
+      <svg id="svgStep" viewBox="0 0 620 470" role="img" aria-label="同步发电机机端电压阶跃响应"></svg>
+      <div class="cap" id="capStep"></div>
+    </div>
+  </div>
+
+  <div class="specs" id="specs">
+    <div class="spec"><i>ζ · 主导共轭极点阻尼比</i><b id="spZeta">—</b><em id="seZeta">—</em></div>
+    <div class="spec"><i>ωn · 自然频率 / rad·s⁻¹</i><b id="spWn">—</b><em id="seWn">—</em></div>
+    <div class="spec"><i>ωd · 阻尼振荡频率</i><b id="spWd">—</b><em id="seWd">—</em></div>
+    <div class="spec"><i>σ₂ · 主导极点二阶公式</i><b id="spSig2">—</b><em id="seSig2">—</em></div>
+    <div class="spec"><i>σ · PID 四阶实测超调</i><b id="spSig">—</b><em id="seSig">—</em></div>
+    <div class="spec"><i>tp · 峰值时间 / s</i><b id="spTp">—</b><em id="seTp">—</em></div>
+    <div class="spec"><i>tr · 上升时间 / s</i><b id="spTr">—</b><em id="seTr">—</em></div>
+    <div class="spec"><i>ts · 调节时间(±5%) / s</i><b id="spTs">—</b><em id="seTs">—</em></div>
+    <div class="spec" id="spReBox"><i>max Re(p) · 稳定裕度</i><b id="spRe">—</b><em id="seRe">—</em></div>
+    <div class="spec"><i>e_ss · 稳态误差(纯 P)</i><b id="spEss">—</b><em id="seEss">—</em></div>
+  </div>
+
+  <div class="cmprow" id="cmprow">
+    <div class="cmp"><i>临界增益 K<sub>p,crit</sub>（穿越虚轴）</i><div class="row"><span class="old" id="cpKcOld">—</span><span class="ar">→</span><span class="new" id="cpKcNew">—</span></div></div>
+    <div class="cmp"><i>给定阶跃静差</i><div class="row"><span class="old" id="cpEsOld">—</span><span class="ar">→</span><span class="new" id="cpEsNew">—</span></div></div>
+    <div class="cmp"><i>主导极点阻尼比 ζ</i><div class="row"><span class="old" id="cpZOld">—</span><span class="ar">→</span><span class="new" id="cpZNew">—</span></div></div>
+    <div class="cmp"><i>负载扰动稳态压降</i><div class="row"><span class="old" id="cpDrOld">—</span><span class="ar">→</span><span class="new" id="cpDrNew">—</span></div></div>
+  </div>
+
+  <div class="main2">
+    <div class="card">
+      <div class="chd"><h2>阻尼比 ζ ↔ 超调量 σ%：极点位置如何决定振荡</h2><span class="sub">二阶理论曲线 σ=100·e^(−πζ/√(1−ζ²))</span></div>
+      <svg id="svgSigma" viewBox="0 0 620 400" role="img" aria-label="阻尼比与超调量关系图"></svg>
+      <div class="cap" id="capSigma"></div>
+    </div>
+    <div class="card">
+      <div class="chd"><h2>推导式与理论 / 实测对照</h2><span class="sub">标幺参数 · 单文件离线</span></div>
+      <div class="theory" id="theoryBox"></div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note"><h3><i>1</i>为什么三环节串联本身不振荡</h3>
+      <p>发电机 <code>K_g/(T_g s+1)</code>、励磁机 <code>K_e/(T_e s+1)</code>、测量 <code>K_r/(T_r s+1)</code> 都是<b>一阶惯性</b>，
+      开环极点是 <code>−1/T_g, −1/T_e, −1/T_r</code>，全在负实轴上，阶跃响应是单调的 S 形叠加，没有振荡。</p>
+      <p>把环节串起来再<b>闭环</b>以后，特征方程从一次变成三次，增益一大，两个实极点就会在实轴上相遇、<b>分离出复共轭根</b>，
+      这才出现二阶振荡。</p></div>
+    <div class="note"><h3><i>2</i>二阶近似与主导极点</h3>
+      <p>测量环节 <code>T_r=0.05 s</code> 比 <code>T_g=1 s</code>、<code>T_e=0.4 s</code> 快一个数量级，忽略它可得
+      <code>T_gT_e s²+(T_g+T_e)s+(1+K_pK)=0</code>，于是 <code>ω_n=√((1+K_pK)/(T_gT_e))</code>、
+      <code>ζ=(T_g+T_e)/(2√(T_gT_e(1+K_pK)))</code>。</p>
+      <p><b>K<sub>p</sub>↑ → ζ↓ → 振荡加剧</b>。纯 P 的三阶闭环没有闭环零点，实测超调与 <code>σ=100e^(−πζ/√(1−ζ²))</code> 几乎完全吻合 —— 见下方 ζ—σ 关系图上的灰色点。</p>
+      <p>注意该解析近似只在低增益时准确：<code>K_p</code> 越大，被忽略的 <code>T_r</code> 相位滞后越不可忽略。</p></div>
+    <div class="note"><h3><i>3</i>根轨迹法校正：开环零点把轨迹拉回左边</h3>
+      <p>纯 P 时根轨迹 3 支，<code>K_p,crit=a₂a₁/a₃−1=33.075</code>，在 <code>ω=8.515 rad/s</code> 穿越虚轴失稳。</p>
+      <p>PID 引入 1 个原点极点 + 2 个零点，变 4 支根轨迹。渐近线中心 <code>σ_a=(Σ极点−Σ零点)/(n−m)</code> 落在左半平面时，
+      远段轨迹不再进入右半平面，<b>稳定域大幅扩展</b>；把主导极点配到 <code>ζ≈0.707</code> 射线上即可兼顾快速与平稳。</p></div>
+    <div class="note"><h3><i>4</i>积分环节消除静差</h3>
+      <p>纯 P 闭环的直流增益是 <code>K_pK/(1+K_pK)</code>，<code>e_ss=1/(1+K_pK)</code>；
+      负载扰动还会留下 <code>K_w/(1+K_pK)</code> 的<b>永久压降</b>。</p>
+      <p>加入积分后系统变为 I 型，给定与负载阶跃的稳态偏差都归零 —— 切到「负载扰动阶跃」模式，灰色虚线停在非零处，蓝色实线回到 0。</p></div>
+    <div class="note"><h3><i>5</i>微分环节提供阻尼</h3>
+      <p>把 <code>T_d</code> 拖到 0，PID 退化为 PI，两个零点只剩一个，渐近线夹角变成 ±60°，远段根轨迹会伸进右半平面，
+      <code>K_p,crit</code> 从「不穿越」跌回有限值。</p>
+      <p><code>T_d</code> 增大则零点左移、阻尼增强；但过大时闭环零点与非主导极点会重新靠近，超调反而回升。</p></div>
+    <div class="note"><h3><i>6</i>为什么 PID 实测超调大于二阶公式</h3>
+      <p>二阶公式只由<b>极点</b>决定。PID 闭环传递函数分子含 <code>T_iT_d s²+T_i s+1</code> 两个<b>闭环零点</b>，
+      它们靠近主导极点时会显著抬高峰值；非主导极点不够远时也会改变波形。</p>
+      <p>最极端时零点几乎压在主导极点上，把慢模态「对消」掉，实测 t<sub>p</sub>、t<sub>s</sub> 会比主导极点公式短好几倍。勾上「给定预滤器」用 <code>F(s)=1/(T_iT_d s²+T_i s+1)</code> 抵消这两个零点，响应就回落到纯极点主导的形状。
+      <span class="warn">主导极点近似成立的条件：其它极点实部比主导极点大 5 倍以上，且闭环无靠近主导极点的零点。</span></p></div>
+  </div>
+
+  <div id="probe"></div>
+</div>
+
+<script>
+'use strict';
+/* ============================ 数值内核 ============================ */
+var PI=Math.PI,R2D=180/PI,D2R=PI/180;
+function cadd(a,b){return [a[0]+b[0],a[1]+b[1]];}
+function cmul(a,b){return [a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0]];}
+function cdiv(a,b){var d=b[0]*b[0]+b[1]*b[1];return d<1e-300?[NaN,NaN]:[(a[0]*b[0]+a[1]*b[1])/d,(a[1]*b[0]-a[0]*b[1])/d];}
+function cabs(a){return Math.hypot(a[0],a[1]);}
+function pval(c,z){var r=[0,0],i;for(i=0;i<c.length;i++)r=cadd(cmul(r,z),[c[i],0]);return r;}
+function align(a,n){var r=new Array(n).fill(0),i;for(i=0;i<a.length&&i<n;i++)r[n-a.length+i]=a[i];return r;}
+function padd(a,b){var n=Math.max(a.length,b.length),A=align(a,n),B=align(b,n),r=[],i;for(i=0;i<n;i++)r.push(A[i]+B[i]);return r;}
+function pmul(a,b){var r=new Array(a.length+b.length-1).fill(0),i,j;for(i=0;i<a.length;i++)for(j=0;j<b.length;j++)r[i+j]+=a[i]*b[j];return r;}
+function pscale(a,k){return a.map(function(v){return v*k;});}
+function tfval(n,d,z){return cdiv(pval(n,z),pval(d,z));}
+function polyRoots(coef){
+  var c=coef.slice();while(c.length>1&&Math.abs(c[0])<1e-300)c.shift();
+  var n=c.length-1;if(n<1)return [];
+  var a=c.map(function(v){return v/c[0];}),R=1,k;
+  for(k=1;k<=n;k++)R=Math.max(R,Math.pow(Math.abs(a[k]),1/k));
+  R*=2;if(!isFinite(R)||R<1)R=1;
+  var z=[],i,it,j;
+  for(i=0;i<n;i++){var th=2*PI*(i+.23)/n;z.push([.8*R*Math.cos(th),.8*R*Math.sin(th)]);}
+  for(it=0;it<600;it++){
+    var mx=0;
+    for(i=0;i<n;i++){
+      var nu=pval(a,z[i]),de=[1,0];
+      for(j=0;j<n;j++)if(j!==i)de=cmul(de,[z[i][0]-z[j][0],z[i][1]-z[j][1]]);
+      var dz=cdiv(nu,de);
+      if(isFinite(dz[0])&&isFinite(dz[1])){z[i][0]-=dz[0];z[i][1]-=dz[1];mx=Math.max(mx,cabs(dz));}
+    }
+    if(mx<1e-11*Math.max(1,R))break;
+  }
+  return z;
+}
+/* 课程例题式标幺参数 */
+var E={Kg:1.0,Tg:1.0,Ke:1.0,Te:0.4,Kr:1.0,Tr:0.05,Kw:0.5};
+E.K=E.Kg*E.Ke*E.Kr;
+E.D3=pmul(pmul([E.Tg,1],[E.Te,1]),[E.Tr,1]);   /* 0.02 s³ + 0.47 s² + 1.45 s + 1 */
+E.D2=pmul([E.Tg,1],[E.Te,1]);                  /* 0.4 s² + 1.4 s + 1 */
+E.kcritP=E.D3[1]*E.D3[2]/E.D3[0]-1;            /* 33.075 */
+E.wcross=Math.sqrt(E.D3[2]/E.D3[0]);           /* 8.514693 */
+E.Poles=[0,-1/E.Tg,-1/E.Te,-1/E.Tr];
+
+function build(Kp,Ti,Td){
+  var m={Kp:Kp,Ti:Ti,Td:Td};
+  m.Npid=[Ti*Td,Ti,1];                       /* C(s) 分子（约去 Kp/(Ti s) 后） */
+  m.Dl=pmul([Ti,0],E.D3);                    /* Ti s D3(s) */
+  m.Nl=pscale(m.Npid,E.K);
+  m.P=padd(m.Dl,pscale(m.Nl,Kp));            /* 闭环特征多项式 */
+  m.Fr_n=pscale(pmul(m.Npid,[E.Tr,1]),Kp*E.Kg*E.Ke);
+  m.Fr_d=m.P.slice();
+  m.Fd_n=pscale(pmul(pmul([Ti,0],[E.Te,1]),[E.Tr,1]),E.Kg*E.Kw);
+  m.Fd_d=m.P.slice();
+  m.Frf_n=pscale([E.Tr,1],Kp*E.Kg*E.Ke);     /* 给定预滤：Fr / Npid */
+  m.Frf_d=m.P.slice();
+  m.olPoles=polyRoots(m.Dl);
+  m.olZeros=polyRoots(m.Nl);
+  m.clPoles=polyRoots(m.P);
+  return m;
+}
+function pureP(Kp){
+  var P=E.D3.slice();P[P.length-1]+=Kp*E.K;
+  return {P:P,roots:polyRoots(P),
+    r_n:[Kp*E.K],r_d:P,
+    d_n:pscale(pmul([E.Te,1],[E.Tr,1]),E.Kg*E.Kw),d_d:P};
+}
+function domComplex(roots){
+  var best=null;
+  roots.forEach(function(p){if(Math.abs(p[1])<1e-6)return;if(best===null||p[0]>best[0])best=p;});
+  if(!best)return null;
+  var mag=Math.hypot(best[0],best[1]),z=-best[0]/mag;
+  return {p:best,re:best[0],im:Math.abs(best[1]),wn:mag,z:z,
+    sigma:z<1?100*Math.exp(-PI*z/Math.sqrt(1-z*z)):0,
+    tp:PI/Math.abs(best[1]),ts:3/(-best[0]),wd:Math.abs(best[1])};
+}
+function rightmostReal(roots){
+  var best=null;
+  roots.forEach(function(p){if(Math.abs(p[1])>1e-6)return;if(best===null||p[0]>best[0])best=p;});
+  return best?best[0]:null;
+}
+function step(n,d,Tend,M){
+  var D=d.slice(),N=align(n,d.length-1),lead=D[0],i;
+  D=D.map(function(v){return v/lead;});N=N.map(function(v){return v/lead;});
+  var or=D.length-1,a=D.slice(1).reverse(),b=N.slice().reverse();
+  var dt=Tend/M,x=new Array(or).fill(0),out=[],k;
+  function rhs(y){var r=new Array(or),j,s=1;for(j=0;j<or-1;j++)r[j]=y[j+1];for(j=0;j<or;j++)s-=a[j]*y[j];r[or-1]=s;return r;}
+  function yof(y){var s=0,j;for(j=0;j<or;j++)s+=b[j]*y[j];return s;}
+  function ax(y,h,v){return y.map(function(q,j){return q+h*v[j];});}
+  var blown=false;
+  for(k=0;k<=M;k++){
+    var y=yof(x);
+    if(!isFinite(y)||Math.abs(y)>1e5){blown=true;for(;k<=M;k++)out.push({t:k*dt,y:NaN});break;}
+    out.push({t:k*dt,y:y});if(k===M)break;
+    var k1=rhs(x),k2=rhs(ax(x,dt/2,k1)),k3=rhs(ax(x,dt/2,k2)),k4=rhs(ax(x,dt,k3)),j;
+    for(j=0;j<or;j++)x[j]+=dt/6*(k1[j]+2*k2[j]+2*k3[j]+k4[j]);
+  }
+  return {out:out,blown:blown,order:or,dt:dt,dc:tfval(n,d,[0,0])[0]};
+}
+function metrics(S,band){
+  var o=S.out,dc=S.dc,peak=-Infinity,tp=null,tr=null,ts=0,i,valid=!S.blown;
+  for(i=0;i<o.length;i++){if(!isFinite(o[i].y)){valid=false;break;}if(o[i].y>peak){peak=o[i].y;tp=o[i].t;}}
+  if(!valid||Math.abs(dc)<1e-9)return {sigma:null,tp:null,tr:null,ts:null,unstable:true,dc:dc};
+  var sig=Math.max(0,(peak-dc)/dc*100);
+  for(i=1;i<o.length;i++)if(tr===null&&o[i-1].y<dc&&o[i].y>=dc)tr=o[i-1].t+(dc-o[i-1].y)/(o[i].y-o[i-1].y)*(o[i].t-o[i-1].t);
+  var lo=dc*(1-band),hi=dc*(1+band);
+  for(i=0;i<o.length;i++)if(o[i].y<lo||o[i].y>hi)ts=o[i].t;
+  return {sigma:sig,tp:tp,tr:tr,ts:ts,peak:peak,dc:dc,unstable:false};
+}
+function metricsDist(S){
+  var peak=0,signed=0,tp=0,last=0,i,S2=S.out;
+  for(i=0;i<S2.length;i++){var a=Math.abs(S2[i].y);if(!isFinite(a))return {peak:null,signed:null,tp:null,rec:null,dc:S.dc,blown:true};if(a>peak){peak=a;signed=S2[i].y;tp=S2[i].t;}}
+  var th=0.05*peak;
+  for(i=0;i<S2.length;i++)if(Math.abs(S2[i].y)>th)last=S2[i].t;
+  return {peak:peak,signed:signed,tp:tp,rec:last,dc:S.dc,blown:false};
+}
+/* 根轨迹：全排列最小距离匹配做支路延续 */
+var PERMS={};
+function perms(n){
+  if(PERMS[n])return PERMS[n];
+  var res=[],a=[],used=[],i;
+  function rec(){if(a.length===n){res.push(a.slice());return;}for(var j=0;j<n;j++)if(!used[j]){used[j]=1;a.push(j);rec();a.pop();used[j]=0;}}
+  rec();PERMS[n]=res;return res;
+}
+function d2(a,b){var x=a[0]-b[0],y=a[1]-b[1];return x*x+y*y;}
+function orderRoots(prev,cur){
+  var ps=perms(cur.length),best=null,bc=Infinity,i,j;
+  for(i=0;i<ps.length;i++){
+    var c=0,p=ps[i];
+    for(j=0;j<cur.length;j++)c+=d2(prev[j],cur[p[j]]);
+    if(c<bc){bc=c;best=p;}
+  }
+  return best.map(function(k){return cur[k];});
+}
+function locus(fn,N,kmax,pow){
+  var ks=[],roots=[],i,j;
+  for(i=0;i<N;i++){var u=i/(N-1);var k=kmax*Math.pow(u,pow);ks.push(k);roots.push(fn(k));}
+  var n=roots[0].length,br=[];
+  for(j=0;j<n;j++)br.push([]);
+  var prev=roots[0].slice();
+  for(i=0;i<N;i++){
+    if(i>0)roots[i]=orderRoots(prev,roots[i]);
+    for(j=0;j<n;j++)br[j].push({k:ks[i],p:roots[i][j]});
+    prev=roots[i].slice();
+  }
+  return {ks:ks,branches:br};
+}
+function kcritPID(Ti,Td){
+  var m0=build(1,Ti,Td),lo=0.001,hi=400,i;
+  for(i=0;i<52;i++){
+    var mid=(lo+hi)/2,r=polyRoots(padd(m0.Dl,pscale(m0.Nl,mid)));
+    var mr=Math.max.apply(null,r.map(function(p){return p[0];}));
+    if(mr<0)lo=mid;else hi=mid;
+  }
+  return lo;
+}
+var LOC_KMAX=60,LOC_N=260,locCache={key:null,data:null};
+function getLocus(Ti,Td){
+  var key=Ti.toFixed(4)+'|'+Td.toFixed(4);
+  if(locCache.key===key)return locCache.data;
+  var m0=build(1,Ti,Td);
+  var pid=locus(function(k){return polyRoots(padd(m0.Dl,pscale(m0.Nl,k)));},LOC_N,LOC_KMAX,1.6);
+  var pure=locus(function(k){return pureP(k).roots;},LOC_N,LOC_KMAX,1.6);
+  var data={pid:pid,pure:pure,kcrit:kcritPID(Ti,Td),
+    sigmaA:(function(){
+      var sp=0,sz=0,i;
+      for(i=0;i<E.Poles.length;i++)sp+=E.Poles[i];
+      for(i=0;i<m0.olZeros.length;i++)sz+=m0.olZeros[i][0];
+      var nm=E.Poles.length-m0.olZeros.length;
+      return nm>0?(sp-sz)/nm:null;
+    })(),
+    nzm:E.Poles.length-m0.olZeros.length};
+  locCache.key=key;locCache.data=data;
+  return data;
+}
+
+/* ============================ 状态 ============================ */
+var QS=(function(){var o={},s=location.search.replace(/^\?/,'').split('&');s.forEach(function(kv){var p=kv.split('=');if(p[0])o[p[0]]=decodeURIComponent(p[1]||'');});return o;})();
+var STILL=QS.still==='1'||QS.probe==='1';
+var st={Kp:14,Ti:0.7,Td:0.3,amp:1,stage:0,resp:'ref',compare:true,prefilter:false,
+        view:'focus',Tview:'auto',errors:[],cursor:1};
+var DEF={Kp:14,Ti:0.7,Td:0.3,amp:1};
+var C=null;
+function fx(v,n){if(v===null||v===undefined||!isFinite(v))return '—';return (+v).toFixed(n===undefined?3:n);}
+function fxE(v){if(v===null||v===undefined||!isFinite(v))return '—';return (+v).toExponential(2);}
+
+function compute(){
+  var Kp=st.Kp,Ti=st.Ti,Td=st.Td,A=st.amp;
+  var m=build(Kp,Ti,Td),pp=pureP(Kp);
+  var dc=domComplex(m.clPoles),dcp=domComplex(pp.roots),rr=rightmostReal(m.clPoles);
+  var maxRe=Math.max.apply(null,m.clPoles.map(function(p){return p[0];}));
+  var maxReP=Math.max.apply(null,pp.roots.map(function(p){return p[0];}));
+  var TEND=14,M=5000;
+  var Sr=step(m.Fr_n,m.Fr_d,TEND,M),Sd=step(m.Fd_n,m.Fd_d,TEND,M);
+  var Srf=step(m.Frf_n,m.Frf_d,TEND,M);
+  var Spr=step(pp.r_n,pp.r_d,TEND,M),Spd=step(pp.d_n,pp.d_d,TEND,M);
+  var mr=metrics(Sr,.05),mrf=metrics(Srf,.05),mpr=metrics(Spr,.05);
+  var md=metricsDist(Sd),mpd=metricsDist(Spd);
+  var loc=getLocus(Ti,Td);
+  var essP=1/(1+Kp*E.K), droopP=E.Kg*E.Kw/(1+Kp*E.K);
+  var Tauto=Math.max(4*(st.resp==='dist'?md.rec:mr.ts),2.2*(st.resp==='dist'?md.tp:mr.tp),1.5);
+  if(st.prefilter&&st.resp==='ref'&&!mrf.unstable&&mrf.ts!==null)Tauto=Math.max(Tauto,2.0*mrf.ts);
+  if(!isFinite(Tauto))Tauto=8;
+  Tauto=Math.max(1.5,Math.min(14,Tauto));
+  return {m:m,pp:pp,dc:dc,dcp:dcp,rr:rr,maxRe:maxRe,maxReP:maxReP,Tauto:Tauto,
+    Sr:Sr,Sd:Sd,Srf:Srf,Spr:Spr,Spd:Spd,mr:mr,mrf:mrf,mpr:mpr,md:md,mpd:mpd,
+    loc:loc,essP:essP,droopP:droopP,unstable:maxRe>0,unstableP:maxReP>0,
+    sigmaA:loc.sigmaA,nzm:loc.nzm,kcritP:E.kcritP,kcritPID:loc.kcrit};
+}
+
+/* ============================ SVG 工具 ============================ */
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function niceStep(x){
+  if(!(x>0)||!isFinite(x))return 1;
+  var e=Math.floor(Math.log10(x)),f=x/Math.pow(10,e),n;
+  if(f<=1)n=1;else if(f<=2)n=2;else if(f<=5)n=5;else n=10;
+  return n*Math.pow(10,e);
+}
+function line(x1,y1,x2,y2,c,w,dash){return '<line x1="'+fx(x1,2)+'" y1="'+fx(y1,2)+'" x2="'+fx(x2,2)+'" y2="'+fx(y2,2)+'" stroke="'+c+'" stroke-width="'+(w||1)+'"'+(dash?' stroke-dasharray="'+dash+'"':'')+'/>';}
+function txt(x,y,s,cls,anchor,extra){return '<text x="'+fx(x,2)+'" y="'+fx(y,2)+'" class="'+(cls||'lb')+'"'+(anchor?' text-anchor="'+anchor+'"':'')+(extra||'')+'>'+s+'</text>';}
+function rect(x,y,w,h,fill,stroke,sw,rx){return '<rect x="'+fx(x,2)+'" y="'+fx(y,2)+'" width="'+fx(w,2)+'" height="'+fx(h,2)+'" rx="'+(rx===undefined?6:rx)+'" fill="'+fill+'" stroke="'+stroke+'" stroke-width="'+(sw||1)+'"/>';}
+function circ(x,y,r,fill,stroke,sw){return '<circle cx="'+fx(x,2)+'" cy="'+fx(y,2)+'" r="'+fx(r,2)+'" fill="'+fill+'" stroke="'+stroke+'" stroke-width="'+(sw||1)+'"/>';}
+function arr(x1,y1,x2,y2,c,w,dash){
+  var a=Math.atan2(y2-y1,x2-x1),L=7,s='';
+  s+=line(x1,y1,x2,y2,c,w||1.3,dash);
+  s+='<path d="M '+fx(x2,2)+' '+fx(y2,2)+' L '+fx(x2-L*Math.cos(a-0.42),2)+' '+fx(y2-L*Math.sin(a-0.42),2)+' L '+fx(x2-L*Math.cos(a+0.42),2)+' '+fx(y2-L*Math.sin(a+0.42),2)+' Z" fill="'+c+'"/>';
+  return s;
+}
+function chip(x,y,s,bg,fg){
+  var w=s.length*6.6+12;
+  return rect(x,y,w,17,bg,'none',0,4)+txt(x+w/2,y+12,s,'bf',fg||'#fff',' font-size="10"');
+}
+
+/* ============================ 建模推导图 ============================ */
+var STAGES=[
+ {t:'① 系统结构：励磁调节闭环',s:'从物理结构到信号流',note:
+  '<h3>闭环结构与信号命名</h3><p>电压给定 <b>U_ref</b> 与测量反馈 <b>U_m</b> 在比较点相减，误差送入 <b>AVR（PID）</b>，其输出 <b>U_c</b> 驱动<b>励磁机</b>产生励磁电压 <b>U_f</b>，再经<b>发电机</b>得到机端电压 <b>U_t</b>。</p><p>负载电流变化作为<b>扰动 W(s)</b> 加在发电机输入端；机端电压经电压互感器与整流滤波后反馈，构成<b>单位负反馈的闭环</b>（测量环节含在反馈支路里）。</p><p>课程建模的任务：把三个物理部件各自写成一阶惯性，再沿环路串联起来。</p>'},
+ {t:'② 发电机惯性环节',s:'忽略饱和与暂态凸极效应',note:
+  '<h3>发电机：一阶惯性</h3><p>励磁绕组本身是 RL 回路，励磁电压突变时机端电压不能突变。线性化后：</p><p><code>T_g·dΔU_t/dt + ΔU_t = K_g·ΔU_f</code></p><p>拉氏变换得 <code>G_g(s)=ΔU_t(s)/ΔU_f(s)=K_g/(T_g s+1)</code>。</p><p>本课取 <code>K_g=1</code>、<code>T_g=1 s</code>，对应极点 <code>−1 rad/s</code> —— 这是三个环节里<b>最慢</b>的一个，后面闭环的主导行为基本由它和励磁机共同决定。</p>'},
+ {t:'③ 励磁机惯性环节',s:'励磁机励磁绕组的时间常数',note:
+  '<h3>励磁机：一阶惯性</h3><p><code>T_e·dΔU_f/dt + ΔU_f = K_e·ΔU_c</code>，即 <code>G_e(s)=K_e/(T_e s+1)</code>。</p><p>取 <code>K_e=1</code>、<code>T_e=0.4 s</code>，极点 <code>−2.5 rad/s</code>。</p><p>它与发电机串联后是<b>两个</b>一阶惯性：开环仍是两个负实极点、没有振荡；闭环后特征方程升为二次，才具备成为<b>二阶振荡环节</b>的可能。这就是题目所说「基于二阶振荡系统模型」的由来。</p>'},
+ {t:'④ 电压测量环节',s:'互感器 + 整流 + 滤波',note:
+  '<h3>电压测量：一阶惯性</h3><p>电压互感器、整流桥与滤波电容带来测量滞后：<code>G_r(s)=K_r/(T_r s+1)</code>，取 <code>K_r=1</code>、<code>T_r=0.05 s</code>，极点 <code>−20 rad/s</code>。</p><p>它比前两个环节快 20~400 倍，所以工程上常<b>忽略</b>它做二阶近似；但在精确根轨迹里必须保留，因为正是这个高频极点决定了 4 支根轨迹的渐近线方向。</p><p>三环节串联：<code>G₀(s)=K/[(T_g s+1)(T_e s+1)(T_r s+1)]</code>。</p>'},
+ {t:'⑤ 串联结果 → 二阶振荡近似',s:'忽略 T_r，闭环得二阶特征式',note:
+  '<h3>从三阶到二阶</h3><p>展开分母：<code>D₃(s)=0.02s³+0.47s²+1.45s+1</code>。三个极点 <code>−1, −2.5, −20</code> 全在负实轴，<b>开环不振荡</b>。</p><p>忽略 <code>T_r</code> 后纯 P 闭环特征式：<code>T_gT_e s²+(T_g+T_e)s+(1+K_pK)=0</code>，于是 <code>ω_n=√((1+K_pK)/(T_gT_e))</code>、<code>ζ=(T_g+T_e)/(2√(T_gT_e(1+K_pK)))</code>。</p><p><b>K_p↑ ⇒ ζ↓ ⇒ 超调↑、振荡加剧</b>；Routh 给出三阶精确临界增益 <code>K_p,crit=33.075</code>。</p>'},
+ {t:'⑥ 闭环 + PID 根轨迹校正',s:'零点把根轨迹拉回左半平面',note:
+  '<h3>PID 校正</h3><p><code>C(s)=K_p(T_iT_d s²+T_i s+1)/(T_i s)</code>，闭环特征式：</p><p><code>P(s)=T_i s·D₃(s)+K_pK(T_iT_d s²+T_i s+1)=0</code></p><p>开环极点 4 个：<code>0, −1, −2.5, −20</code>；开环零点 2 个由 <code>T_iT_d s²+T_i s+1=0</code> 给出。<b>以 K_p 为根轨迹增益</b>，4 支轨迹从极点出发、终于零点或无穷远。</p><p>零点提供的<b>正相角</b>使根轨迹向左弯，渐近线中心落在左半平面，稳定域从 <code>K_p&lt;33.075</code> 扩展到大得多的范围；把主导极点放到 <code>ζ≈0.707</code> 射线上即完成校正。</p>'}
+];
+function stageBox(x,y,w,h,label,sub,hi,dim){
+  var f=hi?'#E6F1FB':'#fff',s=hi?'#185FA5':'#C9C6BD',tc=hi?'#185FA5':'#5F5E5A';
+  var o=rect(x,y,w,h,f,s,hi?1.8:1.1,7);
+  o+=txt(x+w/2,y+h/2+(sub?-3:4),label,'tt',tc,null,hi?' font-size="12.5"':'');
+  if(sub)o+=txt(x+w/2,y+h/2+15,sub,'bf','middle',' fill="'+(hi?'#185FA5':'#8A8880')+'"');
+  if(dim)o+='<rect x="'+fx(x,2)+'" y="'+fx(y,2)+'" width="'+fx(w,2)+'" height="'+fx(h,2)+'" rx="7" fill="#fff" opacity="0.42"/>';
+  return o;
+}
+function sumNode(x,y,r,sgn){
+  var o=circ(x,y,r,'#fff','#5F5E5A',1.3);
+  o+=txt(x-r-8,y-5,sgn||'+','bf','middle',' fill="#3F8F5B"');
+  return o;
+}
+function eqCard(x,y,w,h,lines,title){
+  var o=rect(x,y,w,h,'#FAF9F5','#D8D5CC',1,9);
+  o+=txt(x+12,y+19,title,'tt','start',' fill="#185FA5" font-size="11.5"');
+  lines.forEach(function(L,i){o+=txt(x+12,y+40+i*21,L,'bf','start',' font-size="10.5" fill="#5F5E5A"');});
+  return o;
+}
+function drawStage(n){
+  var s='',y=118,HI=[];
+  if(n===0)HI=[];if(n===1)HI=['gen'];if(n===2)HI=['exc'];if(n===3)HI=['mea'];
+  if(n===4)HI=['gen','exc','mea'];if(n===5)HI=['pid'];
+  function on(k){return HI.indexOf(k)>=0;}
+  function dim(k){return (n>=1&&n<=4)&&!on(k);}
+  s+='<rect x="0" y="0" width="960" height="292" fill="#fff"/>';
+  /* 主线 */
+  s+=txt(22,y-13,'U_ref','bf','start',' fill="#5F5E5A"');
+  s+=arr(20,y,96,y,'#5F5E5A',1.4);
+  s+=sumNode(110,y,13,'+');
+  s+=arr(123,y,146,y,'#5F5E5A',1.4);
+  s+=stageBox(146,88,112,60,'PID / AVR','C(s)',on('pid'),dim('pid'));
+  s+=arr(258,y,282,y,'#5F5E5A',1.4);
+  s+=txt(265,y-9,'U_c','bf','start',' fill="#8A8880"');
+  s+=stageBox(282,88,112,60,'励磁机','K_e/(T_e s+1)',on('exc'),dim('exc'));
+  s+=arr(394,y,430,y,'#5F5E5A',1.4);
+  s+=txt(400,y-9,'U_f','bf','start',' fill="#8A8880"');
+  s+=sumNode(444,y,12,'+');
+  s+=txt(444,58,'负载扰动 W(s)','bf','middle',' fill="#D85A30"');
+  s+=arr(444,64,444,104,'#D85A30',1.4,'4 3');
+  s+=arr(456,y,478,y,'#5F5E5A',1.4);
+  s+=stageBox(478,88,112,60,'发电机','K_g/(T_g s+1)',on('gen'),dim('gen'));
+  s+=arr(590,y,634,y,'#5F5E5A',1.4);
+  s+=circ(638,y,3.5,'#2C2C2A','none',0);
+  s+=txt(646,y-9,'U_t  (机端电压)','bf','start',' fill="#185FA5"');
+  /* 反馈 */
+  s+=line(638,y,638,232,'#5F5E5A',1.3);
+  s+=arr(638,232,398,232,'#5F5E5A',1.3);
+  s+=stageBox(286,207,112,50,'电压测量','K_r/(T_r s+1)',on('mea'),dim('mea'));
+  s+=line(286,232,110,232,'#5F5E5A',1.3);
+  s+=arr(110,232,110,y+14,'#5F5E5A',1.3);
+  s+=txt(240,225,'U_m','bf','start',' fill="#8A8880"');
+  s+=txt(92,y+29,'−','bf','middle',' fill="#A32D2D" font-size="14"');
+  /* 公式卡 */
+  var lines,title;
+  if(n===0){title='闭环信号流';lines=['e = U_ref − U_m','U_m = G_r(s)·U_t','U_f = G_e(s)·U_c','U_t = G_g(s)·(U_f + W)','','三环节串联在环路里，','特征方程含 D₃(s) 与 C(s)'];}
+  else if(n===1){title='发电机 · 微分方程 → 复域';lines=['T_g dΔU_t/dt + ΔU_t = K_g ΔU_f','','G_g(s) = K_g / (T_g s + 1)','      = 1 / (1.0 s + 1)','极点 p₁ = −1/T_g = −1.000','','一阶惯性：单调，无振荡'];}
+  else if(n===2){title='励磁机 · 微分方程 → 复域';lines=['T_e dΔU_f/dt + ΔU_f = K_e ΔU_c','','G_e(s) = K_e / (T_e s + 1)','      = 1 / (0.4 s + 1)','极点 p₂ = −1/T_e = −2.500','','两级串联 ⇒ 闭环可出现','共轭主导极点'];}
+  else if(n===3){title='电压测量 · 微分方程 → 复域';lines=['T_r dΔU_m/dt + ΔU_m = K_r ΔU_t','','G_r(s) = K_r / (T_r s + 1)','      = 1 / (0.05 s + 1)','极点 p₃ = −1/T_r = −20.00','','高频极点：二阶近似忽略，','精确根轨迹必须保留'];}
+  else if(n===4){title='串联结果 与 二阶近似';lines=['G₀(s) = K / [(1.0s+1)(0.4s+1)(0.05s+1)]','D₃(s) = 0.02s³ + 0.47s² + 1.45s + 1','','忽略 T_r ⇒ 0.4s² + 1.4s + (1+K_p)','ω_n = √((1+K_p)/0.4)','ζ   = 1.4 / (2√(0.4(1+K_p)))','','当前 K_p = '+fx(st.Kp,2)+' → ζ₂ = '+fx(approxZ(),4)];}
+  else{title='PID 闭环特征式';lines=['C(s) = K_p (T_iT_d s² + T_i s + 1)/(T_i s)','P(s) = T_i s·D₃(s) + K_p K (T_iT_d s²+T_i s+1)','','当前 K_p='+fx(st.Kp,2)+'  T_i='+fx(st.Ti,2)+'  T_d='+fx(st.Td,3),'主导 ζ = '+(C&&C.dc?fx(C.dc.z,4):'—'),'临界增益 '+(C?fx(C.kcritP,3):'—')+' → '+(C&&C.kcritPID>395?'＞400':fx(C&&C.kcritPID,1)),'零点数 2 · 根轨迹 4 支'];}
+  s+=eqCard(672,32,272,232,lines,title);
+  return s;
+}
+function approxZ(){
+  var A=E.D2[0],B=E.D2[1],Cc=1+E.K*st.Kp;
+  return B/(2*Math.sqrt(A*Cc));
+}
+function renderStage(){
+  document.getElementById('svgStage').innerHTML=drawStage(st.stage);
+  document.getElementById('stageTitle').textContent=STAGES[st.stage].t;
+  document.getElementById('stageSub').textContent='第 '+(st.stage+1)+' / 6 步 · '+STAGES[st.stage].s;
+  var live='<div class="live">';
+  if(st.stage===4)live+='纯 P Routh 临界 K_p = '+fx(E.kcritP,3)+'　穿越 ω = '+fx(E.wcross,4)+' rad/s<br>';
+  if(st.stage===5&&C)live+='主导极点 '+(C.dc?'('+fx(C.dc.re,3)+', ±'+fx(C.dc.im,3)+'j)':'全为实极点')+'　ζ = '+(C.dc?fx(C.dc.z,4):'—')+'<br>';
+  live+='K_p='+fx(st.Kp,2)+'　T_i='+fx(st.Ti,2)+'　T_d='+fx(st.Td,3)+'</div>';
+  document.getElementById('stageNote').innerHTML=STAGES[st.stage].note+live;
+  var bs=document.querySelectorAll('#segStage button');
+  for(var i=0;i<bs.length;i++)bs[i].className=(+bs[i].getAttribute('data-stage')===st.stage?'on':'');
+}
+
+/* ============================ 根轨迹图 ============================ */
+var LOC_COL=['#185FA5','#3F8F5B','#C9973F','#6B4FA8'];
+function locusView(c){
+  if(st.view==='focus')return {r0:-5,r1:1,i1:5};
+  if(st.view==='wide')return {r0:-22,r1:3,i1:14};
+  /* 自动：按显示到 K_p,max 的轨迹点取包围盒，剔除快极点 Re<−12 */
+  var kmax=locusKmax();
+  var xs=[],ys=[],br=c.loc.pid.branches,i,j;
+  function add(p){
+    if(p[0]<-12||!isFinite(p[0])||!isFinite(p[1]))return;
+    xs.push(p[0]);ys.push(p[1]);
+  }
+  for(i=0;i<br.length;i++)for(j=0;j<br[i].length;j++){if(br[i][j].k<=kmax)add(br[i][j].p);}
+  if(st.compare){var pb=c.loc.pure.branches;for(i=0;i<pb.length;i++)for(j=0;j<pb[i].length;j++){if(pb[i][j].k<=kmax)add(pb[i][j].p);}}
+  c.m.olZeros.forEach(add);
+  c.m.clPoles.forEach(function(p){if(p[0]>=-12)add(p);});
+  if(!xs.length)return {r0:-4,r1:1,i1:4};
+  var r0=Math.min.apply(null,xs),r1=Math.max.apply(null,xs),iy=Math.max.apply(null,ys.map(Math.abs));
+  var rs=Math.max(3.6,(r1-r0)*1.18),is=Math.max(3.6,iy*2.24);
+  if(rs>11)rs=11;if(is>16)is=16;
+  return {r0:r1-rs+0.35,r1:r1+0.45,i1:is/2};
+}
+function locusKmax(){return Math.max(6,Math.min(40,st.Kp*1.3));}
+function drawLocus(c){
+  var W=620,H=470,L=52,R=18,T=26,B=44;
+  var pw=W-L-R,ph=H-T-B,v=locusView(c);
+  var r0=v.r0,r1=v.r1,i1=v.i1;
+  function X(re){return L+(re-r0)/(r1-r0)*pw;}
+  function Y(im){return T+(i1-im)/(2*i1)*ph;}
+  var s='',i,j;
+  s+='<defs><clipPath id="clipRL"><rect x="'+L+'" y="'+T+'" width="'+pw+'" height="'+ph+'"/></clipPath></defs>';
+  s+=rect(L,T,pw,ph,'#fff','#E4E2DB',1,0);
+  /* 不稳定区 */
+  if(X(0)<L+pw&&X(0)>L)s+=rect(X(0),T,L+pw-X(0),ph,'#FBE9E9','none',0,0);
+  /* 网格 */
+  var gx=niceStep((r1-r0)/6);while(gx*pw/(r1-r0)<34)gx=niceStep(gx*2.01);
+  var gy=niceStep(2*i1/6);while(gy*ph/(2*i1)<30)gy=niceStep(gy*2.01);
+  for(var g=Math.ceil(r0/gx)*gx;g<=r1;g+=gx){var xx=X(g);s+=line(xx,T,xx,T+ph,'#EDEBE4',1);s+=txt(xx,T+ph+16,fx(g,Math.abs(g)<10?1:0),'kl','middle');}
+  for(g=Math.ceil(-i1/gy)*gy;g<=i1;g+=gy){var yy=Y(g);s+=line(L,yy,L+pw,yy,'#EDEBE4',1);s+=txt(L-8,yy+3.5,fx(g,Math.abs(g)<10?1:0),'kl','end');}
+  /* 坐标轴 */
+  s+=line(L,Y(0),L+pw,Y(0),'#B8B5AC',1.2);
+  s+=line(X(0),T,X(0),T+ph,'#A32D2D',1.5,'5 3');
+  s+=txt(L+pw-2,Y(0)-7,'Re(s)','kl','end');
+  s+=txt(X(0)+6,T+13,'Im(s)','kl','start');
+  if(X(0)<L+pw-58)s+=txt(X(0)+6,T+ph-7,'不稳定区','bf','start',' fill="#A32D2D" font-size="10"');
+  s+='<g clip-path="url(#clipRL)">';
+  /* 等阻尼射线 */
+  [[0.707,'#C9973F','ζ=0.707'],[0.5,'#B9A46F','ζ=0.5'],[0.3,'#C8BFA8','ζ=0.3']].forEach(function(z){
+    var zz=z[0],th=Math.acos(zz),Lg=Math.max(r1-r0,2*i1)*2;
+    var ex=-zz*Lg,ey=Math.sqrt(1-zz*zz)*Lg;
+    s+=line(X(0),Y(0),X(ex),Y(ey),z[1],zz===0.707?1.5:1,'4 4');
+    s+=line(X(0),Y(0),X(ex),Y(-ey),z[1],zz===0.707?1.5:1,'4 4');
+    var lx=X(-zz*(r1-r0)*0.62),ly=Y(Math.sqrt(1-zz*zz)*(r1-r0)*0.62);
+    if(lx>L+24&&lx<L+pw-24&&ly>T+10&&ly<T+ph-6)s+=txt(lx+3,ly-5,z[2],'bf','start',' fill="'+z[1]+'" font-size="9.5"');
+  });
+  /* 等 ωn 圆 */
+  if(c.dc&&c.dc.wn<Math.min(r1-r0,i1)*1.2){
+    var rr=c.dc.wn*pw/(r1-r0),ry=c.dc.wn*ph/(2*i1);
+    s+='<ellipse cx="'+fx(X(0),2)+'" cy="'+fx(Y(0),2)+'" rx="'+fx(rr,2)+'" ry="'+fx(ry,2)+'" fill="none" stroke="#8A8880" stroke-width="1" stroke-dasharray="2 4" opacity="0.75"/>';
+  }
+  /* 渐近线中心 */
+  if(c.sigmaA!==null&&X(c.sigmaA)>L+8&&X(c.sigmaA)<L+pw-8){
+    s+=line(X(c.sigmaA),T,X(c.sigmaA),T+ph,'#BE1E8A',1,'2 5');
+    s+=txt(X(c.sigmaA)+4,T+ph-7,'σ_a='+fx(c.sigmaA,2),'bf','start',' fill="#BE1E8A" font-size="9.5"');
+  }
+  var kmax=locusKmax();
+  function branchPath(br){
+    var d='',started=false;
+    for(var q=0;q<br.length;q++){
+      var o=br[q];if(o.k>kmax)break;
+      if(!isFinite(o.p[0])||!isFinite(o.p[1]))continue;
+      d+=(started?'L':'M')+fx(X(o.p[0]),2)+' '+fx(Y(o.p[1]),2)+' ';started=true;
+    }
+    return d;
+  }
+  /* 纯 P 对照轨迹 */
+  if(st.compare){
+    c.loc.pure.branches.forEach(function(br){
+      s+='<path d="'+branchPath(br)+'" fill="none" stroke="#B0ADA4" stroke-width="1.7" stroke-dasharray="5 4"/>';
+    });
+    /* 虚轴穿越点 */
+    var yc=Y(E.wcross);
+    if(yc>T&&yc<T+ph){
+      s+=circ(X(0),yc,5,'#fff','#A32D2D',1.6);
+      s+=txt(X(0)+9,yc-6,'K_p='+fx(E.kcritP,2)+'  ω='+fx(E.wcross,2),'bf','start',' fill="#A32D2D" font-size="9.5"');
+      s+=circ(X(0),Y(-E.wcross),5,'#fff','#A32D2D',1.6);
+    }
+  }
+  /* PID 轨迹 */
+  c.loc.pid.branches.forEach(function(br,k){
+    var d=branchPath(br);
+    s+='<path d="'+d+'" fill="none" stroke="'+LOC_COL[k%4]+'" stroke-width="2.1" opacity="0.92"/>';
+    /* 方向点 */
+    for(var q=20;q<br.length;q+=46){
+      var o=br[q];if(o.k>kmax)break;
+      s+=circ(X(o.p[0]),Y(o.p[1]),2.1,LOC_COL[k%4],'#fff',0.7);
+    }
+  });
+  /* 开环极点 × / 零点 ○ */
+  E.Poles.forEach(function(p){
+    var x=X(p),y=Y(0);if(x<L-8||x>L+pw+8)return;
+    s+=line(x-4,y-4,x+4,y+4,'#185FA5',1.8);s+=line(x-4,y+4,x+4,y-4,'#185FA5',1.8);
+  });
+  c.m.olZeros.forEach(function(p){
+    var x=X(p[0]),y=Y(p[1]);if(x<L-8||x>L+pw+8||y<T-8||y>T+ph+8)return;
+    s+=circ(x,y,4.6,'#fff','#3F8F5B',1.8);
+  });
+  /* 当前闭环极点 */
+  if(st.compare)c.pp.roots.forEach(function(p){
+    var x=X(p[0]),y=Y(p[1]);if(x<L-8||x>L+pw+8||y<T-8||y>T+ph+8)return;
+    s+=circ(x,y,4.4,'#fff','#8A8880',1.5);
+  });
+  c.m.clPoles.forEach(function(p){
+    var x=X(p[0]),y=Y(p[1]);if(x<L-8||x>L+pw+8||y<T-8||y>T+ph+8)return;
+    s+=circ(x,y,6,c.unstable?'#A32D2D':'#D85A30','#fff',1.8);
+  });
+  /* 主导极点标注 */
+  if(c.dc){
+    var dx=X(c.dc.re),dy=Y(c.dc.im);
+    if(dx>L+10&&dx<L+pw-10&&dy>T+14&&dy<T+ph-14){
+      s+=rect(dx+9,dy-30,116,30,'#FFF6F0','#D85A30',1,5);
+      s+=txt(dx+15,dy-18,'主导极点 ζ='+fx(c.dc.z,3),'bf','start',' fill="#D85A30" font-size="10"');
+      s+=txt(dx+15,dy-6,'ωn='+fx(c.dc.wn,2)+'  ωd='+fx(c.dc.wd,2),'bf','start',' fill="#5F5E5A" font-size="9.5"');
+    }
+  }
+  s+='</g>';
+  /* 图例 */
+  var lx=L+6,ly=T+ph-24;
+  s+=rect(L+4,T+ph-38,232,34,'#fff','#E4E2DB',1,5);
+  s+=line(lx,ly-8,lx+15,ly-8,'#185FA5',2.1)+txt(lx+19,ly-4,'PID 根轨迹','kl');
+  s+=line(lx+92,ly-8,lx+107,ly-8,'#B0ADA4',1.7,'5 4')+txt(lx+111,ly-4,'纯 P','kl');
+  s+=line(lx+4,ly+7,lx+11,ly,'#185FA5',1.6)+line(lx+4,ly,lx+11,ly+7,'#185FA5',1.6)+txt(lx+16,ly+10,'极点','kl');
+  s+=circ(lx+60,ly+3,4,'#fff','#3F8F5B',1.6)+txt(lx+68,ly+7,'PID 零点','kl');
+  s+=circ(lx+145,ly+3,5,'#D85A30','#fff',1.5)+txt(lx+154,ly+7,'当前闭环极点','kl');
+  return s;
+}
+
+/* ============================ 阶跃响应图 ============================ */
+function effTview(c){return st.Tview==='auto'?c.Tauto:+st.Tview;}
+function drawStep(c){
+  var W=620,H=470,L=54,R=18,T=26,B=46,pw=W-L-R,ph=H-T-B;
+  var Tv=effTview(c),dist=st.resp==='dist',A=st.amp;
+  var series=[],i;
+  function push(name,pts,col,w,dash,fill){series.push({name:name,pts:pts,col:col,w:w,dash:dash,fill:fill});}
+  function until(S,scale){var o=[],k;for(k=0;k<S.out.length;k++){if(S.out[k].t>Tv+1e-9)break;o.push({t:S.out[k].t,y:S.out[k].y*scale});}return o;}
+  if(dist){
+    push('PID',until(c.Sd,A),'#185FA5',2.3,null);
+    if(st.compare)push('纯 P',until(c.Spd,A),'#B0ADA4',1.8,'5 4');
+  }else{
+    push('PID',until(c.Sr,A),'#185FA5',2.3,null);
+    if(st.prefilter)push('预滤',until(c.Srf,A),'#6B4FA8',1.8,'4 3');
+    if(st.compare)push('纯 P',until(c.Spr,A),'#B0ADA4',1.8,'5 4');
+  }
+  /* y 范围 */
+  var lo=0,hi=0,blown=false;
+  series.forEach(function(q){q.pts.forEach(function(p){if(!isFinite(p.y)){blown=true;return;}if(Math.abs(p.y)>8){blown=true;return;}lo=Math.min(lo,p.y);hi=Math.max(hi,p.y);});});
+  if(dist){var mx=Math.max(Math.abs(lo),Math.abs(hi),0.05)*1.3;lo=-mx;hi=mx;}
+  else{hi=Math.max(hi,A*1.12,0.9);lo=Math.min(lo,-A*0.12);
+       var pad=(hi-lo)*0.09;hi+=pad;lo-=pad*0.25;}
+  if(blown){lo=Math.max(lo,-1.2);hi=Math.min(hi,3);}
+  if(hi-lo<0.4)hi=lo+0.4;
+  function X(t){return L+t/Tv*pw;}
+  function Y(y){return T+(hi-y)/(hi-lo)*ph;}
+  function tsLabel(x,label){
+    var near=x>L+pw-86;
+    return txt(near?x-5:x+4,T+ph-9,label,'bf',near?'end':'start',' fill="#C9973F" font-size="9.5"');
+  }
+  var s='';
+  s+='<defs><clipPath id="clipST"><rect x="'+L+'" y="'+T+'" width="'+pw+'" height="'+ph+'"/></clipPath></defs>';
+  s+=rect(L,T,pw,ph,'#fff','#E4E2DB',1,0);
+  /* 网格 */
+  var gy=niceStep((hi-lo)/6);while(gy*ph/(hi-lo)<28)gy=niceStep(gy*2.01);
+  for(var g=Math.ceil(lo/gy)*gy;g<=hi;g+=gy){var yy=Y(g);s+=line(L,yy,L+pw,yy,'#EDEBE4',1);s+=txt(L-8,yy+3.5,fx(g,2),'kl','end');}
+  var gx=niceStep(Tv/6);
+  for(g=0;g<=Tv+1e-9;g+=gx){var xx=X(g);s+=line(xx,T,xx,T+ph,'#EDEBE4',1);s+=txt(xx,T+ph+16,fx(g,1),'kl','middle');}
+  s+=txt(L+pw-2,T+ph+30,'t / s','kl','end');
+  s+=txt(L-8,T-8,'ΔU_t / pu','kl','end');
+  /* 参考线与 ±5% 带 */
+  if(!dist){
+    s+=rect(L,Y(A*1.05),pw,Y(A*0.95)-Y(A*1.05),'#E8F3EC','none',0,0);
+    s+=line(L,Y(A),L+pw,Y(A),'#3F8F5B',1.2,'5 4');
+  }else{
+    s+=line(L,Y(0),L+pw,Y(0),'#3F8F5B',1.2,'5 4');
+  }
+  s+=line(L,Y(0),L+pw,Y(0),'#B8B5AC',1);
+  /* 动画裁切 */
+  var clipN=STILL?1:Math.max(0,Math.min(1,st.cursor));
+  s+='<g clip-path="url(#clipST)">';
+  series.forEach(function(q){
+    var d='',started=false,lim=Tv*clipN;
+    for(i=0;i<q.pts.length;i++){
+      var p=q.pts[i];if(p.t>lim)break;
+      if(!isFinite(p.y)||Math.abs(p.y)>8)continue;
+      d+=(started?'L':'M')+fx(X(p.t),2)+' '+fx(Y(p.y),2)+' ';started=true;
+    }
+    s+='<path d="'+d+'" fill="none" stroke="'+q.col+'" stroke-width="'+q.w+'"'+(q.dash?' stroke-dasharray="'+q.dash+'"':'')+' stroke-linejoin="round"/>';
+  });
+  s+='</g>';
+  /* 峰值 / ts 标注 */
+  if(clipN>0.98&&!c.unstable){
+    if(!dist){
+      var mt=st.prefilter?c.mrf:c.mr;
+      if(mt&&!mt.unstable&&mt.peak!==undefined&&mt.tp!==null&&mt.tp<=Tv){
+        var py=mt.peak*A,px=X(mt.tp);
+        s+=circ(px,Y(py),4.2,'#D85A30','#fff',1.5);
+        s+=txt(px+7,Y(py)-7,'σ='+fx(mt.sigma,2)+'%','bf','start',' fill="#D85A30" font-size="10"');
+      }
+      if(mt&&!mt.unstable&&mt.ts!==null&&mt.ts<=Tv){
+        s+=line(X(mt.ts),T,X(mt.ts),T+ph,'#C9973F',1.2,'4 4');
+        s+=tsLabel(X(mt.ts),'t_s='+fx(mt.ts,2)+'s');
+      }
+    }else{
+      if(c.md.signed!==null&&c.md.tp<=Tv){
+        var pk=c.md.signed*A;
+        s+=circ(X(c.md.tp),Y(pk),4.2,'#D85A30','#fff',1.5);
+        s+=txt(X(c.md.tp)+7,Y(pk)-6,'峰值 '+fx(Math.abs(pk),3)+' pu','bf','start',' fill="#D85A30" font-size="10"');
+      }
+      if(c.md.rec!==null&&c.md.rec<=Tv){
+        s+=line(X(c.md.rec),T,X(c.md.rec),T+ph,'#C9973F',1.2,'4 4');
+        s+=tsLabel(X(c.md.rec),'恢复 '+fx(c.md.rec,2)+'s');
+      }
+    }
+  }
+  if(c.unstableP&&st.compare){
+    s+=rect(L+pw-176,T+6,170,25,'#FBE9E9','#A32D2D',1,6);
+    s+=txt(L+pw-91,T+23,'纯 P：K_p>'+fx(c.kcritP,2)+' 已发散 ↑','bf','middle',' fill="#A32D2D" font-size="10"');
+  }
+  if(c.unstable){
+    s+=rect(L+pw/2-110,T+ph/2-20,220,40,'#FBE9E9','#A32D2D',1,7);
+    s+=txt(L+pw/2,T+ph/2+5,'PID 闭环极点进入右半平面 · 响应发散','tt','middle',' fill="#A32D2D" font-size="11.5"');
+  }
+  /* 图例 */
+  var lx=L+10,ly=T+16;
+  s+=rect(L+6,T+5,228,series.length*17+9,'#fff','#E4E2DB',1,5);
+  series.forEach(function(q,i){
+    s+=line(lx,ly+i*17,lx+18,ly+i*17,q.col,q.w,q.dash);
+    s+=txt(lx+24,ly+i*17+3.5,q.name,'kl');
+  });
+  /* 参考线标签：白底，避免被曲线穿过 */
+  var rlab=dist?'ΔU_t = 0（无静差）':'给定值 '+fx(A,2)+' pu';
+  var rw=rlab.length*6.2+12,ry=dist?Y(0):Y(A);
+  s+=rect(L+pw-rw-4,ry-20,rw,16,'#fff','none',0,3);
+  s+=txt(L+pw-9,ry-8,rlab,'bf','end',' fill="#3F8F5B" font-size="10"');
+  return s;
+}
+
+/* ============================ ζ—σ 关系图 ============================ */
+function drawSigma(c){
+  var W=620,H=400,L=54,R=20,T=24,B=48,pw=W-L-R,ph=H-T-B;
+  function X(z){return L+z*pw;}
+  function Y(v){return T+(100-v)/100*ph;}
+  var s='',i;
+  s+='<defs><clipPath id="clipSG"><rect x="'+L+'" y="'+T+'" width="'+pw+'" height="'+ph+'"/></clipPath></defs>';
+  s+=rect(L,T,pw,ph,'#fff','#E4E2DB',1,0);
+  for(var g=0;g<=1.0001;g+=0.1){s+=line(X(g),T,X(g),T+ph,'#EDEBE4',1);s+=txt(X(g),T+ph+16,fx(g,1),'kl','middle');}
+  for(g=0;g<=100;g+=20){s+=line(L,Y(g),L+pw,Y(g),'#EDEBE4',1);s+=txt(L-8,Y(g)+3.5,String(g),'kl','end');}
+  s+=txt(L+pw-2,T+ph+32,'阻尼比 ζ','kl','end');
+  s+=txt(L-8,T-8,'σ / %','kl','end');
+  /* ζ=0.707（竖线从信息卡下方起，避免穿过文字块） */
+  s+=line(X(0.707),T+104,X(0.707),T+ph,'#C9973F',1.4,'5 4');
+  s+=txt(X(0.707)-7,T+13,'ζ=0.707 · σ=4.325%','bf','end',' fill="#C9973F" font-size="10"');
+  /* 理论曲线 */
+  var d='',started=false;
+  for(i=0;i<=400;i++){
+    var z=0.001+i/400*0.998,sv=100*Math.exp(-PI*z/Math.sqrt(1-z*z));
+    d+=(started?'L':'M')+fx(X(z),2)+' '+fx(Y(sv),2)+' ';started=true;
+  }
+  s+='<path d="'+d+'" fill="none" stroke="#185FA5" stroke-width="2.3"/>';
+  /* 纯 P 点 */
+  if(st.compare&&c.dcp){
+    var pz=Math.min(1,Math.max(0,c.dcp.z)),pv=c.mpr&&!c.mpr.unstable?c.mpr.sigma:null;
+    if(pv!==null&&pv<=100){
+      s+=circ(X(pz),Y(pv),6,'#fff','#8A8880',2);
+      s+=txt(X(pz)+9,Y(pv)-7,'纯 P 实测 ('+fx(pz,3)+', '+fx(pv,2)+'%)','bf','start',' fill="#5F5E5A" font-size="9.5"');
+    }
+  }
+  /* PID 主导极点：公式点 / 实测点 + 右上角信息卡 */
+  if(c.dc){
+    var zz=Math.min(1,Math.max(0,c.dc.z)),v2=c.dc.sigma;
+    var vm=c.mr&&!c.mr.unstable?c.mr.sigma:null;
+    if(vm!==null&&vm<=100)s+=line(X(zz),Y(v2),X(zz),Y(vm),'#D85A30',1.4,'3 3');
+    s+=circ(X(zz),Y(v2),6,'#C9973F','#fff',2);
+    s+=txt(X(zz)-10,Y(v2)+4,'σ₂','bf','end',' fill="#C9973F" font-size="10.5"');
+    if(vm!==null&&vm<=100){
+      s+=circ(X(zz),Y(vm),6,'#D85A30','#fff',2);
+      s+=txt(X(zz)+10,Y(vm)-7,'σ','bf','start',' fill="#D85A30" font-size="11"');
+    }
+    var bx=L+pw-248,by=T+30;
+    s+=rect(bx,by,240,66,'#fff','#D8D5CC',1,7);
+    s+=txt(bx+10,by+17,'PID 主导极点 ζ = '+fx(zz,3),'bf','start',' fill="#2C2C2A" font-size="10.5"');
+    s+=circ(bx+15,by+34,4,'#C9973F','#fff',1);
+    s+=txt(bx+25,by+38,'二阶公式 σ₂ = '+fx(v2,2)+'%','bf','start',' fill="#C9973F" font-size="10"');
+    s+=circ(bx+15,by+53,4,'#D85A30','#fff',1);
+    s+=txt(bx+25,by+57,(vm===null?'实测 σ = —':'实测 σ = '+fx(vm,2)+'%　抬升 +'+fx(vm-v2,2)+'%'),'bf','start',' fill="#D85A30" font-size="10"');
+  }
+  /* 说明 */
+  s+=rect(L+8,T+ph-52,270,44,'#FAF9F5','#E4E2DB',1,6);
+  s+=txt(L+16,T+ph-35,'纯 P 闭环无零点 ⇒ 实测点落在理论曲线上','bf','start',' fill="#5F5E5A" font-size="10"');
+  s+=txt(L+16,T+ph-19,'PID 闭环零点 ⇒ 实测超调高于二阶公式','bf','start',' fill="#D85A30" font-size="10"');
+  return s;
+}
+
+/* ============================ 指标 / 理论面板 ============================ */
+function setSpec(id,val,em,bad){
+  var e=document.getElementById(id);if(e)e.textContent=val;
+  var s=document.getElementById('se'+id.slice(2));if(s)s.textContent=em||'';
+}
+function renderSpecs(c){
+  var d=c.dc;
+  setSpec('spZeta',d?fx(d.z,4):'—',d?'由主导共轭极点 −ζωn ± jωd 读出':'当前无复极点（过阻尼型）');
+  setSpec('spWn',d?fx(d.wn,4):'—',d?'√(re²+im²) / rad·s⁻¹':'—');
+  setSpec('spWd',d?fx(d.wd,4):'—',d?'阻尼振荡频率 / rad·s⁻¹':'—');
+  setSpec('spSig2',d?fx(d.sigma,2)+'%':'—',d?'由主导 ζ 代入 100·e^(−πζ/√(1−ζ²))':'—');
+  var sm=c.unstable?'发散':(c.mr.sigma===null?'—':fx(c.mr.sigma,2)+'%');
+  setSpec('spSig',sm,c.mrf&&!c.mrf.unstable?'给定预滤后 '+fx(c.mrf.sigma,2)+'%':'四阶闭环实测',c.unstable);
+  setSpec('spTp',c.unstable?'—':(c.mr.tp===null?'—':fx(c.mr.tp,3)),'峰值时间 / s');
+  setSpec('spTr',c.unstable?'—':(c.mr.tr===null?'—':fx(c.mr.tr,3)),'首次到达稳态值 / s');
+  setSpec('spTs',c.unstable?'—':(c.mr.ts===null?'—':fx(c.mr.ts,3)),'±5% 带 / s');
+  setSpec('spRe',fx(c.maxRe,4),c.unstable?'存在右半平面极点 → 失稳':'全部极点在左半平面 → 稳定',c.unstable);
+  document.getElementById('spReBox').className='spec'+(c.unstable?' bad':'');
+  setSpec('spEss',fx(c.essP*100,2)+'%','PID(含积分) → 0.00%');
+  document.getElementById('cpKcOld').textContent=fx(c.kcritP,3);
+  document.getElementById('cpKcNew').textContent=c.kcritPID>395?'＞400（不穿越）':fx(c.kcritPID,1);
+  document.getElementById('cpEsOld').textContent=fx(c.essP*100,2)+'%';
+  document.getElementById('cpEsNew').textContent='0.00%';
+  document.getElementById('cpZOld').textContent=c.dcp?fx(c.dcp.z,3):'—';
+  document.getElementById('cpZNew').textContent=d?fx(d.z,3):'—';
+  document.getElementById('cpDrOld').textContent=fx(c.droopP*st.amp,4)+' pu';
+  document.getElementById('cpDrNew').textContent='0.0000 pu';
+}
+function renderTheory(c){
+  var d=c.dc,dp=c.dcp;
+  var h='';
+  h+='<div class="dev">';
+  h+='G_g(s)=K_g/(T_g s+1)　G_e(s)=K_e/(T_e s+1)　G_r(s)=K_r/(T_r s+1)<br>';
+  h+='G₀(s)=K/[(T_g s+1)(T_e s+1)(T_r s+1)] = 1/(0.02s³+0.47s²+1.45s+1)<br>';
+  h+='C(s)=K_p(T_iT_d s²+T_i s+1)/(T_i s)<br>';
+  h+='P(s)=T_i s·D₃(s)+K_pK(T_iT_d s²+T_i s+1)<br>';
+  h+='&nbsp;&nbsp;&nbsp;&nbsp;降幂系数 = ['+C.m.P.map(function(v){return fx(v,4);}).join(', ')+']<br>';
+  h+='二阶近似：T_gT_e s²+(T_g+T_e)s+(1+K_pK)=0<br>';
+  h+='ω_n=√((1+K_pK)/(T_gT_e))　ζ=(T_g+T_e)/(2√(T_gT_e(1+K_pK)))<br>';
+  h+='Routh：K_p,crit=a₂a₁/a₃−1='+fx(E.kcritP,3)+'　穿越 ω=√(a₁/a₃)='+fx(E.wcross,4)+' rad/s';
+  h+='</div>';
+  h+='<h3>理论 / 实测对照（当前 K_p='+fx(st.Kp,2)+'）</h3>';
+  h+='<table><thead><tr><th>量</th><th>纯 P 三阶<br>（未校正）</th><th>PID 四阶<br>（校正后）</th><th>主导极点<br>二阶公式</th></tr></thead><tbody>';
+  h+='<tr><td>主导 ζ</td><td class="num">'+(dp?fx(dp.z,4):'—')+'</td><td class="num">'+(d?fx(d.z,4):'—')+'</td><td class="num">—</td></tr>';
+  h+='<tr><td>ω_n / rad·s⁻¹</td><td class="num">'+(dp?fx(dp.wn,4):'—')+'</td><td class="num">'+(d?fx(d.wn,4):'—')+'</td><td class="num">—</td></tr>';
+  h+='<tr><td>超调 σ</td><td class="num">'+(c.mpr.sigma===null?'—':fx(c.mpr.sigma,2)+'%')+'</td><td class="num">'+(c.unstable?'发散':fx(c.mr.sigma,2)+'%')+'</td><td class="num">'+(d?fx(d.sigma,2)+'%':'—')+'</td></tr>';
+  h+='<tr><td>t_p / s</td><td class="num">'+(c.mpr.tp===null?'—':fx(c.mpr.tp,3))+'</td><td class="num">'+(c.mr.tp===null?'—':fx(c.mr.tp,3))+'</td><td class="num">'+(d?fx(d.tp,3):'—')+'</td></tr>';
+  h+='<tr><td>t_s(5%) / s</td><td class="num">'+(c.mpr.ts===null?'—':fx(c.mpr.ts,3))+'</td><td class="num">'+(c.mr.ts===null?'—':fx(c.mr.ts,3))+'</td><td class="num">'+(d?fx(d.ts,3):'—')+'</td></tr>';
+  h+='<tr><td>给定静差</td><td class="num">'+fx(c.essP*100,2)+'%</td><td class="num">0.00%</td><td class="num">—</td></tr>';
+  h+='<tr><td>负载扰动稳态偏差</td><td class="num">'+fx(c.droopP*st.amp,4)+' pu</td><td class="num">0.0000 pu</td><td class="num">—</td></tr>';
+  h+='<tr><td>临界增益 K_p,crit</td><td class="num">'+fx(c.kcritP,3)+'</td><td class="num">'+(c.kcritPID>395?'＞400':fx(c.kcritPID,2))+'</td><td class="num">—</td></tr>';
+  h+='</tbody></table>';
+  h+='<div style="font-size:10.5px;color:#8A8880;line-height:1.6;margin:-2px 0 7px">表中「二阶公式」指把二阶系统公式套到 <b>PID 四阶闭环的主导共轭极点</b>上，不是上方忽略 T_r 得到的解析近似 ζ₂='+fx(approxZ(),4)+'。后者只对低增益纯 P 成立，K_p 越大、T_r 的相位滞后越不可忽略。</div>';
+  if(d&&c.mr.tp!==null&&d.tp/c.mr.tp>1.8)
+    h+='<div style="font-size:10.5px;color:#7A5B22;line-height:1.6;margin:-2px 0 7px">当前 PID 零点靠近主导共轭极点，把慢模态近似对消了，所以实测 t<sub>p</sub>、t<sub>s</sub> 明显短于主导极点公式、波形由更快的极点决定。勾上「给定预滤器」消去这两个零点，响应就回落到主导极点主导的慢速形状 —— 这也是「主导极点」必须配合<b>零极点分布</b>一起看的原因。</div>';
+  h+='<h3>根轨迹几何量</h3>';
+  h+='<div class="dev">';
+  h+='开环极点：'+E.Poles.map(function(p){return fx(p,3);}).join(', ')+'<br>';
+  h+='开环零点（PID）：'+C.m.olZeros.map(function(p){return '('+fx(p[0],3)+', '+fx(p[1],3)+'j)';}).join(' ')+'<br>';
+  h+='闭环极点：'+C.m.clPoles.map(function(p){return '('+fx(p[0],3)+', '+fx(p[1],3)+'j)';}).join(' ')+'<br>';
+  h+='分支数 n−m = '+c.nzm+'（渐近线 '+c.nzm+' 条，夹角 '+(c.nzm?Array.from({length:c.nzm},function(_,q){return fx((2*q+1)*180/c.nzm,0)+'°';}).join(' / '):'—')+'）<br>';
+  h+='渐近线中心 σ_a = '+(c.sigmaA===null?'—':fx(c.sigmaA,3))+'　'+(c.sigmaA!==null&&c.sigmaA<0?'（左半平面 ⇒ 远段轨迹不进入右半平面）':'（右半平面 ⇒ 高增益终将失稳）')+'<br>';
+  h+='K_p,crit：纯 P = '+fx(c.kcritP,3)+'　PID = '+(c.kcritPID>395?'＞400（不穿越虚轴）':fx(c.kcritPID,2));
+  h+='</div>';
+  var gap=(d&&c.mr.sigma!==null)?c.mr.sigma-d.sigma:null;
+  var gp=(d&&c.mrf.sigma!==null)?Math.abs(c.mrf.sigma-d.sigma):null;
+  h+='<div class="warn">当前工况：PID 实测超调比主导极点的二阶公式高 '+fx(gap,2)+' 个百分点，来自闭环传递函数分子里的 PID 零点。'+
+     '勾选「给定预滤器」消去这两个零点后 σ='+(c.mrf.sigma===null?'—':fx(c.mrf.sigma,2)+'%')+'，二阶公式 σ₂='+(d?fx(d.sigma,2)+'%':'—')+'：'+
+     (gp!==null&&gp<1.5?'两者吻合，说明本工况主导极点分离充分，二阶近似成立。':'两者仍有差距，说明还存在近邻实极点或近似极零对消，主导极点近似不成立。')+'</div>';
+  document.getElementById('theoryBox').innerHTML=h;
+}
+
+/* ============================ 渲染主流程 ============================ */
+var raf=0;
+function render(recompute){
+  if(recompute!==false)C=compute();
+  if(!C)return;
+  document.getElementById('svgLocus').innerHTML=drawLocus(C);
+  document.getElementById('svgStep').innerHTML=drawStep(C);
+  document.getElementById('svgSigma').innerHTML=drawSigma(C);
+  renderStage();renderSpecs(C);renderTheory(C);
+  document.getElementById('vKp').textContent=fx(st.Kp,2);
+  document.getElementById('vTi').textContent=fx(st.Ti,2)+' s';
+  document.getElementById('vTd').textContent=fx(st.Td,3)+' s';
+  document.getElementById('vAmp').textContent=fx(st.amp,2)+' pu';
+  document.getElementById('locusSub').textContent='K_p='+fx(st.Kp,2)+' · 零点 '+C.m.olZeros.length+' 个 · 分支 '+E.Poles.length;
+  document.getElementById('stepSub').textContent=(st.resp==='ref'?'给定阶跃':'负载扰动阶跃')+' · 时窗 '+fx(effTview(C),2)+' s'+(st.Tview==='auto'?'（自动）':'')+' · 阶跃幅值 '+fx(st.amp,2)+' pu';
+  document.getElementById('capLocus').innerHTML='<b>×</b> 开环极点　<b>○</b> PID 零点　<b>●</b> 当前闭环极点（橙色）　灰虚线为未校正纯 P 的 3 支根轨迹。金色虚线为 ζ=0.707 等阻尼射线；拖动 T<sub>i</sub>/T<sub>d</sub> 会移动零点、重塑整条轨迹，拖动 K<sub>p</sub> 则沿轨迹移动工作点。';
+  document.getElementById('capStep').innerHTML=(st.resp==='ref'
+    ?'蓝线：PID 四阶闭环；灰虚线：同 K<sub>p</sub> 下的纯 P 三阶闭环（稳态 '+fx((1-C.essP)*st.amp,3)+' pu，留下 '+fx(C.essP*100,2)+'% 静差）。绿色带为 ±5% 误差带。'
+    :'扰动加在发电机输入端。PID 含积分 ⇒ 机端电压偏差最终回到 0；纯 P 留下 '+fx(C.droopP*st.amp,4)+' pu 永久静差。')
+    +(st.Tview==='auto'?' 时窗按暂态自动取 '+fx(effTview(C),2)+' s；想看纯 P 的完整衰减过程，把「时窗」切到 8 s / 14 s。':'')
+    +(st.Kp>C.kcritP?' <b style="color:#A32D2D">当前 K<sub>p</sub> 已超过纯 P 临界增益 '+fx(C.kcritP,2)+'：纯 P 发散，PID 靠零点校正仍然稳定（但增益过大，阻尼已明显变差，实际整定不会取这么高）。</b>':'');
+  document.getElementById('capSigma').innerHTML='蓝色曲线为二阶理论 σ₂(ζ)。灰色点是纯 P 三阶闭环的实测值（无闭环零点，故落在曲线上）；橙色点是 PID 主导极点按公式算出的 σ₂，红点同 ζ 下的四阶实测超调，两者之差即闭环零点与非主导极点的影响。';
+  document.getElementById('statusLine').innerHTML=
+    '<span class="badge '+(C.unstable?'bad':(C.dc&&C.dc.z<0.4?'off':'ok'))+'">'+(C.unstable?'闭环失稳':'闭环稳定')+'</span> '+
+    '主导极点 '+(C.dc?'('+fx(C.dc.re,3)+' ± '+fx(C.dc.im,3)+'j)':'全部为实极点（无振荡）')+
+    '　ζ='+(C.dc?fx(C.dc.z,3):'—')+'　ωn='+(C.dc?fx(C.dc.wn,3):'—')+
+    '　max Re(p)='+fx(C.maxRe,4)+'　|　纯 P 临界 K_p='+fx(C.kcritP,3)+'，PID 临界 '+(C.kcritPID>395?'＞400':fx(C.kcritPID,2))+
+    (C.rr!==null?'　|　最右实极点 '+fx(C.rr,3):'');
+  document.getElementById('designTag').textContent='K_p '+fx(st.Kp,2)+' · T_i '+fx(st.Ti,2)+' · T_d '+fx(st.Td,3);
+  var bs=document.querySelectorAll('#segResp button');
+  for(var i=0;i<bs.length;i++)bs[i].className=(bs[i].getAttribute('data-resp')===st.resp?'on':'');
+  if(QS.probe==='1')document.getElementById('probe').textContent=JSON.stringify(snapshot());
+  if(!STILL&&st.cursor<1)startAnim();
+}
+function startAnim(){
+  if(raf)cancelAnimationFrame(raf);
+  var t0=performance.now();
+  function tick(now){
+    var u=Math.min(1,(now-t0)/900);
+    st.cursor=u;
+    document.getElementById('svgStep').innerHTML=drawStep(C);
+    if(u<1)raf=requestAnimationFrame(tick);else raf=0;
+  }
+  raf=requestAnimationFrame(tick);
+}
+function schedule(anim){
+  if(anim&&!STILL)st.cursor=0;else st.cursor=1;
+  render(true);
+}
+function bindRange(id,key,parse){
+  var el=document.getElementById(id);
+  el.addEventListener('input',function(){st[key]=parse(el.value);schedule(false);});
+}
+function snapshot(){
+  if(!C)C=compute();
+  var c=C,d=c.dc;
+  return {Kp:st.Kp,Ti:st.Ti,Td:st.Td,amp:st.amp,resp:st.resp,stage:st.stage,
+    view:st.view,Tview:st.Tview,compare:st.compare,prefilter:st.prefilter,
+    stable:!c.unstable,maxRe:c.maxRe,maxRePureP:c.maxReP,
+    zeta:d?d.z:null,wn:d?d.wn:null,wd:d?d.wd:null,
+    sigma2:d?d.sigma:null,sigma:c.mr.sigma,tp:c.mr.tp,tr:c.mr.tr,ts:c.mr.ts,
+    sigmaPrefilter:c.mrf.sigma,sigmaPureP:c.mpr.sigma,essPureP:c.essP,
+    kcritPureP:c.kcritP,kcritPID:c.kcritPID,sigmaA:c.sigmaA,nzm:c.nzm,
+    peakDist:c.md.peak,recDist:c.md.rec,
+    poles:c.m.clPoles.map(function(p){return [p[0],p[1]];}),
+    zeros:c.m.olZeros.map(function(p){return [p[0],p[1]];}),
+    locusBranches:c.loc.pid.branches.length,pureBranches:c.loc.pure.branches.length,
+    errors:st.errors.slice()};
+}
+function setParams(o){
+  if(o.Kp!==undefined)st.Kp=Math.max(0.2,Math.min(45,+o.Kp));
+  if(o.Ti!==undefined)st.Ti=Math.max(0.2,Math.min(3,+o.Ti));
+  if(o.Td!==undefined)st.Td=Math.max(0,Math.min(0.35,+o.Td));
+  if(o.amp!==undefined)st.amp=+o.amp;
+  if(o.resp!==undefined)st.resp=o.resp;
+  if(o.view!==undefined)st.view=o.view;
+  if(o.Tview!==undefined)st.Tview=(o.Tview==='auto'?'auto':+o.Tview);
+  if(o.compare!==undefined)st.compare=!!o.compare;
+  if(o.prefilter!==undefined)st.prefilter=!!o.prefilter;
+  if(o.stage!==undefined)st.stage=+o.stage;
+  document.getElementById('sKp').value=st.Kp;
+  document.getElementById('sTi').value=st.Ti;
+  document.getElementById('sTd').value=st.Td;
+  document.getElementById('sAmp').value=st.amp;
+  document.getElementById('cbCompare').checked=st.compare;
+  document.getElementById('cbPrefilter').checked=st.prefilter;
+  document.getElementById('selView').value=st.view;
+  document.getElementById('selTime').value=String(st.Tview);
+  st.cursor=1;render(true);
+  return snapshot();
+}
+function applyDesign(){return setParams({Kp:DEF.Kp,Ti:DEF.Ti,Td:DEF.Td,amp:1,resp:'ref',view:'focus',Tview:'auto',compare:true,prefilter:false});}
+function applyCritical(){return setParams({Kp:40,Ti:DEF.Ti,Td:DEF.Td,amp:1,resp:'ref',view:'auto',Tview:'auto',compare:true,prefilter:false});}
+
+/* ============================ 事件 ============================ */
+(function init(){
+  bindRange('sKp','Kp',parseFloat);bindRange('sTi','Ti',parseFloat);
+  bindRange('sTd','Td',parseFloat);bindRange('sAmp','amp',parseFloat);
+  document.getElementById('cbCompare').addEventListener('change',function(){st.compare=this.checked;schedule(false);});
+  document.getElementById('cbPrefilter').addEventListener('change',function(){st.prefilter=this.checked;schedule(false);});
+  document.getElementById('selView').addEventListener('change',function(){st.view=this.value;schedule(false);});
+  document.getElementById('selTime').addEventListener('change',function(){st.Tview=(this.value==='auto'?'auto':+this.value);schedule(false);});
+  var ssb=document.querySelectorAll('#segStage button');
+  for(var i=0;i<ssb.length;i++)(function(b){b.addEventListener('click',function(){st.stage=+b.getAttribute('data-stage');render(false);});})(ssb[i]);
+  var rb=document.querySelectorAll('#segResp button');
+  for(i=0;i<rb.length;i++)(function(b){b.addEventListener('click',function(){st.resp=b.getAttribute('data-resp');schedule(true);});})(rb[i]);
+  document.getElementById('btnDesign').addEventListener('click',function(){applyDesign();});
+  document.getElementById('btnCritical').addEventListener('click',function(){applyCritical();});
+  document.getElementById('btnReset').addEventListener('click',function(){applyDesign();st.stage=0;render(false);});
+  document.getElementById('btnPlayStage').addEventListener('click',function(){
+    var b=this;b.disabled=true;st.stage=0;render(false);var k=0;
+    var iv=setInterval(function(){k++;if(k>=6){clearInterval(iv);b.disabled=false;return;}st.stage=k;render(false);},900);
+  });
+  document.getElementById('btnScan').addEventListener('click',function(){
+    var b=this;if(b.dataset.run==='1')return;b.dataset.run='1';b.disabled=true;
+    var t0=performance.now(),dur=4200;
+    function tick(now){
+      var u=Math.min(1,(now-t0)/dur);
+      st.Kp=0.2+(45-0.2)*u;
+      document.getElementById('sKp').value=st.Kp;
+      st.cursor=1;render(true);
+      if(u<1)requestAnimationFrame(tick);else{b.dataset.run='';b.disabled=false;}
+    }
+    requestAnimationFrame(tick);
+  });
+  window.__EXC__={state:function(){return {Kp:st.Kp,Ti:st.Ti,Td:st.Td,amp:st.amp,resp:st.resp,stage:st.stage,view:st.view,Tview:st.Tview,compare:st.compare,prefilter:st.prefilter,cursor:st.cursor};},
+    snapshot:snapshot,set:setParams,design:applyDesign,critical:applyCritical,
+    table:function(list){var out=[];list.forEach(function(o){out.push(setParams(o));});return out;},
+    locus:function(){var l=getLocus(st.Ti,st.Td);return {ks:l.pid.ks,branches:l.pid.branches.map(function(b){return b.map(function(o){return [o.k,o.p[0],o.p[1]];});}),kcrit:l.kcrit,sigmaA:l.sigmaA};},
+    model:function(){return {D3:E.D3.slice(),D2:E.D2.slice(),kcritP:E.kcritP,wcross:E.wcross,poles:E.Poles.slice()};}};
+  st.cursor=STILL?1:0;
+  render(true);
+})();
+</script>
+</body>
+</html>
